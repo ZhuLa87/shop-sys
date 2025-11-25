@@ -1,0 +1,58 @@
+server:
+    port: 8088
+    address: 0.0.0.0
+    servlet:
+        context-path: /api
+
+spring:
+    application:
+        name: shop-sys
+
+    datasource:
+        url: jdbc:mariadb://100.75.23.10:3306/shop-sys
+        username: dev-shop-sys
+        password: devlagan
+        driver-class-name: org.mariadb.jdbc.Driver
+
+    jpa:
+        show-sql: true
+        open-in-view: false
+        hibernate:
+            ddl-auto: update
+        properties:
+            hibernate:
+                dialect: org.hibernate.dialect.MariaDBDialect
+
+# 管理端點配置
+management:
+    endpoints:
+        web:
+            base-path: /
+
+# JWT 配置
+jwt:
+    secret: mySecretKeyForShopSYSThatIsLongEnoughForHS512Algorithm
+    expiration: 86400000 # 24小時（毫秒）
+
+# 日誌配置
+logging:
+    level:
+        com.zzowo.shop_sys: INFO
+        com.zzowo.shop_sys.config.GlobalExceptionHandler: WARN
+        org.springframework.security: WARN
+        org.springframework.web.bind.MethodArgumentNotValidException: WARN
+
+# 帳戶鎖定配置
+app:
+    security:
+        account-locking:
+            # 啟用帳戶鎖定功能
+            enabled: true
+            # 允許的最大登入失敗次數
+            max-failed-attempts: 5
+            # 帳戶鎖定持續時間（分鐘）
+            lock-duration-minutes: 15
+            # 失敗次數重置時間（分鐘）
+            reset-failure-count-minutes: 60
+            # 啟用自動解鎖功能
+            auto-unlock: true
