@@ -2,11 +2,9 @@ package com.zzowo.shop_sys.dto.request.user;
 
 import io.micrometer.common.lang.Nullable;
 import jakarta.validation.constraints.NotBlank;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.Data;
 
-@Getter
-@Setter
+@Data
 public class UserRegisterRequest {
     @NotBlank
     private String email;

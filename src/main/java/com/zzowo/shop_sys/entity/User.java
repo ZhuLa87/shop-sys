@@ -2,14 +2,20 @@ package com.zzowo.shop_sys.entity;
 
 import jakarta.persistence.*;
 import lombok.Data;
-import java.time.LocalDateTime;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
 
 import com.zzowo.shop_sys.enums.Role;
+
+import java.time.LocalDateTime;
+import java.util.Collection;
+import java.util.List;
 
 @Data
 @Entity
 @Table(name = "users")
-public class User {
+public class User implements UserDetails {
 
     // 主鍵 ID
     @Id
@@ -21,7 +27,7 @@ public class User {
     @Column(nullable = false, unique = true)
     private String email;
 
-    // 密碼的 Hash 值
+    // 密碼 Hash
     @Column(name = "password_hash", nullable = false)
     private String passwordHash;
 
@@ -62,6 +68,18 @@ public class User {
     @Column(name = "last_password_change_at")
     private LocalDateTime lastPasswordChangeAt;
 
+    // 帳號是否未過期
+    @Column(name = "is_account_non_expired", nullable = false)
+    private Boolean accountNonExpired = true;
+
+    // 帳號是否未被鎖
+    @Column(name = "is_account_non_locked", nullable = false)
+    private Boolean accountNonLocked = true;
+
+    // 密碼是否未過期
+    @Column(name = "is_credentials_non_expired", nullable = false)
+    private Boolean credentialsNonExpired = true;
+
     @PrePersist
     protected void onCreate() {
         // 在資料新增時自動設定建立與更新時間
@@ -74,4 +92,48 @@ public class User {
         // 在資料更新時自動刷新 updatedAt
         updatedAt = LocalDateTime.now();
     }
+
+    // 軟刪除使用者
+    public void delete() {
+        deletedAt = LocalDateTime.now();
+        enabled = false;
+    }
+
+    // 傳回使用者擁有的權限（Authorities）
+    @Override
+    public Collection<? extends GrantedAuthority> getAuthorities() {
+        // Spring Security 規定角色格式要是 "ROLE_XXX"
+        return List.of(new SimpleGrantedAuthority("ROLE_" + role.name()));
+    }
+
+    // 回傳使用者密碼
+    @Override
+    public String getPassword() {
+        return passwordHash;
+    }
+
+    // 回傳使用者帳號（email 即 username）
+    @Override
+    public String getUsername() {
+        return email;
+    }
+
+    // 帳號是否未過期（true = 沒有過期）
+    @Override
+    public boolean isAccountNonExpired() {
+        return accountNonExpired;
+    }
+
+    // 帳號是否未被鎖（true = 沒被鎖）
+    @Override
+    public boolean isAccountNonLocked() {
+        return accountNonLocked;
+    }
+
+    // 密碼是否未過期（true = 沒過期）
+    @Override
+    public boolean isCredentialsNonExpired() {
+        return credentialsNonExpired;
+    }
+
 }

@@ -1,5 +1,6 @@
 package com.zzowo.shop_sys.controller;
 
+import com.zzowo.shop_sys.dto.request.user.UserLoginRequest;
 import com.zzowo.shop_sys.dto.request.user.UserRegisterRequest;
 import com.zzowo.shop_sys.entity.User;
 import com.zzowo.shop_sys.service.UserService;
@@ -28,7 +29,11 @@ public class AuthController {
 
     // 登入 API (先預留位置，下一階段實作 JWT 時會用到)
     @PostMapping("/login")
-    public ResponseEntity<String> login() {
-        return ResponseEntity.ok("登入功能開發中...");
+    public ResponseEntity<String> login(@RequestBody UserLoginRequest request) {
+        // 呼叫 Service 進行登入
+        String token = userService.login(request);
+
+        // 回傳 JWT Token 給前端
+        return ResponseEntity.ok(token);
     }
 }
