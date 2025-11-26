@@ -1,6 +1,7 @@
 package com.zzowo.shop_sys.service;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import com.zzowo.shop_sys.dto.request.user.UserRegisterRequest;
@@ -15,8 +16,8 @@ public class UserService {
     private UserRepository userRepository;
 
     // 這裡之後要注入 PasswordEncoder
-    // @Autowired
-    // private PasswordEncoder passwordEncoder;
+    @Autowired
+    private PasswordEncoder passwordEncoder;
 
     public User register(UserRegisterRequest request) {
 
@@ -28,8 +29,7 @@ public class UserService {
         // 2. 轉換 DTO 成 Entity
         User user = new User();
         user.setEmail(request.getEmail());
-        // user.setPasswordHash(passwordEncoder.encode(request.getPassword())); // 之後補上加密
-        user.setPasswordHash(request.getPassword_hash());
+        user.setPasswordHash(passwordEncoder.encode(request.getPassword_hash()));  // 加密
         user.setName(request.getName());
         user.setPhone(request.getPhone());
         user.setRole(Role.CUSTOMER);
