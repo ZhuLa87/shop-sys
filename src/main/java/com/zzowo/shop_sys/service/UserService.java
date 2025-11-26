@@ -29,7 +29,7 @@ public class UserService {
         // 2. 轉換 DTO 成 Entity
         User user = new User();
         user.setEmail(request.getEmail());
-        user.setPasswordHash(passwordEncoder.encode(request.getPassword_hash()));  // 加密
+        user.setPasswordHash(passwordEncoder.encode(request.getPassword()));  // 加密
         user.setName(request.getName());
         user.setPhone(request.getPhone());
         user.setRole(Role.CUSTOMER);
