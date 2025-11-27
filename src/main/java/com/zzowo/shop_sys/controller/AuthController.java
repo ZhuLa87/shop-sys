@@ -2,6 +2,7 @@ package com.zzowo.shop_sys.controller;
 
 import com.zzowo.shop_sys.dto.request.user.UserLoginRequest;
 import com.zzowo.shop_sys.dto.request.user.UserRegisterRequest;
+import com.zzowo.shop_sys.dto.response.ApiResponse;
 import com.zzowo.shop_sys.entity.User;
 import com.zzowo.shop_sys.service.UserService;
 import jakarta.validation.Valid;
@@ -19,21 +20,21 @@ public class AuthController {
     // 註冊 API
     // URL: POST /api/auth/register
     @PostMapping("/register")
-    public ResponseEntity<String> register(@Valid @RequestBody UserRegisterRequest request) {
+    public ResponseEntity<ApiResponse<User>> register(@Valid @RequestBody UserRegisterRequest request) {
         // 呼叫 Service 執行業務邏輯 (檢查 Email、加密密碼、存檔)
         User newUser = userService.register(request);
 
         // 回傳簡單的成功訊息 (實務上也可以回傳 User DTO)
-        return ResponseEntity.ok("註冊成功！您的會員 ID 為: " + newUser.getId());
+        return ResponseEntity.ok(ApiResponse.success("註冊成功", newUser));
     }
 
     // 登入 API (先預留位置，下一階段實作 JWT 時會用到)
     @PostMapping("/login")
-    public ResponseEntity<String> login(@RequestBody UserLoginRequest request) {
+    public ResponseEntity<ApiResponse<String>> login(@RequestBody UserLoginRequest request) {
         // 呼叫 Service 進行登入
         String token = userService.login(request);
 
         // 回傳 JWT Token 給前端
-        return ResponseEntity.ok(token);
+        return ResponseEntity.ok(ApiResponse.success("登入成功", token));
     }
 }

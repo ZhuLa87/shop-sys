@@ -27,7 +27,7 @@ public class UserService {
 
         // 1. 檢查 Email
         if (userRepository.existsByEmail(request.getEmail())) {
-            throw new RuntimeException("Email already exists");
+            throw new RuntimeException("帳號已被註冊");
         }
 
         // 2. 轉換 DTO 成 Entity

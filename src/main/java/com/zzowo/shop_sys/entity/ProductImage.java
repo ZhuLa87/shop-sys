@@ -19,6 +19,8 @@ public class ProductImage {
     // product_id：外鍵，連到產品的主鍵
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "product_id", nullable = false, columnDefinition = "BIGINT UNSIGNED")
+    @lombok.ToString.Exclude            // 防止 toString 遞迴
+    @lombok.EqualsAndHashCode.Exclude  // 防止 equals/hashCode 遞迴
     private Product product;
 
     // 圖片的 URL 位置

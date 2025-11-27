@@ -2,6 +2,9 @@ package com.zzowo.shop_sys.controller;
 
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import com.zzowo.shop_sys.dto.response.ApiResponse;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 
@@ -11,8 +14,8 @@ import org.springframework.web.bind.annotation.GetMapping;
 public class UserController {
 
     @GetMapping("/me")
-    public ResponseEntity<String> getCurrentUser() {
+    public ResponseEntity<ApiResponse<Object>> getCurrentUser() {
         // 回傳目前登入的使用者資訊 (這裡先回傳簡單字串，實務上會回傳 User DTO)
-        return ResponseEntity.ok("成功通過驗證");
+        return ResponseEntity.ok(ApiResponse.success("成功通過驗證"));
     }
 }
