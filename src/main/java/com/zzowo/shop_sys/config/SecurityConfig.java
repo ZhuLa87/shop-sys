@@ -1,14 +1,22 @@
 package com.zzowo.shop_sys.config;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.argon2.Argon2PasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+
+import com.zzowo.shop_sys.filter.JwtAuthenticationFilter;
 
 @Configuration
 public class SecurityConfig {
+
+    @Autowired
+    private JwtAuthenticationFilter jwtAuthenticationFilter;
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -27,7 +35,11 @@ public class SecurityConfig {
                 .requestMatchers("/auth/**").permitAll()
                 // 其他所有請求都需要登入才能看
                 .anyRequest().authenticated()
-            );
+            )
+            // 設定為無狀態 (Stateless), 因為我們用 JWT，伺服器不需要存 Session
+            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            // 把過濾器加在 UsernamePasswordAuthenticationFilter 之前。先檢查 JWT，如果沒有 JWT 才走傳統流程 (但這裡其實只靠 JWT)
+            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }

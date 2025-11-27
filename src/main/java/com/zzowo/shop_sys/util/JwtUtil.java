@@ -117,7 +117,7 @@ public class JwtUtil {
     }
 
     /**
-     * 驗證token
+     * 驗證 token 是否有效
      */
     public Boolean validateToken(String token, UserDetails userDetails) {
         try {
