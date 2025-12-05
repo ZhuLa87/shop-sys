@@ -3,6 +3,7 @@ package com.zzowo.shop_sys.service;
 import com.zzowo.shop_sys.dto.response.product.ProductResponse;
 import com.zzowo.shop_sys.entity.Product;
 import com.zzowo.shop_sys.enums.ProductStatus;
+import com.zzowo.shop_sys.exception.ResourceNotFoundException;
 import com.zzowo.shop_sys.mapper.ProductMapper;
 import com.zzowo.shop_sys.repository.ProductRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,7 +31,7 @@ public class ProductService {
     // 取得單一商品詳情
     public ProductResponse getProductById(Long id) {
         Product product = productRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("商品不存在"));
+                .orElseThrow(() -> new ResourceNotFoundException("商品不存在"));
 
         return productMapper.toResponse(product);
     }
