@@ -1,13 +1,16 @@
 package com.zzowo.shop_sys.service;
 
+import com.zzowo.shop_sys.dto.request.product.ProductRequest;
 import com.zzowo.shop_sys.dto.response.product.ProductResponse;
 import com.zzowo.shop_sys.entity.Product;
+import com.zzowo.shop_sys.entity.ProductImage;
 import com.zzowo.shop_sys.enums.ProductStatus;
 import com.zzowo.shop_sys.exception.ResourceNotFoundException;
 import com.zzowo.shop_sys.mapper.ProductMapper;
 import com.zzowo.shop_sys.repository.ProductRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -21,18 +24,83 @@ public class ProductService {
     @Autowired
     private ProductMapper productMapper;
 
+    // 新增商品
+    @Transactional
+    public ProductResponse createProduct(ProductRequest request) {
+        Product product = new Product();
+        updateProductFromRequest(product, request);
+
+        // 儲存
+        Product savedProduct = productRepository.save(product);
+        return productMapper.toDetailResponse(savedProduct);
+    }
+
+    // 修改商品
+    @Transactional
+    public ProductResponse updateProduct(Long id, ProductRequest request) {
+        Product product = productRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("找不到商品 ID: " + id));
+
+        updateProductFromRequest(product, request);
+
+        Product savedProduct = productRepository.save(product);
+        return productMapper.toDetailResponse(savedProduct);
+    }
+
+    // 刪除商品 (這裡直接刪除，實務上通常是改狀態為 OFF_SHELF)
+    @Transactional
+    public void deleteProduct(Long id) {
+        if (!productRepository.existsById(id)) {
+            throw new ResourceNotFoundException("找不到商品 ID: " + id);
+        }
+        productRepository.deleteById(id);
+    }
+
     // 取得所有上架商品
     public List<ProductResponse> getOnShelfProducts() {
         return productRepository.findByStatus(ProductStatus.ON_SHELF).stream()
-                .map(productMapper::toResponse) // 交給 Mapper 處理
+                .map(productMapper::toSummaryResponse) // 交給 Mapper 處理
                 .collect(Collectors.toList());
     }
 
     // 取得單一商品詳情
     public ProductResponse getProductById(Long id) {
-        Product product = productRepository.findById(id)
+        Product product = productRepository.findByIdWithImages(id)
                 .orElseThrow(() -> new ResourceNotFoundException("商品不存在"));
 
-        return productMapper.toResponse(product);
+        return productMapper.toDetailResponse(product);
+    }
+
+    // 把 Request 資料填進 Entity
+    private void updateProductFromRequest(Product product, ProductRequest request) {
+        product.setName(request.getName());
+        product.setDescription(request.getDescription());
+        product.setPrice(request.getPrice());
+        product.setStockQuantity(request.getStockQuantity());
+        product.setStatus(request.getStatus());
+        product.setCoverImageUrl(request.getCoverImageUrl());
+
+        // 處理多張圖片 (如果有傳的話)
+        if (request.getImageUrls() != null) {
+            // 先清除舊圖片 (因為設定了 orphanRemoval=true，資料庫會自動刪掉舊的)
+            if (product.getImages() != null) {
+                product.getImages().clear();
+            }
+            // 加入新圖片
+            List<ProductImage> newImages = request.getImageUrls().stream()
+                    .map(url -> {
+                        ProductImage img = new ProductImage();
+                        img.setImageUrl(url);
+                        img.setProduct(product); // 設定關聯
+                        return img;
+                    })
+                    .collect(Collectors.toList());
+
+            if (product.getImages() == null) {
+                product.setImages(newImages);
+            } else {
+                product.getImages().addAll(newImages);
+            }
+        }
     }
 }

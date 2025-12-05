@@ -3,6 +3,7 @@ package com.zzowo.shop_sys.config;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.argon2.Argon2PasswordEncoder;
@@ -30,13 +31,21 @@ public class SecurityConfig {
         http
             // 暫時關閉 CSRF 防護 (因為我們之後要用 JWT，且目前是前後端分離，先關閉比較好測試)
             .csrf(csrf -> csrf.disable())
-            .authorizeHttpRequests(auth -> auth
-                // 允許 "註冊" 和 "登入" 的 API 不需要登入就能訪問
-                .requestMatchers("/v1/auth/**").permitAll()
-                // 允許取得商品列表和商品詳情的 API 不需要登入就能訪問
-                .requestMatchers("/v1/products/**").permitAll()
-                // 其他所有請求都需要登入才能看
-                .anyRequest().authenticated()
+                .authorizeHttpRequests(auth -> auth
+                        // 1. 公開端點
+                        // 允許 "註冊" 和 "登入"
+                        .requestMatchers("/v1/auth/**").permitAll()
+                        // 允許商品瀏覽端點
+                        .requestMatchers(HttpMethod.GET, "/v1/products/**").permitAll()
+
+                        // 2. 管理員端點
+                        // 只有 產品經理 或 超級管理員 可以對 /v1/products/** 進行 POST/PUT/DELETE
+                        .requestMatchers(HttpMethod.POST, "/v1/products/**").hasAnyRole("PRODUCT_MANAGER", "SUPER_ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/v1/products/**").hasAnyRole("PRODUCT_MANAGER", "SUPER_ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/v1/products/**").hasAnyRole("PRODUCT_MANAGER", "SUPER_ADMIN")
+
+                        // 3. 其他所有請求都需要登入才能看
+                        .anyRequest().authenticated()
             )
             // 設定為無狀態 (Stateless), 因為我們用 JWT，伺服器不需要存 Session
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
