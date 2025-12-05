@@ -6,6 +6,8 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import com.zzowo.shop_sys.enums.ProductStatus;
+
 @Data
 @Entity
 @Table(name = "products")
@@ -34,7 +36,9 @@ public class Product {
     private Integer stockQuantity;
 
     // 商品狀態，例如 "ON_SHELF"（上架）、"OFF_SHELF"（下架）
-    private String status;
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private ProductStatus status;
 
     // 封面圖片 URL
     @Column(name = "cover_image_url")

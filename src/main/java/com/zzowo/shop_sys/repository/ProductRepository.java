@@ -1,6 +1,8 @@
 package com.zzowo.shop_sys.repository;
 
 import com.zzowo.shop_sys.entity.Product;
+import com.zzowo.shop_sys.enums.ProductStatus;
+
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -12,5 +14,5 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     List<Product> findByNameContaining(String keyword);
 
     // 找出所有狀態為 status 的商品 (例如找所有 "ON_SHELF" 的商品)
-    List<Product> findByStatus(String status);
+    List<Product> findByStatus(ProductStatus status);
 }

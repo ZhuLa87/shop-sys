@@ -22,7 +22,10 @@ public class ProductMapper {
         response.setDescription(product.getDescription());
         response.setPrice(product.getPrice());
         response.setStockQuantity(product.getStockQuantity());
-        response.setStatus(product.getStatus());
+        // 轉換枚舉為字串
+        if (product.getStatus() != null) {
+            response.setStatus(product.getStatus().name());
+        }
         response.setCoverImageUrl(product.getCoverImageUrl());
 
         // 手動處理比較複雜的集合轉換邏輯
