@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 
 
 @RestController // 告訴 Spring這是一個 REST API 控制器 (回傳 JSON)
-@RequestMapping("/user") // 設定此控制器的基礎路徑
+@RequestMapping("/v1/users") // 設定此控制器的基礎路徑
 public class UserController {
 
     @GetMapping("/me")

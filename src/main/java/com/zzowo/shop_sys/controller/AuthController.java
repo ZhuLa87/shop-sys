@@ -11,7 +11,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController // 告訴 Spring這是一個 REST API 控制器 (回傳 JSON)
-@RequestMapping("/auth") // 設定此控制器的基礎路徑
+@RequestMapping("/v1/auth") // 設定此控制器的基礎路徑
 public class AuthController {
 
     @Autowired

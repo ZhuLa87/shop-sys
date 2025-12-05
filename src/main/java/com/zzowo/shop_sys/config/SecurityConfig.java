@@ -32,7 +32,7 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(auth -> auth
                 // 允許 "註冊" 和 "登入" 的 API 不需要登入就能訪問
-                .requestMatchers("/auth/**").permitAll()
+                .requestMatchers("/v1/auth/**").permitAll()
                 // 允許取得商品列表和商品詳情的 API 不需要登入就能訪問
                 .requestMatchers("/v1/products/**").permitAll()
                 // 其他所有請求都需要登入才能看
