@@ -42,9 +42,14 @@ public class SecurityConfig {
                         // 只有 產品經理 或 超級管理員 可以對 /v1/products/** 進行 POST/PUT/DELETE
                         .requestMatchers(HttpMethod.POST, "/v1/products/**").hasAnyRole("PRODUCT_MANAGER", "SUPER_ADMIN")
                         .requestMatchers(HttpMethod.PUT, "/v1/products/**").hasAnyRole("PRODUCT_MANAGER", "SUPER_ADMIN")
-                        .requestMatchers(HttpMethod.DELETE, "/v1/products/**").hasAnyRole("PRODUCT_MANAGER", "SUPER_ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/v1/products/**")
+                        .hasAnyRole("PRODUCT_MANAGER", "SUPER_ADMIN")
 
-                        // 3. 其他所有請求都需要登入才能看
+                        // 3. 使用者管理端點
+                        .requestMatchers(HttpMethod.PUT, "/v1/users/me").authenticated() // 更新自己
+                        .requestMatchers(HttpMethod.PUT, "/v1/users/{id}").hasRole("SUPER_ADMIN") // 超級管理員更新特定用戶
+
+                        // 4. 其他所有請求都需要登入才能看
                         .anyRequest().authenticated()
             )
             // 設定為無狀態 (Stateless), 因為我們用 JWT，伺服器不需要存 Session
