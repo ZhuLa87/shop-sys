@@ -4,14 +4,21 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.MediaType;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.argon2.Argon2PasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.zzowo.shop_sys.dto.response.ApiResponse;
 import com.zzowo.shop_sys.filter.JwtAuthenticationFilter;
+
+import jakarta.servlet.http.HttpServletResponse;
 
 @Configuration
 public class SecurityConfig {
@@ -29,8 +36,8 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-            // 暫時關閉 CSRF 防護 (因為我們之後要用 JWT，且目前是前後端分離，先關閉比較好測試)
-            .csrf(csrf -> csrf.disable())
+                // 暫時關閉 CSRF 防護 (因為我們之後要用 JWT，且目前是前後端分離，先關閉比較好測試)
+                .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
                         // 1. 公開端點
                         // 允許 "註冊" 和 "登入"
@@ -40,7 +47,8 @@ public class SecurityConfig {
 
                         // 2. 管理員端點
                         // 只有 產品經理 或 超級管理員 可以對 /v1/products/** 進行 POST/PUT/DELETE
-                        .requestMatchers(HttpMethod.POST, "/v1/products/**").hasAnyRole("PRODUCT_MANAGER", "SUPER_ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/v1/products/**")
+                        .hasAnyRole("PRODUCT_MANAGER", "SUPER_ADMIN")
                         .requestMatchers(HttpMethod.PUT, "/v1/products/**").hasAnyRole("PRODUCT_MANAGER", "SUPER_ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/v1/products/**")
                         .hasAnyRole("PRODUCT_MANAGER", "SUPER_ADMIN")
@@ -53,13 +61,41 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/v1/users").hasRole("SUPER_ADMIN") // 超級管理員取得所有用戶
 
                         // 4. 其他所有請求都需要登入才能看
-                        .anyRequest().authenticated()
-            )
-            // 設定為無狀態 (Stateless), 因為我們用 JWT，伺服器不需要存 Session
-            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            // 把過濾器加在 UsernamePasswordAuthenticationFilter 之前。先檢查 JWT，如果沒有 JWT 才走傳統流程 (但這裡其實只靠 JWT)
-            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+                        .anyRequest().authenticated())
+                // 設定為無狀態 (Stateless), 因為我們用 JWT，伺服器不需要存 Session
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                // 把過濾器加在 UsernamePasswordAuthenticationFilter 之前。先檢查 JWT，如果沒有 JWT 才走傳統流程 (但這裡其實只靠 JWT)
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+                .exceptionHandling(conf -> conf
+                        .authenticationEntryPoint(authenticationEntryPoint())
+                        .accessDeniedHandler(accessDeniedHandler()));
 
         return http.build();
+    }
+
+    // 自定義 401 處理器：回傳 JSON
+    @Bean
+    public AuthenticationEntryPoint authenticationEntryPoint() {
+        return (request, response, authException) -> {
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+            response.setCharacterEncoding("UTF-8");
+
+            ApiResponse<Void> apiResponse = ApiResponse.error("請先登入或提供有效 Token");
+            new ObjectMapper().writeValue(response.getOutputStream(), apiResponse);
+        };
+    }
+
+    // 自定義 403 處理器：回傳 JSON
+    @Bean
+    public AccessDeniedHandler accessDeniedHandler() {
+        return (request, response, accessDeniedException) -> {
+            response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+            response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+            response.setCharacterEncoding("UTF-8");
+
+            ApiResponse<Void> apiResponse = ApiResponse.error("您的權限不足以執行此操作");
+            new ObjectMapper().writeValue(response.getOutputStream(), apiResponse);
+        };
     }
 }
