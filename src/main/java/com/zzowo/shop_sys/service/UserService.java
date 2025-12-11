@@ -2,6 +2,7 @@ package com.zzowo.shop_sys.service;
 
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -40,16 +41,7 @@ public class UserService {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new ResourceNotFoundException("找不到使用者"));
 
-        UserResponse response = new UserResponse();
-        response.setEmail(user.getEmail());
-        response.setName(user.getName());
-        response.setRole(user.getRole().name());
-        response.setPhone(user.getPhone());
-        response.setCreatedAt(user.getCreatedAt().atZone(ZoneId.systemDefault()).toInstant().toEpochMilli());
-        response.setLastLoginAt(user.getLastLoginAt() != null ? user.getLastLoginAt().atZone(ZoneId.systemDefault()).toInstant().toEpochMilli() : null);
-        response.setLastPasswordChangeAt(user.getLastPasswordChangeAt() != null ? user.getLastPasswordChangeAt().toString() : null);
-
-        return response;
+        return toUserResponse(user);
     }
 
     public User register(UserRegisterRequest request) {
@@ -149,13 +141,39 @@ public class UserService {
         userRepository.save(user);
     }
 
+    // 超級管理員取得特定使用者資訊
     public UserResponse getUserById(Long id) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'getUserById'");
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("找不到使用者 ID: " + id));
+        return toUserResponse(user);
     }
 
+    // 超級管理員取得所有使用者資訊
     public Object getAllUsers() {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'getAllUsers'");
+        return userRepository.findAll().stream()
+                .map(this::toUserResponse)
+                .collect(Collectors.toList());
+    }
+
+    // 將 User Entity 轉為 UserResponse DTO
+    private UserResponse toUserResponse(User user) {
+        UserResponse response = new UserResponse();
+        response.setEmail(user.getEmail());
+        response.setName(user.getName());
+        response.setRole(user.getRole().name());
+        response.setPhone(user.getPhone());
+
+        // 處理時間格式轉換 (避免 null 指針異常)
+        if (user.getCreatedAt() != null) {
+            response.setCreatedAt(user.getCreatedAt().atZone(ZoneId.systemDefault()).toInstant().toEpochMilli());
+        }
+        if (user.getLastLoginAt() != null) {
+            response.setLastLoginAt(user.getLastLoginAt().atZone(ZoneId.systemDefault()).toInstant().toEpochMilli());
+        }
+        if (user.getLastPasswordChangeAt() != null) {
+            response.setLastPasswordChangeAt(user.getLastPasswordChangeAt().toString());
+        }
+
+        return response;
     }
 }

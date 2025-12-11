@@ -48,6 +48,8 @@ public class SecurityConfig {
                         // 3. 使用者管理端點
                         .requestMatchers(HttpMethod.PUT, "/v1/users/me").authenticated() // 更新自己
                         .requestMatchers(HttpMethod.PUT, "/v1/users/{id}").hasRole("SUPER_ADMIN") // 超級管理員更新特定用戶
+                        .requestMatchers(HttpMethod.GET, "/v1/users/{id}").hasRole("SUPER_ADMIN") // 超級管理員取得特定用戶
+                        .requestMatchers(HttpMethod.GET, "/v1/users").hasRole("SUPER_ADMIN") // 超級管理員取得所有用戶
 
                         // 4. 其他所有請求都需要登入才能看
                         .anyRequest().authenticated()
