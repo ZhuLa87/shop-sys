@@ -1,12 +1,13 @@
 package com.zzowo.shop_sys.service;
 
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.util.stream.Collectors;
 
+import com.zzowo.shop_sys.mapper.UserMapper; // Import Mapper
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional; // Import Transactional
 import org.springframework.util.StringUtils;
 
 import com.zzowo.shop_sys.dto.request.user.AdminUpdateUserRequest;
@@ -32,6 +33,9 @@ public class UserService {
     @Autowired
     private JwtUtil jwtUtil;
 
+    @Autowired
+    private UserMapper userMapper; // 注入 Mapper
+
     /**
      * 取得特定 email 的使用者詳細資料
      * @param email
@@ -40,36 +44,33 @@ public class UserService {
     public UserResponse getUserProfile(String email) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new ResourceNotFoundException("找不到使用者"));
-
-        return toUserResponse(user);
+        return userMapper.toUserResponse(user);
     }
 
+    @Transactional // 加入事務管理
     public User register(UserRegisterRequest request) {
-
-        // 檢查 Email
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new RuntimeException("帳號已被註冊");
         }
 
-        // 轉換 DTO 成 Entity
-        User user = new User();
-        user.setEmail(request.getEmail());
-        user.setPasswordHash(passwordEncoder.encode(request.getPassword())); // 加密
-        user.setName(request.getName());
-        user.setPhone(request.getPhone());
+        // 使用 Mapper 轉換基本資料
+        User user = userMapper.toEntity(request);
+
+        // 處理業務邏輯 (加密、預設值)
+        user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
         user.setRole(Role.CUSTOMER);
         user.setLastPasswordChangeAt(LocalDateTime.now());
 
-        // 存入資料庫
         return userRepository.save(user);
     }
 
+    @Transactional // 加入事務管理 (更新最後登入時間)
     public String login(UserLoginRequest request) {
         // 根據 Email 尋找使用者
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new RuntimeException("帳號不存在"));
 
-        // 驗證密碼 (拿明碼跟資料庫的亂碼比對)
+        // 驗證密碼
         if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
             throw new RuntimeException("帳號或密碼錯誤");
         }
@@ -82,9 +83,10 @@ public class UserService {
         return jwtUtil.generateToken(user);
     }
 
+    @Transactional // 加入事務管理
     // 一般使用者更新自己的資料
     public void updateMyInfo(String currentEmail, UserSelfUpdateRequest request) {
-        // 先找出是誰在操作
+        // 找出是誰在操作
         User user = userRepository.findByEmail(currentEmail)
                 .orElseThrow(() -> new ResourceNotFoundException("使用者不存在"));
 
@@ -108,6 +110,7 @@ public class UserService {
         userRepository.save(user);
     }
 
+    @Transactional // 加入事務管理
     // 超級管理員更新任何人的資料
     public void updateUserByAdmin(Long userId, AdminUpdateUserRequest request) {
         User user = userRepository.findById(userId)
@@ -127,16 +130,12 @@ public class UserService {
         }
 
         // 更新基本資料
-        if (StringUtils.hasText(request.getName()))
-            user.setName(request.getName());
+        if (StringUtils.hasText(request.getName())) user.setName(request.getName());
         if (StringUtils.hasText(request.getPhone()))
             user.setPhone(request.getPhone());
-
         // 更新權限與狀態 (管理員特權)
-        if (request.getRole() != null)
-            user.setRole(Role.valueOf(request.getRole()));
-        if (request.getEnabled() != null)
-            user.setEnabled(request.getEnabled());
+        if (request.getRole() != null) user.setRole(Role.valueOf(request.getRole()));
+        if (request.getEnabled() != null) user.setEnabled(request.getEnabled());
 
         userRepository.save(user);
     }
@@ -145,35 +144,13 @@ public class UserService {
     public UserResponse getUserById(Long id) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("找不到使用者 ID: " + id));
-        return toUserResponse(user);
+        return userMapper.toUserResponse(user);
     }
 
     // 超級管理員取得所有使用者資訊
     public Object getAllUsers() {
         return userRepository.findAll().stream()
-                .map(this::toUserResponse)
+                .map(userMapper::toUserResponse)
                 .collect(Collectors.toList());
-    }
-
-    // 將 User Entity 轉為 UserResponse DTO
-    private UserResponse toUserResponse(User user) {
-        UserResponse response = new UserResponse();
-        response.setEmail(user.getEmail());
-        response.setName(user.getName());
-        response.setRole(user.getRole().name());
-        response.setPhone(user.getPhone());
-
-        // 處理時間格式轉換 (避免 null 指針異常)
-        if (user.getCreatedAt() != null) {
-            response.setCreatedAt(user.getCreatedAt().atZone(ZoneId.systemDefault()).toInstant().toEpochMilli());
-        }
-        if (user.getLastLoginAt() != null) {
-            response.setLastLoginAt(user.getLastLoginAt().atZone(ZoneId.systemDefault()).toInstant().toEpochMilli());
-        }
-        if (user.getLastPasswordChangeAt() != null) {
-            response.setLastPasswordChangeAt(user.getLastPasswordChangeAt().toString());
-        }
-
-        return response;
     }
 }

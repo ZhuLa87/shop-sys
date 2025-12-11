@@ -6,6 +6,7 @@ import com.zzowo.shop_sys.entity.Cart;
 import com.zzowo.shop_sys.entity.Product;
 import com.zzowo.shop_sys.entity.User;
 import com.zzowo.shop_sys.exception.ResourceNotFoundException;
+import com.zzowo.shop_sys.mapper.CartMapper;
 import com.zzowo.shop_sys.repository.CartRepository;
 import com.zzowo.shop_sys.repository.ProductRepository;
 import com.zzowo.shop_sys.repository.UserRepository;
@@ -29,23 +30,17 @@ public class CartService {
     @Autowired
     private UserRepository userRepository;
 
+    @Autowired
+    private CartMapper cartMapper;
+
     // 取得某使用者的購物車清單
     public List<CartItemResponse> getUserCart(String email) {
         User user = getUserByEmail(email);
         List<Cart> carts = cartRepository.findByUserId(user.getId());
 
-        return carts.stream().map(cart -> {
-            CartItemResponse res = new CartItemResponse();
-            res.setId(cart.getId());
-            res.setProductId(cart.getProduct().getId());
-            res.setProductName(cart.getProduct().getName());
-            res.setCoverImageUrl(cart.getProduct().getCoverImageUrl());
-            res.setPrice(cart.getProduct().getPrice());
-            res.setQuantity(cart.getQuantity());
-            // 計算小計：單價 * 數量
-            res.setSubtotal(cart.getProduct().getPrice().multiply(BigDecimal.valueOf(cart.getQuantity())));
-            return res;
-        }).collect(Collectors.toList());
+        return carts.stream()
+                .map(cartMapper::toCartItemResponse)
+                .collect(Collectors.toList());
     }
 
     // 加入購物車

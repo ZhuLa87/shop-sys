@@ -1,5 +1,6 @@
 package com.zzowo.shop_sys.mapper;
 
+import com.zzowo.shop_sys.dto.request.product.ProductRequest;
 import com.zzowo.shop_sys.dto.response.product.ProductResponse;
 import com.zzowo.shop_sys.entity.Product;
 import com.zzowo.shop_sys.entity.ProductImage;
@@ -33,7 +34,8 @@ public class ProductMapper {
 
     // 給詳情頁用 (完整轉換)
     public ProductResponse toDetailResponse(Product product) {
-        if (product == null) return null;
+        if (product == null)
+            return null;
 
         // 先呼叫上面轉好基本資料
         ProductResponse response = toSummaryResponse(product);
@@ -48,5 +50,36 @@ public class ProductMapper {
         }
 
         return response;
+    }
+
+    // 將 Request 的資料更新到 Product Entity
+    public void updateEntityFromRequest(Product product, ProductRequest request) {
+        product.setName(request.getName());
+        product.setDescription(request.getDescription());
+        product.setPrice(request.getPrice());
+        product.setStockQuantity(request.getStockQuantity());
+        product.setStatus(request.getStatus());
+        product.setCoverImageUrl(request.getCoverImageUrl());
+
+        // 處理圖片關聯
+        if (request.getImageUrls() != null) {
+            if (product.getImages() != null) {
+                product.getImages().clear();
+            }
+            List<ProductImage> newImages = request.getImageUrls().stream()
+                    .map(url -> {
+                        ProductImage img = new ProductImage();
+                        img.setImageUrl(url);
+                        img.setProduct(product); // 設定雙向關聯
+                        return img;
+                    })
+                    .collect(Collectors.toList());
+
+            if (product.getImages() == null) {
+                product.setImages(newImages);
+            } else {
+                product.getImages().addAll(newImages);
+            }
+        }
     }
 }

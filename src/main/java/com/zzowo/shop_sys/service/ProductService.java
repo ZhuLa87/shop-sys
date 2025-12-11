@@ -28,7 +28,7 @@ public class ProductService {
     @Transactional
     public ProductResponse createProduct(ProductRequest request) {
         Product product = new Product();
-        updateProductFromRequest(product, request);
+        productMapper.updateEntityFromRequest(product, request);
 
         // 儲存
         Product savedProduct = productRepository.save(product);
@@ -41,7 +41,7 @@ public class ProductService {
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("找不到商品 ID: " + id));
 
-        updateProductFromRequest(product, request);
+        productMapper.updateEntityFromRequest(product, request);
 
         Product savedProduct = productRepository.save(product);
         return productMapper.toDetailResponse(savedProduct);
@@ -69,38 +69,5 @@ public class ProductService {
                 .orElseThrow(() -> new ResourceNotFoundException("商品不存在"));
 
         return productMapper.toDetailResponse(product);
-    }
-
-    // 把 Request 資料填進 Entity
-    private void updateProductFromRequest(Product product, ProductRequest request) {
-        product.setName(request.getName());
-        product.setDescription(request.getDescription());
-        product.setPrice(request.getPrice());
-        product.setStockQuantity(request.getStockQuantity());
-        product.setStatus(request.getStatus());
-        product.setCoverImageUrl(request.getCoverImageUrl());
-
-        // 處理多張圖片 (如果有傳的話)
-        if (request.getImageUrls() != null) {
-            // 先清除舊圖片 (因為設定了 orphanRemoval=true，資料庫會自動刪掉舊的)
-            if (product.getImages() != null) {
-                product.getImages().clear();
-            }
-            // 加入新圖片
-            List<ProductImage> newImages = request.getImageUrls().stream()
-                    .map(url -> {
-                        ProductImage img = new ProductImage();
-                        img.setImageUrl(url);
-                        img.setProduct(product); // 設定關聯
-                        return img;
-                    })
-                    .collect(Collectors.toList());
-
-            if (product.getImages() == null) {
-                product.setImages(newImages);
-            } else {
-                product.getImages().addAll(newImages);
-            }
-        }
     }
 }
