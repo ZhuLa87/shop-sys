@@ -24,7 +24,6 @@ public class Order {
     private User user;
 
     // 訂單總金額（UNSIGNED）
-    // 通常代表所有 OrderItem 小計+運費-折扣等
     @Column(name = "total_amount", nullable = false, precision = 10, scale = 2, columnDefinition = "DECIMAL(10,2) UNSIGNED")
     private BigDecimal totalAmount;
 

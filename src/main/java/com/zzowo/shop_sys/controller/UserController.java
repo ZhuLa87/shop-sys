@@ -7,7 +7,6 @@ import com.zzowo.shop_sys.dto.request.user.AdminUpdateUserRequest;
 import com.zzowo.shop_sys.dto.request.user.UserSelfUpdateRequest;
 import com.zzowo.shop_sys.dto.response.ApiResponse;
 import com.zzowo.shop_sys.dto.response.user.UserResponse;
-import com.zzowo.shop_sys.entity.User;
 import com.zzowo.shop_sys.service.UserService;
 
 import jakarta.validation.Valid;
