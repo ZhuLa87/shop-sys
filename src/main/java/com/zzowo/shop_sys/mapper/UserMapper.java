@@ -1,6 +1,7 @@
 package com.zzowo.shop_sys.mapper;
 
 import com.zzowo.shop_sys.dto.request.user.UserRegisterRequest;
+import com.zzowo.shop_sys.dto.response.user.RegisterResponse;
 import com.zzowo.shop_sys.dto.response.user.UserResponse;
 import com.zzowo.shop_sys.entity.User;
 import org.springframework.stereotype.Component;
@@ -11,7 +12,8 @@ import java.time.ZoneId;
 public class UserMapper {
 
     public UserResponse toUserResponse(User user) {
-        if (user == null) return null;
+        if (user == null)
+            return null;
 
         UserResponse response = new UserResponse();
         response.setEmail(user.getEmail());
@@ -27,6 +29,22 @@ public class UserMapper {
         }
         if (user.getLastPasswordChangeAt() != null) {
             response.setLastPasswordChangeAt(user.getLastPasswordChangeAt().toString());
+        }
+
+        return response;
+    }
+
+    public RegisterResponse toRegisterResponse(User user) {
+        if (user == null) return null;
+
+        RegisterResponse response = new RegisterResponse();
+        response.setEmail(user.getEmail());
+        response.setName(user.getName());
+        response.setRole(user.getRole().name());
+        response.setPhone(user.getPhone());
+
+        if (user.getCreatedAt() != null) {
+            response.setCreatedAt(user.getCreatedAt().atZone(ZoneId.systemDefault()).toInstant().toEpochMilli());
         }
 
         return response;

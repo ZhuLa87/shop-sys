@@ -14,6 +14,7 @@ import com.zzowo.shop_sys.dto.request.user.AdminUpdateUserRequest;
 import com.zzowo.shop_sys.dto.request.user.UserLoginRequest;
 import com.zzowo.shop_sys.dto.request.user.UserRegisterRequest;
 import com.zzowo.shop_sys.dto.request.user.UserSelfUpdateRequest;
+import com.zzowo.shop_sys.dto.response.user.RegisterResponse;
 import com.zzowo.shop_sys.dto.response.user.UserResponse;
 import com.zzowo.shop_sys.entity.User;
 import com.zzowo.shop_sys.enums.Role;
@@ -48,7 +49,7 @@ public class UserService {
     }
 
     @Transactional // 加入事務管理
-    public User register(UserRegisterRequest request) {
+    public RegisterResponse register(UserRegisterRequest request) {
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new RuntimeException("帳號已被註冊");
         }
@@ -61,7 +62,9 @@ public class UserService {
         user.setRole(Role.CUSTOMER);
         user.setLastPasswordChangeAt(LocalDateTime.now());
 
-        return userRepository.save(user);
+        User savedUser = userRepository.save(user);
+
+        return userMapper.toRegisterResponse(savedUser);
     }
 
     @Transactional // 加入事務管理 (更新最後登入時間)

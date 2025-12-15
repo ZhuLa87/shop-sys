@@ -3,6 +3,7 @@ package com.zzowo.shop_sys.controller;
 import com.zzowo.shop_sys.dto.request.user.UserLoginRequest;
 import com.zzowo.shop_sys.dto.request.user.UserRegisterRequest;
 import com.zzowo.shop_sys.dto.response.ApiResponse;
+import com.zzowo.shop_sys.dto.response.user.RegisterResponse;
 import com.zzowo.shop_sys.entity.User;
 import com.zzowo.shop_sys.service.UserService;
 import jakarta.validation.Valid;
@@ -20,9 +21,9 @@ public class AuthController {
     // 註冊 API
     // URL: POST /api/auth/register
     @PostMapping("/register")
-    public ResponseEntity<ApiResponse<User>> register(@Valid @RequestBody UserRegisterRequest request) {
+    public ResponseEntity<ApiResponse<RegisterResponse>> register(@Valid @RequestBody UserRegisterRequest request) {
         // 呼叫 Service 執行業務邏輯 (檢查 Email、加密密碼、存檔)
-        User newUser = userService.register(request);
+        RegisterResponse newUser = userService.register(request);
 
         // 回傳簡單的成功訊息 (實務上也可以回傳 User DTO)
         return ResponseEntity.ok(ApiResponse.success("註冊成功", newUser));
