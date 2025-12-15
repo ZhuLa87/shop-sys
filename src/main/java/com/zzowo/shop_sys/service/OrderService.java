@@ -6,6 +6,7 @@ import com.zzowo.shop_sys.entity.*;
 import com.zzowo.shop_sys.exception.ResourceNotFoundException;
 import com.zzowo.shop_sys.mapper.OrderMapper;
 import com.zzowo.shop_sys.repository.CartRepository;
+import com.zzowo.shop_sys.repository.InventoryLogRepository;
 import com.zzowo.shop_sys.repository.OrderRepository;
 import com.zzowo.shop_sys.repository.ProductRepository;
 import com.zzowo.shop_sys.repository.UserRepository;
@@ -31,6 +32,8 @@ public class OrderService {
     private ProductRepository productRepository;
     @Autowired
     private OrderMapper orderMapper;
+    @Autowired
+    private InventoryLogRepository inventoryLogRepository;
 
     // 建立訂單 (結帳)
     @Transactional // 確保庫存扣減、訂單建立、清空購物車同時成功或失敗
@@ -66,8 +69,17 @@ public class OrderService {
             }
 
             // 扣除庫存
-            product.setStockQuantity(product.getStockQuantity() - cart.getQuantity());
-            productRepository.save(product); // 更新商品庫存
+            Integer quantityToDeduct = cart.getQuantity(); // 購買數量
+            product.setStockQuantity(product.getStockQuantity() - quantityToDeduct);
+            productRepository.save(product);
+
+            // 建立庫存異動紀錄
+            InventoryLog log = new InventoryLog();
+            log.setProduct(product);
+            log.setChangeAmount(-quantityToDeduct); // 負數代表減少
+            log.setReason("ORDER"); // 原因：訂單出貨
+            log.setOperatorId(user.getId()); // 操作者：買家 (或可設為 null，視你的定義)
+            inventoryLogRepository.save(log);
 
             // 建立訂單明細
             OrderItem item = new OrderItem();

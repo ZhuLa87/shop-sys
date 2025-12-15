@@ -42,16 +42,18 @@ public class SecurityConfig {
                         // 1. 公開端點
                         // 允許 "註冊" 和 "登入"
                         .requestMatchers("/v1/auth/**").permitAll()
+
+                        // 取得商品庫存變動紀錄
+                        .requestMatchers(HttpMethod.GET, "/v1/products/*/inventory-logs").hasAnyRole("PRODUCT_MANAGER", "SUPER_ADMIN")
+
                         // 允許商品瀏覽端點
                         .requestMatchers(HttpMethod.GET, "/v1/products/**").permitAll()
 
                         // 2. 管理員端點
                         // 只有 產品經理 或 超級管理員 可以對 /v1/products/** 進行 POST/PUT/DELETE
-                        .requestMatchers(HttpMethod.POST, "/v1/products/**")
-                        .hasAnyRole("PRODUCT_MANAGER", "SUPER_ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/v1/products/**").hasAnyRole("PRODUCT_MANAGER", "SUPER_ADMIN")
                         .requestMatchers(HttpMethod.PUT, "/v1/products/**").hasAnyRole("PRODUCT_MANAGER", "SUPER_ADMIN")
-                        .requestMatchers(HttpMethod.DELETE, "/v1/products/**")
-                        .hasAnyRole("PRODUCT_MANAGER", "SUPER_ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/v1/products/**").hasAnyRole("PRODUCT_MANAGER", "SUPER_ADMIN")
 
                         // 3. 使用者管理端點
                         .requestMatchers(HttpMethod.GET, "/v1/users/me").authenticated() // 取得自己

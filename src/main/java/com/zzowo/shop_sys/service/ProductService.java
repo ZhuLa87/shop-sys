@@ -1,12 +1,16 @@
 package com.zzowo.shop_sys.service;
 
 import com.zzowo.shop_sys.dto.request.product.ProductRequest;
+import com.zzowo.shop_sys.dto.response.product.InventoryLogResponse;
 import com.zzowo.shop_sys.dto.response.product.ProductResponse;
+import com.zzowo.shop_sys.entity.InventoryLog;
 import com.zzowo.shop_sys.entity.Product;
 import com.zzowo.shop_sys.entity.ProductImage;
 import com.zzowo.shop_sys.enums.ProductStatus;
 import com.zzowo.shop_sys.exception.ResourceNotFoundException;
+import com.zzowo.shop_sys.mapper.InventoryLogMapper;
 import com.zzowo.shop_sys.mapper.ProductMapper;
+import com.zzowo.shop_sys.repository.InventoryLogRepository;
 import com.zzowo.shop_sys.repository.ProductRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -23,6 +27,12 @@ public class ProductService {
 
     @Autowired
     private ProductMapper productMapper;
+
+    @Autowired
+    private InventoryLogRepository inventoryLogRepository;
+
+    @Autowired
+    private InventoryLogMapper inventoryLogMapper;
 
     // 新增商品
     @Transactional
@@ -69,5 +79,20 @@ public class ProductService {
                 .orElseThrow(() -> new ResourceNotFoundException("商品不存在"));
 
         return productMapper.toDetailResponse(product);
+    }
+
+    // 查詢特定商品的庫存紀錄
+    public List<InventoryLogResponse> getProductInventoryLogs(Long productId) {
+        // 確認商品存在 (這行是為了防呆，若商品不存在 repository 通常會回傳空 list 或報錯，視需求而定)
+        if (!productRepository.existsById(productId)) {
+            throw new ResourceNotFoundException("找不到商品 ID: " + productId);
+        }
+
+        List<InventoryLog> logs = inventoryLogRepository.findByProductIdOrderByCreatedAtDesc(productId);
+
+        // 轉換成 DTO
+        return logs.stream()
+                .map(inventoryLogMapper::toResponse)
+                .collect(Collectors.toList());
     }
 }

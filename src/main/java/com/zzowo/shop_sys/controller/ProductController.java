@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.*;
 
 import com.zzowo.shop_sys.dto.request.product.ProductRequest;
 import com.zzowo.shop_sys.dto.response.ApiResponse;
+import com.zzowo.shop_sys.dto.response.product.InventoryLogResponse;
 import com.zzowo.shop_sys.dto.response.product.ProductResponse;
 import com.zzowo.shop_sys.service.ProductService;
 
@@ -78,5 +79,17 @@ public class ProductController {
     public ResponseEntity<ApiResponse<Void>> deleteProduct(@PathVariable Long id) {
         productService.deleteProduct(id);
         return ResponseEntity.ok(ApiResponse.success("商品刪除成功"));
+    }
+
+    /**
+     * 取得商品庫存變動紀錄
+     * URL: GET /v1/products/{id}/inventory-logs
+     * @param id
+     * @return
+     */
+    @GetMapping("/{id}/inventory-logs")
+    public ResponseEntity<ApiResponse<List<InventoryLogResponse>>> getInventoryLogs(@PathVariable Long id) {
+        List<InventoryLogResponse> logs = productService.getProductInventoryLogs(id);
+        return ResponseEntity.ok(ApiResponse.success("取得庫存紀錄成功", logs));
     }
 }
