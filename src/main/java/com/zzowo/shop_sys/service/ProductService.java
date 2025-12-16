@@ -95,4 +95,11 @@ public class ProductService {
                 .map(inventoryLogMapper::toResponse)
                 .collect(Collectors.toList());
     }
+
+    // 取得所有商品的庫存紀錄 (管理員總覽用)
+    public List<InventoryLogResponse> getAllInventoryLogs() {
+        return inventoryLogRepository.findAllByOrderByCreatedAtDesc().stream()
+                .map(inventoryLogMapper::toResponse)
+                .collect(Collectors.toList());
+    }
 }

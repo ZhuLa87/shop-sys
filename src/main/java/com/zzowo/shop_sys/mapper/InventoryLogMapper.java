@@ -19,6 +19,12 @@ public class InventoryLogMapper {
         response.setOperatorId(log.getOperatorId());
         response.setCreatedAt(log.getCreatedAt());
 
+        // 商品資訊
+        if (log.getProduct() != null) {
+            response.setProductId(log.getProduct().getId());
+            response.setProductName(log.getProduct().getName());
+        }
+
         return response;
     }
 }

@@ -82,6 +82,18 @@ public class ProductController {
     }
 
     /**
+     * 取得所有商品庫存變動紀錄 (管理員總覽用)
+     * URL: GET /v1/products/inventory-logs
+     * Permission: PRODUCT_MANAGER, SUPER_ADMIN
+     * @return
+     */
+    @GetMapping("/inventory-logs")
+    public ResponseEntity<ApiResponse<List<InventoryLogResponse>>> getAllInventoryLogs() {
+        List<InventoryLogResponse> logs = productService.getAllInventoryLogs();
+        return ResponseEntity.ok(ApiResponse.success("取得所有庫存紀錄成功", logs));
+    }
+
+    /**
      * 取得商品庫存變動紀錄
      * URL: GET /v1/products/{id}/inventory-logs
      * @param id

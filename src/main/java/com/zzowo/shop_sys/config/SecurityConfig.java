@@ -45,6 +45,8 @@ public class SecurityConfig {
 
                         // 取得商品庫存變動紀錄
                         .requestMatchers(HttpMethod.GET, "/v1/products/*/inventory-logs").hasAnyRole("PRODUCT_MANAGER", "SUPER_ADMIN")
+                        // 查看所有商品紀錄總覽
+                        .requestMatchers(HttpMethod.GET, "/v1/products/inventory-logs").hasAnyRole("PRODUCT_MANAGER", "SUPER_ADMIN")
 
                         // 允許商品瀏覽端點
                         .requestMatchers(HttpMethod.GET, "/v1/products/**").permitAll()
