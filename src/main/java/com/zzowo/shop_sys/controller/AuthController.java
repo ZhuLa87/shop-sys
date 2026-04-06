@@ -4,7 +4,6 @@ import com.zzowo.shop_sys.dto.request.user.UserLoginRequest;
 import com.zzowo.shop_sys.dto.request.user.UserRegisterRequest;
 import com.zzowo.shop_sys.dto.response.ApiResponse;
 import com.zzowo.shop_sys.dto.response.user.RegisterResponse;
-import com.zzowo.shop_sys.entity.User;
 import com.zzowo.shop_sys.service.UserService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;

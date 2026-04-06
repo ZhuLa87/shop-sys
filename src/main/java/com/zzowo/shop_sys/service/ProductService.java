@@ -5,7 +5,6 @@ import com.zzowo.shop_sys.dto.response.product.InventoryLogResponse;
 import com.zzowo.shop_sys.dto.response.product.ProductResponse;
 import com.zzowo.shop_sys.entity.InventoryLog;
 import com.zzowo.shop_sys.entity.Product;
-import com.zzowo.shop_sys.entity.ProductImage;
 import com.zzowo.shop_sys.enums.ProductStatus;
 import com.zzowo.shop_sys.exception.ResourceNotFoundException;
 import com.zzowo.shop_sys.mapper.InventoryLogMapper;
