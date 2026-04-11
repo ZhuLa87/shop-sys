@@ -58,6 +58,10 @@ public class Product {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
+    // 樂觀鎖版本號，防止併發修改衝突
+    @Version
+    private Long version;
+
     @PrePersist
     protected void onCreate() {
         // 新增資料時自動填入建立與更新時間

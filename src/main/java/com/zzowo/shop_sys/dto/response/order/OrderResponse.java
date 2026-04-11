@@ -1,5 +1,6 @@
 package com.zzowo.shop_sys.dto.response.order;
 
+import com.zzowo.shop_sys.enums.OrderStatus;
 import lombok.Data;
 import java.math.BigDecimal;
 import java.util.List;
@@ -7,7 +8,7 @@ import java.util.List;
 @Data
 public class OrderResponse {
     private Long id;
-    private String status;
+    private OrderStatus status;
     private BigDecimal totalAmount;
     private String recipientName;
     private String recipientPhone;

@@ -1,6 +1,7 @@
 package com.zzowo.shop_sys.config;
 
 import com.zzowo.shop_sys.dto.response.ApiResponse;
+import com.zzowo.shop_sys.exception.BusinessException;
 import com.zzowo.shop_sys.exception.ResourceNotFoundException;
 
 import org.springframework.http.HttpStatus;
@@ -12,6 +13,13 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 @RestControllerAdvice // 全域例外處理
 public class GlobalExceptionHandler {
+
+    // 捕捉業務邏輯錯誤
+    @ExceptionHandler(BusinessException.class)
+    public ResponseEntity<ApiResponse<Void>> handleBusinessException(BusinessException e) {
+        return ResponseEntity.status(e.getStatus())
+                .body(ApiResponse.error(e.getMessage()));
+    }
 
     // 捕捉自己丟出的 RuntimeException
     @ExceptionHandler(RuntimeException.class)

@@ -3,6 +3,8 @@ package com.zzowo.shop_sys.service;
 import com.zzowo.shop_sys.dto.request.order.OrderCreateRequest;
 import com.zzowo.shop_sys.dto.response.order.OrderResponse;
 import com.zzowo.shop_sys.entity.*;
+import com.zzowo.shop_sys.enums.OrderStatus;
+import com.zzowo.shop_sys.exception.BusinessException;
 import com.zzowo.shop_sys.exception.ResourceNotFoundException;
 import com.zzowo.shop_sys.mapper.OrderMapper;
 import com.zzowo.shop_sys.repository.CartRepository;
@@ -36,7 +38,7 @@ public class OrderService {
     private InventoryLogRepository inventoryLogRepository;
 
     // 建立訂單 (結帳)
-    @Transactional // 確保庫存扣減、訂單建立、清空購物車同時成功或失敗
+    @Transactional
     public OrderResponse createOrder(String email, OrderCreateRequest request) {
         // 確認使用者身分
         User user = userRepository.findByEmail(email)
@@ -45,13 +47,13 @@ public class OrderService {
         // 取得購物車
         List<Cart> cartItems = cartRepository.findByUserId(user.getId());
         if (cartItems.isEmpty()) {
-            throw new RuntimeException("購物車為空，無法結帳");
+            throw new BusinessException("購物車為空，無法結帳");
         }
 
         // 準備建立訂單
         Order order = new Order();
         order.setUser(user);
-        order.setStatus("PENDING"); // 初始狀態：待付款
+        order.setStatus(OrderStatus.PENDING); // 使用 Enum 代替 String
         order.setRecipientName(request.getRecipientName());
         order.setRecipientPhone(request.getRecipientPhone());
         order.setRecipientAddress(request.getRecipientAddress());
@@ -59,33 +61,33 @@ public class OrderService {
         List<OrderItem> orderItems = new ArrayList<>();
         BigDecimal totalAmount = BigDecimal.ZERO;
 
-        // 處理每個購物車商品 (檢查庫存、扣庫存、建立 OrderItem)
+        // 處理每個購物車商品
         for (Cart cart : cartItems) {
             Product product = cart.getProduct();
 
-            // 檢查庫存 (使用悲觀鎖或樂觀鎖會更嚴謹，這裡先做基礎檢查)
+            // 檢查庫存 (JPA 的 @Version 會在並發下發揮作用)
             if (product.getStockQuantity() < cart.getQuantity()) {
-                throw new RuntimeException("商品 [" + product.getName() + "] 庫存不足，結帳失敗");
+                throw new BusinessException("商品 [" + product.getName() + "] 庫存不足，結帳失敗");
             }
 
             // 扣除庫存
-            Integer quantityToDeduct = cart.getQuantity(); // 購買數量
+            Integer quantityToDeduct = cart.getQuantity();
             product.setStockQuantity(product.getStockQuantity() - quantityToDeduct);
             productRepository.save(product);
 
             // 建立庫存異動紀錄
             InventoryLog log = new InventoryLog();
             log.setProduct(product);
-            log.setChangeAmount(-quantityToDeduct); // 負數代表減少
-            log.setReason("ORDER"); // 原因：訂單出貨
-            log.setOperatorId(user.getId()); // 操作者：買家 (或可設為 null，視你的定義)
+            log.setChangeAmount(-quantityToDeduct);
+            log.setReason("ORDER");
+            log.setOperatorId(user.getId());
             inventoryLogRepository.save(log);
 
             // 建立訂單明細
             OrderItem item = new OrderItem();
             item.setOrder(order);
             item.setProduct(product);
-            item.setPriceAtPurchase(product.getPrice()); // 鎖定當下價格
+            item.setPriceAtPurchase(product.getPrice());
             item.setQuantity(cart.getQuantity());
 
             orderItems.add(item);
@@ -98,7 +100,7 @@ public class OrderService {
         order.setItems(orderItems);
         order.setTotalAmount(totalAmount);
 
-        // 儲存訂單 (Cascade 會自動儲存 OrderItems)
+        // 儲存訂單
         Order savedOrder = orderRepository.save(order);
 
         // 清空購物車
@@ -128,9 +130,9 @@ public class OrderService {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new ResourceNotFoundException("訂單不存在"));
 
-        // 權限檢查：只能查看自己的訂單
-        if (!order.getUser().getId().equals(user.getId()) && user.getRole().name().equals("CUSTOMER")) {
-             throw new RuntimeException("無權限查看此訂單");
+        // 權限檢查：只能查看自己的訂單，除非是管理員 (這邊假設 Role.ADMIN 是最高權限)
+        if (!order.getUser().getId().equals(user.getId()) && !user.getRole().name().equals("ADMIN")) {
+             throw new BusinessException("無權限查看此訂單");
         }
 
         return orderMapper.toOrderResponse(order);

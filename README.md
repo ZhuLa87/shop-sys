@@ -1,105 +1,117 @@
-# B2C 電商購物平台專案 (B2C E-commerce Platform)
+# Shop-Sys: B2C 電商購物平台專案
 
-## 1. 專案簡介 (Introduction)
+## 1. 專案簡介 (Project Overview)
 
 這是一個基於 **前後端分離 (Frontend-Backend Separation)** 架構的單一廠商 B2C 購物網站。
-本專案旨在建立一個完整的電子商務流程，包含使用者瀏覽、購物車管理、結帳流程，以及後台的商品與權限管理。
+系統專為「單一賣家對多位消費者」的商業模式設計，提供完整的使用者購物流程（瀏覽、加入購物車、結帳）以及後台管理功能（商品上架、訂單管理、庫存追蹤）。
 
-## 2. 技術棧 (Tech Stack)
+## 2. 技術堆疊 (Tech Stack)
 
-### 後端 (Backend) - 已建立基礎架構
+### 後端 (Backend)
+- **核心框架**: Spring Boot 3.5.8
+- **程式語言**: Java 21
+- **資料庫**: MariaDB 11.8
+- **安全性**: Spring Security + JWT (Stateless Authentication)
+- **ORM**: Spring Data JPA (Hibernate)
+- **建置工具**: Maven
+- **密碼加密**: Argon2 (Spring Security Defaults)
 
-- **框架 (Framework)**: Spring Boot 3.5.8
-- **語言 (Language)**: Java 21
-- **安全性 (Security)**: Spring Security + JWT (Stateless)
-- **資料庫存取 (ORM)**: Spring Data JPA (Hibernate)
-- **建置工具 (Build Tool)**: Maven
-- **API 文件**: Swagger
+### 前端 (Frontend)
+- **核心框架**: Vue 3 (Composition API)
+- **架構**: SPA (Single Page Application)
 
-### 前端 (Frontend) - 預計採用
+## 3. 系統功能 (Features)
 
-- **核心框架 (Framework)**: Vue 3 (Composition API)
-- **建置工具 (Build Tool)**:
-- **狀態管理 (State Management)**:
-- **路由管理 (Routing)**:
-- **HTTP 請求 (HTTP Client)**:
-- **UI 框架 (UI Library)**:
+目前後端已實作以下核心模組：
 
-### 資料庫 (Database)
+### 🔐 A. 認證與授權 (Authentication & Security)
+- **JWT 驗證**: 使用無狀態 (Stateless) 的 JSON Web Token 進行身份驗證。
+- **RBAC 權限控管**: 支援多種角色，包括 `CUSTOMER` (顧客)、`SUPER_ADMIN` (超級管理員)、`PRODUCT_MANAGER` (商品管理員)。
+- **安全防護**: 包含密碼加密儲存、帳號鎖定機制 (登入失敗 5 次鎖定 15 分鐘)。
 
-- **資料庫 (Database)**: MariaDB 11.8
-- **版本控制 (Migration)**:
+### 👤 B. 會員系統 (User System)
+- **註冊與登入**: 支援 Email 註冊與登入。
+- **個人資料管理**: 使用者可更新自身資料 (姓名、電話、Email)。
+- **管理員功能**: 超級管理員可檢視、更新所有會員狀態 (含停權/啟用)。
 
-## 3. 功能模組 (Features) & 開發進度
+### 📦 C. 商品系統 (Product System)
+- **商品管理**: 支援商品的新增、修改、刪除 (軟刪除/下架)。
+- **多圖支援**: 單一商品可關聯多張圖片 (ProductImage)。
+- **庫存追蹤**: 系統自動記錄庫存異動 (InventoryLog)，包含進貨、出貨、調整等原因。
+- **搜尋功能**: 支援商品名稱模糊搜尋與狀態過濾 (上架中/下架)。
 
-### A. 會員系統 (User System) [Backend: ✅ Ready]
-- [x] **註冊與登入**: 支援 Email 註冊，使用 JWT 進行身份驗證 (AuthController)。
-- [x] **權限控管 (RBAC)**: 區分 CUSTOMER, SUPER_ADMIN, PRODUCT_MANAGER 等角色。
-- [x] **個人資料管理**:
-    - 使用者可修改自身資料 (UserService)。
-    - 管理員可管理所有使用者。
+### 🛒 D. 購物與訂單 (Cart & Order)
+- **購物車**:
+    - 加入購物車 (自動檢查庫存)。
+    - 檢視與移除購物車商品。
+- **訂單流程**:
+    - **建立訂單 (結帳)**: 交易式 (Transactional) 處理，確保「建立訂單、扣除庫存、產生庫存紀錄、清空購物車」的一致性。
+    - **訂單查詢**: 顧客可查詢自己的歷史訂單；管理員可檢視所有訂單。
+    - **訂單明細**: 紀錄下單當下的商品價格 (Price At Purchase)，不受後續調價影響。
 
-### B. 商品系統 (Product System) [Backend: ✅ Ready]
-- [x] **商品列表**: 取得上架商品 (ProductController)。
-- [x] **商品詳情**: 包含圖片、價格、庫存描述。
-- [x] **後台管理**:
-    - 新增/修改商品 (支援多圖 URL)。
-    - 商品上下架狀態管理 (ON_SHELF, OFF_SHELF)。
+## 4. 資料庫設計 (Database Schema)
 
-### C. 購物與訂單 (Shopping & Order) [Backend: ⚠️ Partially Ready]
-- [x] **購物車 (Cart)**: 加入商品、查看購物車、移除商品 (CartController)。
-- [ ] **結帳流程 (Checkout)**: 建立訂單 (Order) 與 訂單明細 (OrderItem)。
-- [ ] **庫存扣減**: 確保下單時同步扣除庫存 (Transaction)。
-- [ ] **訂單狀態管理**: 待付款 -> 已出貨 -> 完成/取消。
+系統採用正規化關聯設計，主要實體如下：
 
-### D. 其他 (Others)
-- [ ] **庫存紀錄**: 記錄進出貨歷程 (InventoryLog)。
-- [ ] **金流與物流**: Payment 與 Shipment 實體已建立，待實作邏輯。
+| 實體 (Table) | 說明 | 關聯性 |
+| :--- | :--- | :--- |
+| **users** | 儲存會員帳號、密碼 Hash、角色與狀態 | 1 對多 Orders, 1 對多 Carts |
+| **products** | 商品基本資訊 (價格、庫存、狀態) | 1 對多 ProductImages, 1 對多 InventoryLogs |
+| **product_images** | 商品圖片網址 | 多 對 1 Product |
+| **carts** | 購物車暫存資料 | 多 對 1 User, 多 對 1 Product |
+| **orders** | 訂單主檔 (總金額、收件資訊、狀態) | 多 對 1 User, 1 對多 OrderItems |
+| **order_items** | 訂單明細 (紀錄購買當下的快照) | 多 對 1 Order, 多 對 1 Product |
+| **inventory_logs** | 庫存異動紀錄 (稽核用) | 多 對 1 Product |
+| **payments** | 付款資訊 (金流) | 1 對 1 Order |
+| **shipments** | 物流資訊 (出貨單號) | 1 對 1 Order |
+| **coupons** | 優惠券系統 | (預留功能) |
+| **reviews** | 商品評價 | (預留功能) |
 
-## 4. 資料庫設計 (Schema Overview)
+## 5. API 快速導覽 (API Reference)
 
-核心資料表關聯如下：
+所有 API 均位於 `/api` 路徑下 (Context Path)，且 API 版本前綴為 `/v1`。
 
-1.  **Users**: 帳號、密碼 (Argon2/BCrypt)、角色。
-2.  **Products**: 商品基本資訊、價格、庫存。
-    - **Product_Images**: 商品關聯圖片 (一對多)。
-3.  **Carts**: 使用者購物車 (暫存選購商品)。
-4.  **Orders**: 訂單主檔 (總金額、收件資訊)。
-    - **OrderItems**: 訂單明細 (紀錄購買當下的價格與數量)。
-5.  **Payments**: 付款資訊 (一對一 Order)。
-6.  **Shipments**: 物流資訊 (一對一 Order)。
-7.  **Inventory_Logs**: 庫存異動紀錄。
+### 認證 (Auth)
+* `POST /v1/auth/register` - 註冊新帳號
+* `POST /v1/auth/login` - 登入並取得 JWT Token
 
-## 5. API 快速導覽 (Quick Reference)
+### 商品 (Product)
+* `GET /v1/products` - 取得上架商品列表 (Public)
+* `GET /v1/products/{id}` - 取得商品詳情 (Public)
+* `POST /v1/products` - 新增商品 (Admin/Manager)
+* `PUT /v1/products/{id}` - 修改商品 (Admin/Manager)
+* `DELETE /v1/products/{id}` - 刪除商品 (Admin/Manager)
+* `GET /v1/products/inventory-logs` - 查詢所有庫存紀錄 (Admin/Manager)
 
-| Method | Endpoint | Description | Auth |
-|:---|:---|:---|:---|
-| POST | `/v1/auth/register` | 註冊使用者 | Public |
-| POST | `/v1/auth/login` | 登入取得 JWT | Public |
-| GET | `/v1/products` | 瀏覽商品列表 | Public |
-| GET | `/v1/products/{id}` | 瀏覽商品詳情 | Public |
-| POST | `/v1/carts` | 加入購物車 | User |
-| GET | `/v1/carts` | 查看我的購物車 | User |
-| GET | `/v1/users/me` | 查看個人資訊 | User |
+### 購物車 (Cart)
+* `GET /v1/carts` - 查詢我的購物車
+* `POST /v1/carts` - 加入商品至購物車
+* `DELETE /v1/carts/{id}` - 移除購物車項目
 
-## 6. 開發環境與安裝 (Setup)
+### 訂單 (Order)
+* `POST /v1/orders` - 結帳 (建立訂單)
+* `GET /v1/orders` - 查詢我的訂單列表
+* `GET /v1/orders/{id}` - 查詢特定訂單詳情
 
-### 前置需求 (Prerequisites)
-- JDK 21
-- Node.js 18+ (For Frontend)
-- MariaDB 11.8
+### 會員 (User)
+* `GET /v1/users/me` - 取得個人資訊
+* `PUT /v1/users/me` - 更新個人資訊
+* `GET /v1/users` - 取得所有會員列表 (Super Admin)
 
-### 啟動步驟 (Getting Started)
+## 6. 專案結構 (Project Structure)
 
-1.  **資料庫 (Database)**
-    ```sql
-    CREATE DATABASE `shop-sys` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-    ```
-    *請確認 `application.yaml` 中的帳號密碼與您的本地環境一致。*
-
-2.  **後端 (Backend)**
-    - 進入專案根目錄。
-    - 執行 `mvnw spring-boot:run`。
-
-3.  **前端 (Frontend)**
-    - (待初始化 Vue 專案後補充)
+```text
+com.zzowo.shop_sys
+├── config/             # Spring Security, Exception Handler 配置
+├── controller/         # REST API 控制層 (處理 HTTP 請求)
+├── dto/                # 資料傳輸物件 (Request/Response)
+│   ├── request/        # 接收前端的 JSON 格式
+│   └── response/       # 回傳給前端的 JSON 格式
+├── entity/             # 資料庫實體 (JPA Entity)
+├── enums/              # 列舉 (Role, ProductStatus)
+├── exception/          # 自定義異常類別
+├── filter/             # JWT 認證過濾器
+├── mapper/             # Entity 與 DTO 轉換邏輯
+├── repository/         # 資料庫存取層 (Spring Data JPA)
+├── service/            # 核心業務邏輯 (Transaction, 邏輯運算)
+└── util/               # 工具類 (JwtUtil)

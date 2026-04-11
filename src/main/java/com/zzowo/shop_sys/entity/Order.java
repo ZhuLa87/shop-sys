@@ -1,5 +1,6 @@
 package com.zzowo.shop_sys.entity;
 
+import com.zzowo.shop_sys.enums.OrderStatus;
 import jakarta.persistence.*;
 import lombok.Data;
 import java.math.BigDecimal;
@@ -27,13 +28,10 @@ public class Order {
     @Column(name = "total_amount", nullable = false, precision = 10, scale = 2, columnDefinition = "DECIMAL(10,2) UNSIGNED")
     private BigDecimal totalAmount;
 
-    // 訂單狀態，例如：
-    // "PENDING"（待付款）
-    // "PAID"（已付款）
-    // "SHIPPED"（已出貨）
-    // "COMPLETED"（完成）
-    // "CANCELLED"（取消）
-    private String status;
+    // 訂單狀態
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private OrderStatus status;
 
     // 使用的優惠券
     @ManyToOne(fetch = FetchType.LAZY)
@@ -67,4 +65,3 @@ public class Order {
         createdAt = LocalDateTime.now();
     }
 }
-

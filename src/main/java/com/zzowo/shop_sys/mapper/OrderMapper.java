@@ -20,6 +20,7 @@ public class OrderMapper {
         res.setStatus(order.getStatus());
         res.setTotalAmount(order.getTotalAmount());
         res.setRecipientName(order.getRecipientName());
+        res.setRecipientPhone(order.getRecipientPhone()); // 補上遺失的電話欄位
         res.setRecipientAddress(order.getRecipientAddress());
 
         if (order.getCreatedAt() != null) {
