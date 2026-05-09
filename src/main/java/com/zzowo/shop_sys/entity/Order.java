@@ -15,17 +15,16 @@ public class Order {
     // 訂單主鍵 ID（UNSIGNED，自動遞增）
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(columnDefinition = "BIGINT UNSIGNED")
     private Long id;
 
     // 下單者（多對一）
     // user_id：外鍵，指向 User.id
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false, columnDefinition = "BIGINT UNSIGNED")
+    @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    // 訂單總金額（UNSIGNED）
-    @Column(name = "total_amount", nullable = false, precision = 10, scale = 2, columnDefinition = "DECIMAL(10,2) UNSIGNED")
+    // 訂單總金額
+    @Column(name = "total_amount", nullable = false, precision = 10, scale = 2)
     private BigDecimal totalAmount;
 
     // 訂單狀態
@@ -35,7 +34,7 @@ public class Order {
 
     // 使用的優惠券
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "coupon_id", columnDefinition = "BIGINT UNSIGNED")
+    @JoinColumn(name = "coupon_id")
     private Coupon coupon;
 
     // 收件人姓名

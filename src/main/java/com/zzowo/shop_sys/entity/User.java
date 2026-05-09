@@ -20,7 +20,6 @@ public class User implements UserDetails {
     // 主鍵 ID
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(columnDefinition = "BIGINT UNSIGNED")
     private Long id;
 
     // 使用者 Email，需唯一且不可為 null

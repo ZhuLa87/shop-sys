@@ -12,25 +12,24 @@ public class Review {
     // 主鍵 ID，自動遞增，使用 UNSIGNED BIGINT 儲存
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(columnDefinition = "BIGINT UNSIGNED")
     private Long id;
 
     // 評論所屬的使用者（多對一關係），延遲載入
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false, columnDefinition = "BIGINT UNSIGNED")
+    @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
     // 評論所屬的商品（多對一關係），延遲載入
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "product_id", nullable = false, columnDefinition = "BIGINT UNSIGNED")
+    @JoinColumn(name = "product_id", nullable = false)
     private Product product;
 
     // 評分（整數），不可為 null
-    @Column(nullable = false, columnDefinition = "INT UNSIGNED")
+    @Column(nullable = false)
     private Integer rating;
 
-    // 評論內容，使用 TEXT 儲存，可為 null
-    @Column(columnDefinition = "TEXT")
+    // 評論內容，可為 null
+    @Column(length = 65535)
     private String comment;
 
     // 建立時間，建立後不可更新

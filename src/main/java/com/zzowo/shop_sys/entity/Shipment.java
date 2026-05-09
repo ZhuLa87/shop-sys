@@ -12,12 +12,11 @@ public class Shipment {
     // 主鍵 ID，採用自動遞增，使用 UNSIGNED BIGINT
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(columnDefinition = "BIGINT UNSIGNED")
     private Long id;
 
     // 此出貨資訊所對應的訂單（一對一關係），延遲載入
     @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "order_id", nullable = false, columnDefinition = "BIGINT UNSIGNED")
+    @JoinColumn(name = "order_id", nullable = false)
     private Order order;
 
     // 物流追蹤編號
