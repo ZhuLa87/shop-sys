@@ -44,10 +44,25 @@ DDL 模式預設為 `update`，首次啟動將自動建立資料表。
 ### 啟動服務
 
 ```bash
-mvn spring-boot:run
+./mvnw spring-boot:run
 ```
 
 服務啟動後：`http://localhost:8088/api`
+
+### 測試資料（Dev Profile）
+
+`application.yaml` 已預設啟用 `dev` profile。首次啟動時，`DataInitializer` 會自動偵測資料庫是否為空，並在空白時匯入測試資料。
+
+| Email | 密碼 | 角色 |
+| :--- | :--- | :--- |
+| admin@test.com | admin123 | SUPER_ADMIN |
+| manager@test.com | manager123 | PRODUCT_MANAGER |
+| test01@example.com | mypassword123 | CUSTOMER |
+| test02@example.com | mypassword123 | CUSTOMER |
+
+同時會建立 8 筆商品（6 件上架、1 件下架、1 件缺貨）及測試購物車資料。
+
+> 資料已存在時會自動跳過，不重複插入。若需重置，清空 `carts`、`products`、`users` 三張表後重啟即可。
 
 ---
 
@@ -61,7 +76,7 @@ mvn spring-boot:run
 
 ```
 com.zzowo.shop_sys/
-├── config/        # Security 設定、全域例外處理
+├── config/        # Security 設定、全域例外處理、DataInitializer（dev 測試資料）
 ├── controller/    # REST 控制層（5 個 Controller）
 ├── dto/           # Request / Response DTO
 ├── entity/        # JPA 實體（11 個 Table）
@@ -123,7 +138,7 @@ Base URL: `http://localhost:8088/api/v1`
 
 | 方法 | 路徑 | 說明 | 權限 |
 | :--- | :--- | :--- | :--- |
-| GET | `/v1/products` | 取得上架商品列表 | 公開 |
+| GET | `/v1/products` | 取得上架商品列表（分頁 + 搜尋 + 排序） | 公開 |
 | GET | `/v1/products/{id}` | 取得商品詳情 | 公開 |
 | POST | `/v1/products` | 新增商品 | PRODUCT_MANAGER, SUPER_ADMIN |
 | PUT | `/v1/products/{id}` | 修改商品 | PRODUCT_MANAGER, SUPER_ADMIN |
