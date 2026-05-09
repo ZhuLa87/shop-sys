@@ -13,14 +13,13 @@ public class Payment {
     // 主鍵 ID，使用自動遞增策略，資料庫欄位型態為 UNSIGNED BIGINT
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(columnDefinition = "BIGINT UNSIGNED")
     private Long id;
 
     // 與 Order 表一對一關聯
     // 使用 Lazy Loading，避免每次載入 Payment 都立即載入 Order
     // order_id 為外鍵，且不可為 null
     @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "order_id", nullable = false, columnDefinition = "BIGINT UNSIGNED")
+    @JoinColumn(name = "order_id", nullable = false)
     private Order order;
 
     // 支付方式，例如：credit_card、line_pay、bank_transfer 等
@@ -32,7 +31,7 @@ public class Payment {
     private String transactionId;
 
     // 付款金額，最多 10 位數其中 2 位小數，不可為負且不可為 null
-    @Column(nullable = false, precision = 10, scale = 2, columnDefinition = "DECIMAL(10,2) UNSIGNED")
+    @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal amount;
 
     // 支付狀態，常見值：

@@ -16,7 +16,6 @@ public class Product {
     // 主鍵
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(columnDefinition = "BIGINT UNSIGNED")
     private Long id;
 
     // 名稱
@@ -24,15 +23,15 @@ public class Product {
     private String name;
 
     // 描述
-    @Column(columnDefinition = "TEXT")
+    @Column(length = 65535)
     private String description;
 
     // 價格 (最多 10 位數、2 位小數，不可為負）
-    @Column(nullable = false, precision = 10, scale = 2, columnDefinition = "DECIMAL(10,2) UNSIGNED")
+    @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal price;
 
     // 庫存數量（預設值為 0）
-    @Column(name = "stock_quantity", nullable = false, columnDefinition = "INT UNSIGNED DEFAULT 0")
+    @Column(name = "stock_quantity", nullable = false)
     private Integer stockQuantity;
 
     // 商品狀態，例如 "ON_SHELF"（上架）、"OFF_SHELF"（下架）
