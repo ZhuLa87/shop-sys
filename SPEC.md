@@ -1,7 +1,7 @@
 # Shop-Sys 系統規格書 (System Specification)
 
-> **版本**: 1.0.0  
-> **最後更新**: 2026-05-09  
+> **版本**: 1.1.0  
+> **最後更新**: 2026-05-10  
 > **狀態**: 開發中 (In Development)
 
 ---
@@ -107,6 +107,7 @@ com.zzowo.shop_sys/
 │   │       └── AdminUpdateUserRequest.java
 │   └── response/                    # 回傳給前端的 DTO
 │       ├── ApiResponse.java          # 統一回應封裝
+│       ├── PageResponse.java         # 分頁回應封裝 (content, page, size, totalElements, totalPages, last)
 │       ├── cart/CartItemResponse.java
 │       ├── order/
 │       │   ├── OrderResponse.java
@@ -496,29 +497,58 @@ orders (N) ─────────── (1) coupons        [預留]
 
 ### 5.3 商品 (Products) — `/v1/products`
 
-#### GET `/v1/products` — 取得上架商品列表
+#### GET `/v1/products` — 取得上架商品列表（分頁）
 
-**權限**: 公開  
+**權限**: 公開
+
+**Query Parameters**:
+
+| 參數 | 類型 | 必填 | 預設值 | 說明 |
+| :--- | :--- | :---: | :--- | :--- |
+| `page` | Integer | ❌ | `0` | 頁碼，從 0 開始 |
+| `size` | Integer | ❌ | `20` | 每頁筆數，上限 100 |
+| `sort` | String | ❌ | `createdAt,desc` | 排序欄位與方向，格式：`欄位,asc\|desc` |
+| `keyword` | String | ❌ | — | 商品名稱關鍵字模糊搜尋 |
+
+**可排序欄位**: `name`、`price`、`createdAt`
+
+**範例請求**:
+```
+GET /api/v1/products
+GET /api/v1/products?page=1&size=10
+GET /api/v1/products?sort=price,asc
+GET /api/v1/products?keyword=耳機&sort=price,asc&size=10
+```
+
 **Response** `200 OK`:
 
 ```json
 {
   "success": true,
-  "message": "查詢成功",
-  "data": [
-    {
-      "id": 1,
-      "name": "藍芽耳機 Pro",
-      "description": "高音質無線耳機",
-      "price": 1990.00,
-      "stockQuantity": 50,
-      "coverImageUrl": "https://cdn.example.com/img/001.jpg",
-      "imageUrls": [],
-      "status": "ON_SHELF"
-    }
-  ]
+  "message": "取得商品列表成功",
+  "data": {
+    "content": [
+      {
+        "id": 1,
+        "name": "藍芽耳機 Pro",
+        "description": "高音質無線耳機",
+        "price": 1990.00,
+        "stockQuantity": 50,
+        "coverImageUrl": "https://cdn.example.com/img/001.jpg",
+        "imageUrls": null,
+        "status": "ON_SHELF"
+      }
+    ],
+    "page": 0,
+    "size": 20,
+    "totalElements": 150,
+    "totalPages": 8,
+    "last": false
+  }
 }
 ```
+
+> `imageUrls` 在列表頁為 `null`，詳情頁 (`GET /v1/products/{id}`) 才回傳完整圖片列表。
 
 ---
 
@@ -978,4 +1008,3 @@ Controller 執行業務邏輯
 4. **優惠券系統** — 實作優惠券建立、核銷，結帳時套用折扣
 5. **商品評價** — 顧客完成訂單後可留下評價
 6. **軟刪除** — 完整實作 `users.deleted_at` 的查詢過濾
-7. **商品搜尋** — 目前 Repository 有 `findByNameContaining()`，尚未開放對應 API

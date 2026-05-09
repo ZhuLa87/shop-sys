@@ -2,11 +2,15 @@ package com.zzowo.shop_sys.controller;
 
 import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import com.zzowo.shop_sys.dto.request.product.ProductRequest;
 import com.zzowo.shop_sys.dto.response.ApiResponse;
+import com.zzowo.shop_sys.dto.response.PageResponse;
 import com.zzowo.shop_sys.dto.response.product.InventoryLogResponse;
 import com.zzowo.shop_sys.dto.response.product.ProductResponse;
 import com.zzowo.shop_sys.service.ProductService;
@@ -21,12 +25,20 @@ public class ProductController {
     private ProductService productService;
 
     /**
-     * 取得所有上架商品列表
+     * 取得上架商品列表（分頁 + 搜尋 + 排序）
      * URL: GET /v1/products
+     * Query params:
+     *   page     分頁頁碼，從 0 開始（預設 0）
+     *   size     每頁筆數（預設 20，上限 100）
+     *   sort     排序欄位與方向，格式 field,asc|desc（預設 createdAt,desc）
+     *            可用欄位：name, price, createdAt
+     *   keyword  商品名稱關鍵字（選填）
      */
-    @GetMapping // 繼承上方的路徑
-    public ResponseEntity<ApiResponse<List<ProductResponse>>> getProducts() {
-        List<ProductResponse> products = productService.getOnShelfProducts();
+    @GetMapping
+    public ResponseEntity<ApiResponse<PageResponse<ProductResponse>>> getProducts(
+            @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable,
+            @RequestParam(required = false) String keyword) {
+        PageResponse<ProductResponse> products = productService.getOnShelfProducts(pageable, keyword);
         return ResponseEntity.ok(ApiResponse.success("取得商品列表成功", products));
     }
 

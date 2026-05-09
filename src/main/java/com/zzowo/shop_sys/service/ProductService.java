@@ -1,25 +1,34 @@
 package com.zzowo.shop_sys.service;
 
 import com.zzowo.shop_sys.dto.request.product.ProductRequest;
+import com.zzowo.shop_sys.dto.response.PageResponse;
 import com.zzowo.shop_sys.dto.response.product.InventoryLogResponse;
 import com.zzowo.shop_sys.dto.response.product.ProductResponse;
 import com.zzowo.shop_sys.entity.InventoryLog;
 import com.zzowo.shop_sys.entity.Product;
 import com.zzowo.shop_sys.enums.ProductStatus;
+import com.zzowo.shop_sys.exception.BusinessException;
 import com.zzowo.shop_sys.exception.ResourceNotFoundException;
 import com.zzowo.shop_sys.mapper.InventoryLogMapper;
 import com.zzowo.shop_sys.mapper.ProductMapper;
 import com.zzowo.shop_sys.repository.InventoryLogRepository;
 import com.zzowo.shop_sys.repository.ProductRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
 public class ProductService {
+
+    private static final Set<String> ALLOWED_SORT_FIELDS = Set.of("name", "price", "createdAt");
+    private static final int MAX_PAGE_SIZE = 100;
 
     @Autowired
     private ProductRepository productRepository;
@@ -65,11 +74,27 @@ public class ProductService {
         productRepository.deleteById(id);
     }
 
-    // 取得所有上架商品
-    public List<ProductResponse> getOnShelfProducts() {
-        return productRepository.findByStatus(ProductStatus.ON_SHELF).stream()
-                .map(productMapper::toSummaryResponse) // 交給 Mapper 處理
-                .collect(Collectors.toList());
+    // 取得上架商品（分頁 + 關鍵字搜尋）
+    public PageResponse<ProductResponse> getOnShelfProducts(Pageable pageable, String keyword) {
+        pageable.getSort().forEach(order -> {
+            if (!ALLOWED_SORT_FIELDS.contains(order.getProperty())) {
+                throw new BusinessException("不支援的排序欄位: " + order.getProperty() + "，允許欄位: name, price, createdAt");
+            }
+        });
+
+        if (pageable.getPageSize() > MAX_PAGE_SIZE) {
+            pageable = PageRequest.of(pageable.getPageNumber(), MAX_PAGE_SIZE, pageable.getSort());
+        }
+
+        Page<Product> productPage;
+        if (keyword != null && !keyword.isBlank()) {
+            productPage = productRepository.findByStatusAndNameContaining(
+                    ProductStatus.ON_SHELF, keyword.trim(), pageable);
+        } else {
+            productPage = productRepository.findByStatus(ProductStatus.ON_SHELF, pageable);
+        }
+
+        return new PageResponse<>(productPage.map(productMapper::toSummaryResponse));
     }
 
     // 取得單一商品詳情

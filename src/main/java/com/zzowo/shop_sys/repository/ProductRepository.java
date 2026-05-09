@@ -3,6 +3,8 @@ package com.zzowo.shop_sys.repository;
 import com.zzowo.shop_sys.entity.Product;
 import com.zzowo.shop_sys.enums.ProductStatus;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -18,6 +20,12 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 
     // 找出所有狀態為 status 的商品 (例如找所有 "ON_SHELF" 的商品)
     List<Product> findByStatus(ProductStatus status);
+
+    // 分頁查詢上架商品
+    Page<Product> findByStatus(ProductStatus status, Pageable pageable);
+
+    // 分頁查詢上架商品 + 名稱關鍵字搜尋
+    Page<Product> findByStatusAndNameContaining(ProductStatus status, String keyword, Pageable pageable);
 
     // JOIN FETCH: 告訴 JPA 查詢 Product 時，順便把 images 關聯表抓出來填好
     // LEFT JOIN: 就算商品沒有圖片，商品本身也要查出來 (避免因沒圖片導致商品消失)
