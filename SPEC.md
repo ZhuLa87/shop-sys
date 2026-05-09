@@ -81,6 +81,7 @@ Shop-Sys 是一套 **單一廠商 B2C 電商平台 (Single-Vendor B2C E-Commerce
 | JPA DDL 模式 | `update` (自動維護 Schema) |
 | JWT 有效期限 | 86400000 ms（24 小時）|
 | JWT 演算法 | HS512 (HMAC-SHA512) |
+| 預設 Spring Profile | `dev`（於 `application.yaml` 設定）|
 
 ### 2.4 專案套件結構
 
@@ -88,7 +89,8 @@ Shop-Sys 是一套 **單一廠商 B2C 電商平台 (Single-Vendor B2C E-Commerce
 com.zzowo.shop_sys/
 ├── config/
 │   ├── SecurityConfig.java          # Spring Security 設定 + 端點權限規則
-│   └── GlobalExceptionHandler.java  # 全域例外攔截器
+│   ├── GlobalExceptionHandler.java  # 全域例外攔截器
+│   └── DataInitializer.java         # dev profile 專用測試資料初始化（首次啟動時自動執行）
 ├── controller/
 │   ├── AuthController.java          # /v1/auth
 │   ├── ProductController.java       # /v1/products
@@ -165,6 +167,42 @@ com.zzowo.shop_sys/
 │   └── JwtUtil.java
 └── ShopSysApplication.java
 ```
+
+### 2.5 開發環境測試資料
+
+`application.yaml` 預設啟用 `dev` profile，應用程式啟動時 `DataInitializer` 會自動執行。若資料庫已有資料則跳過，確保冪等性（idempotent）。
+
+#### 預設測試帳號
+
+| Email | 密碼 | 角色 | 說明 |
+| :--- | :--- | :--- | :--- |
+| admin@test.com | admin123 | `SUPER_ADMIN` | 可存取所有功能 |
+| manager@test.com | manager123 | `PRODUCT_MANAGER` | 可管理商品與庫存 |
+| test01@example.com | mypassword123 | `CUSTOMER` | 測試員小明，購物車有預設商品 |
+| test02@example.com | mypassword123 | `CUSTOMER` | 測試員小王 |
+
+#### 預設測試商品
+
+| 商品名稱 | 價格 | 庫存 | 狀態 |
+| :--- | ---: | ---: | :--- |
+| 藍芽耳機 Pro | 1,990 | 50 | `ON_SHELF` |
+| 無線靜音滑鼠 | 890 | 120 | `ON_SHELF` |
+| 機械鍵盤 RGB | 2,490 | 30 | `ON_SHELF` |
+| 智慧手錶 S3 | 5,990 | 15 | `ON_SHELF` |
+| USB-C 七合一 Hub | 1,290 | 200 | `ON_SHELF` |
+| 可攜式藍芽音響 | 1,590 | 45 | `ON_SHELF` |
+| 舊款有線耳機 | 490 | 0 | `OFF_SHELF` |
+| 限量版電競滑鼠 | 3,290 | 0 | `OUT_OF_STOCK` |
+
+#### 重置測試資料
+
+```sql
+DELETE FROM carts;
+DELETE FROM products;
+DELETE FROM users;
+```
+
+重啟服務後 `DataInitializer` 將重新匯入。
 
 ---
 

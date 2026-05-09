@@ -7,6 +7,8 @@ server:
 spring:
     application:
         name: shop-sys
+    profiles:
+        active: dev
 
     datasource:
         url: jdbc:mariadb://tu-zhu.soay-fish.ts.net:3306/shop-sys
