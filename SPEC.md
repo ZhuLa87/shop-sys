@@ -194,7 +194,7 @@ orders (N) ─────────── (1) coupons        [預留]
 
 | 欄位 | 類型 | 限制 | 說明 |
 | :--- | :--- | :--- | :--- |
-| `id` | BIGINT UNSIGNED | PK, AUTO_INCREMENT | 主鍵 |
+| `id` | BIGINT | PK, AUTO_INCREMENT | 主鍵 |
 | `email` | VARCHAR | NOT NULL, UNIQUE | 登入帳號 |
 | `password_hash` | VARCHAR | NOT NULL | Argon2 雜湊後的密碼 |
 | `name` | VARCHAR | NOT NULL | 顯示名稱 |
@@ -214,10 +214,10 @@ orders (N) ─────────── (1) coupons        [預留]
 
 | 欄位 | 類型 | 限制 | 說明 |
 | :--- | :--- | :--- | :--- |
-| `id` | BIGINT UNSIGNED | PK, AUTO_INCREMENT | 主鍵 |
+| `id` | BIGINT | PK, AUTO_INCREMENT | 主鍵 |
 | `name` | VARCHAR | NOT NULL | 商品名稱 |
-| `description` | TEXT | NULLABLE | 商品描述 |
-| `price` | DECIMAL(10,2) UNSIGNED | NOT NULL | 售價 |
+| `description` | VARCHAR(65535) | NULLABLE | 商品描述 |
+| `price` | DECIMAL(10,2) | NOT NULL | 售價 |
 | `stock_quantity` | INT | NOT NULL | 目前庫存量 |
 | `status` | VARCHAR (ENUM String) | NOT NULL | 商品狀態 |
 | `cover_image_url` | VARCHAR | NULLABLE | 封面圖片 URL |
@@ -229,8 +229,8 @@ orders (N) ─────────── (1) coupons        [預留]
 
 | 欄位 | 類型 | 限制 | 說明 |
 | :--- | :--- | :--- | :--- |
-| `id` | BIGINT UNSIGNED | PK, AUTO_INCREMENT | 主鍵 |
-| `product_id` | BIGINT UNSIGNED | FK → products.id | 所屬商品 |
+| `id` | BIGINT | PK, AUTO_INCREMENT | 主鍵 |
+| `product_id` | BIGINT | FK → products.id | 所屬商品 |
 | `image_url` | VARCHAR | NOT NULL | 圖片 URL |
 | `sort_order` | INT | NOT NULL, DEFAULT 0 | 排列順序 |
 
@@ -238,9 +238,9 @@ orders (N) ─────────── (1) coupons        [預留]
 
 | 欄位 | 類型 | 限制 | 說明 |
 | :--- | :--- | :--- | :--- |
-| `id` | BIGINT UNSIGNED | PK, AUTO_INCREMENT | 主鍵 |
-| `user_id` | BIGINT UNSIGNED | FK → users.id | 購物車所屬會員 |
-| `product_id` | BIGINT UNSIGNED | FK → products.id | 加入的商品 |
+| `id` | BIGINT | PK, AUTO_INCREMENT | 主鍵 |
+| `user_id` | BIGINT | FK → users.id | 購物車所屬會員 |
+| `product_id` | BIGINT | FK → products.id | 加入的商品 |
 | `quantity` | INT | NOT NULL, DEFAULT 1 | 數量 |
 | `created_at` | DATETIME | NOT NULL | 建立時間 |
 | `updated_at` | DATETIME | NOT NULL | 更新時間 |
@@ -249,47 +249,46 @@ orders (N) ─────────── (1) coupons        [預留]
 
 | 欄位 | 類型 | 限制 | 說明 |
 | :--- | :--- | :--- | :--- |
-| `id` | BIGINT UNSIGNED | PK, AUTO_INCREMENT | 主鍵 |
-| `user_id` | BIGINT UNSIGNED | FK → users.id | 下訂會員 |
-| `coupon_id` | BIGINT UNSIGNED | FK → coupons.id, NULLABLE | 使用優惠券 (預留) |
+| `id` | BIGINT | PK, AUTO_INCREMENT | 主鍵 |
+| `user_id` | BIGINT | FK → users.id | 下訂會員 |
+| `coupon_id` | BIGINT | FK → coupons.id, NULLABLE | 使用優惠券 (預留) |
 | `status` | VARCHAR (ENUM String) | NOT NULL | 訂單狀態 |
-| `total_amount` | DECIMAL(10,2) UNSIGNED | NOT NULL | 訂單總金額 |
+| `total_amount` | DECIMAL(10,2) | NOT NULL | 訂單總金額 |
 | `recipient_name` | VARCHAR | NOT NULL | 收件人姓名 |
 | `recipient_phone` | VARCHAR | NOT NULL | 收件人電話 |
 | `recipient_address` | VARCHAR | NOT NULL | 收件地址 |
 | `created_at` | DATETIME | NOT NULL | 建立時間 |
-| `updated_at` | DATETIME | NOT NULL | 更新時間 |
 
 #### **order_items**
 
 | 欄位 | 類型 | 限制 | 說明 |
 | :--- | :--- | :--- | :--- |
-| `id` | BIGINT UNSIGNED | PK, AUTO_INCREMENT | 主鍵 |
-| `order_id` | BIGINT UNSIGNED | FK → orders.id | 所屬訂單 |
-| `product_id` | BIGINT UNSIGNED | FK → products.id | 所購商品 |
-| `price_at_purchase` | DECIMAL(10,2) UNSIGNED | NOT NULL | **下單當下的快照價格** |
+| `id` | BIGINT | PK, AUTO_INCREMENT | 主鍵 |
+| `order_id` | BIGINT | FK → orders.id | 所屬訂單 |
+| `product_id` | BIGINT | FK → products.id | 所購商品 |
+| `price_at_purchase` | DECIMAL(10,2) | NOT NULL | **下單當下的快照價格** |
 | `quantity` | INT | NOT NULL | 購買數量 |
 
 #### **inventory_logs**
 
 | 欄位 | 類型 | 限制 | 說明 |
 | :--- | :--- | :--- | :--- |
-| `id` | BIGINT UNSIGNED | PK, AUTO_INCREMENT | 主鍵 |
-| `product_id` | BIGINT UNSIGNED | FK → products.id | 異動商品 |
-| `change_amount` | INT (有號) | NOT NULL | 異動量（正=增加，負=減少）|
+| `id` | BIGINT | PK, AUTO_INCREMENT | 主鍵 |
+| `product_id` | BIGINT | FK → products.id | 異動商品 |
+| `change_amount` | INT | NOT NULL | 異動量（正=增加，負=減少）|
 | `reason` | VARCHAR | NOT NULL | 異動原因 (ORDER / RESTOCK / ADJUSTMENT / CANCEL / RETURN) |
-| `operator_id` | BIGINT UNSIGNED | NULLABLE | 操作者 ID |
+| `operator_id` | BIGINT | NULLABLE | 操作者 ID |
 | `created_at` | DATETIME | NOT NULL | 記錄時間 |
 
 #### **payments** (已建立 Entity，API 尚未完全整合)
 
 | 欄位 | 類型 | 說明 |
 | :--- | :--- | :--- |
-| `id` | BIGINT UNSIGNED | 主鍵 |
-| `order_id` | BIGINT UNSIGNED | FK → orders.id (1對1) |
+| `id` | BIGINT | 主鍵 |
+| `order_id` | BIGINT | FK → orders.id (1對1) |
 | `payment_method` | VARCHAR | 付款方式 |
 | `transaction_id` | VARCHAR | 金流交易 ID |
-| `amount` | DECIMAL(10,2) UNSIGNED | 實際付款金額 |
+| `amount` | DECIMAL(10,2) | 實際付款金額 |
 | `status` | VARCHAR | 付款狀態 |
 | `paid_at` | DATETIME | 付款時間 |
 
@@ -297,8 +296,8 @@ orders (N) ─────────── (1) coupons        [預留]
 
 | 欄位 | 類型 | 說明 |
 | :--- | :--- | :--- |
-| `id` | BIGINT UNSIGNED | 主鍵 |
-| `order_id` | BIGINT UNSIGNED | FK → orders.id (1對1) |
+| `id` | BIGINT | 主鍵 |
+| `order_id` | BIGINT | FK → orders.id (1對1) |
 | `tracking_number` | VARCHAR | 物流追蹤號碼 |
 | `logistics_provider` | VARCHAR | 物流商名稱 |
 | `status` | VARCHAR | 物流狀態 |
