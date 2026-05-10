@@ -34,7 +34,8 @@ management:
 # JWT 配置
 jwt:
     secret: mySecretKeyForShopSYSThatIsLongEnoughForHS512Algorithm
-    expiration: 86400000 # 24小時（毫秒）
+    expiration: 1800000        # Access Token：30 分鐘（毫秒）
+    refresh-expiration: 604800000 # Refresh Token：7 天（毫秒）
 
 # 日誌配置
 logging:

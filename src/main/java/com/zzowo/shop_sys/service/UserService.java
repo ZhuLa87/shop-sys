@@ -14,8 +14,10 @@ import com.zzowo.shop_sys.dto.request.user.AdminUpdateUserRequest;
 import com.zzowo.shop_sys.dto.request.user.UserLoginRequest;
 import com.zzowo.shop_sys.dto.request.user.UserRegisterRequest;
 import com.zzowo.shop_sys.dto.request.user.UserSelfUpdateRequest;
+import com.zzowo.shop_sys.dto.response.auth.LoginResponse;
 import com.zzowo.shop_sys.dto.response.user.RegisterResponse;
 import com.zzowo.shop_sys.dto.response.user.UserResponse;
+import com.zzowo.shop_sys.entity.RefreshToken;
 import com.zzowo.shop_sys.entity.User;
 import com.zzowo.shop_sys.enums.Role;
 import com.zzowo.shop_sys.exception.ResourceNotFoundException;
@@ -35,7 +37,10 @@ public class UserService {
     private JwtUtil jwtUtil;
 
     @Autowired
-    private UserMapper userMapper; // 注入 Mapper
+    private RefreshTokenService refreshTokenService;
+
+    @Autowired
+    private UserMapper userMapper;
 
     /**
      * 取得特定 email 的使用者詳細資料
@@ -67,23 +72,22 @@ public class UserService {
         return userMapper.toRegisterResponse(savedUser);
     }
 
-    @Transactional // 加入事務管理 (更新最後登入時間)
-    public String login(UserLoginRequest request) {
-        // 根據 Email 尋找使用者
+    @Transactional
+    public LoginResponse login(UserLoginRequest request) {
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new RuntimeException("帳號不存在"));
 
-        // 驗證密碼
         if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
             throw new RuntimeException("帳號或密碼錯誤");
         }
 
-        // 更新最後登入時間
         user.setLastLoginAt(LocalDateTime.now());
         userRepository.save(user);
 
-        // 驗證成功，生成 JWT
-        return jwtUtil.generateToken(user);
+        String accessToken = jwtUtil.generateToken(user);
+        RefreshToken refreshToken = refreshTokenService.create(user);
+
+        return new LoginResponse(accessToken, refreshToken.getToken(), "Bearer", jwtUtil.getAccessExpirationSeconds());
     }
 
     @Transactional // 加入事務管理
