@@ -1,5 +1,6 @@
 package com.zzowo.shop_sys.filter;
 
+import com.zzowo.shop_sys.service.TokenBlacklistService;
 import com.zzowo.shop_sys.util.JwtUtil;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -22,6 +23,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     @Autowired
     private JwtUtil jwtUtil;
 
+    @Autowired
+    private TokenBlacklistService tokenBlacklistService;
+
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
             throws ServletException, IOException {
@@ -40,9 +44,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             }
         }
 
-        // 從 JWT claims 直接取得角色，不查資料庫
+        // 從 JWT claims 直接取得角色，不查資料庫；同時檢查黑名單（已登出的 token）
         if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-            if (jwtUtil.validateToken(jwt)) {
+            if (jwtUtil.validateToken(jwt) && !tokenBlacklistService.isBlacklisted(jwt)) {
                 String role = jwtUtil.getRoleFromToken(jwt);
 
                 UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(

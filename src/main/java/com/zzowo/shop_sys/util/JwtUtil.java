@@ -2,6 +2,7 @@ package com.zzowo.shop_sys.util;
 
 import com.zzowo.shop_sys.entity.User;
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
@@ -10,6 +11,7 @@ import org.springframework.stereotype.Component;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 import java.util.function.Function;
 
 import javax.crypto.SecretKey;
@@ -49,11 +51,28 @@ public class JwtUtil {
     }
 
     /**
-     * 從token中獲取過期時間
+     * 從 token 取得過期時間。
+     * 即使 token 已過期（ExpiredJwtException）也能正確回傳，供黑名單計算 TTL 使用。
      */
     public Date getExpirationDateFromToken(String token) {
         try {
             return getClaimFromToken(token, Claims::getExpiration);
+        } catch (ExpiredJwtException e) {
+            return e.getClaims().getExpiration();
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    /**
+     * 從 token 取得 jti（JWT ID）。
+     * 即使 token 已過期也能回傳，供登出時將 token 加入黑名單使用。
+     */
+    public String getJtiFromToken(String token) {
+        try {
+            return getClaimFromToken(token, Claims::getId);
+        } catch (ExpiredJwtException e) {
+            return e.getClaims().getId();
         } catch (Exception e) {
             return null;
         }
@@ -125,7 +144,7 @@ public class JwtUtil {
     }
 
     /**
-     * 創建token
+     * 創建token，每個 token 附帶唯一 jti（供黑名單使用）
      */
     private String createToken(Map<String, Object> claims, String subject) {
         Date now = new Date();
@@ -134,6 +153,7 @@ public class JwtUtil {
         return Jwts.builder()
                 .claims(claims)
                 .subject(subject)
+                .id(UUID.randomUUID().toString())
                 .issuedAt(now)
                 .expiration(expiryDate)
                 .signWith(getSignKey())

@@ -1,58 +1,77 @@
 package com.zzowo.shop_sys.service;
 
-import com.zzowo.shop_sys.entity.RefreshToken;
-import com.zzowo.shop_sys.entity.User;
 import com.zzowo.shop_sys.exception.BusinessException;
-import com.zzowo.shop_sys.repository.RefreshTokenRepository;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
+import java.time.Duration;
 import java.util.UUID;
 
+@Slf4j
 @Service
 public class RefreshTokenService {
+
+    private static final String RT_PREFIX = "refresh_token:"; // token → userId
+    private static final String UR_PREFIX = "user_refresh:";  // userId → token（反查索引）
 
     @Value("${jwt.refresh-expiration}")
     private long refreshExpirationMs;
 
     @Autowired
-    private RefreshTokenRepository refreshTokenRepository;
+    private StringRedisTemplate redisTemplate;
 
-    @Transactional
-    public RefreshToken create(User user) {
-        // 每位使用者只保留一個有效 Refresh Token，登入時先刪舊的
-        refreshTokenRepository.deleteByUser(user);
+    /**
+     * 為指定使用者建立新的 Refresh Token。
+     * 每位使用者只保留一個有效 Token，舊的會被自動刪除。
+     *
+     * @return 新的 Refresh Token 字串
+     */
+    public String create(Long userId) {
+        // 先刪除該使用者的舊 Token（如有）
+        String oldToken = redisTemplate.opsForValue().get(UR_PREFIX + userId);
+        if (oldToken != null) {
+            redisTemplate.delete(RT_PREFIX + oldToken);
+        }
 
-        RefreshToken rt = new RefreshToken();
-        rt.setToken(UUID.randomUUID().toString());
-        rt.setUser(user);
-        rt.setExpiresAt(LocalDateTime.now().plusSeconds(refreshExpirationMs / 1000));
-        return refreshTokenRepository.save(rt);
+        String token = UUID.randomUUID().toString();
+        Duration ttl = Duration.ofMillis(refreshExpirationMs);
+
+        redisTemplate.opsForValue().set(RT_PREFIX + token, String.valueOf(userId), ttl);
+        redisTemplate.opsForValue().set(UR_PREFIX + userId, token, ttl);
+
+        return token;
     }
 
     /**
-     * 驗證並輪替（Rotate）：驗證後刪除舊 Token，由呼叫方負責發新的。
+     * 驗證 Refresh Token 並刪除（Token Rotation 前的第一步）。
+     *
+     * @return 對應的 userId，供呼叫方重新發 Access Token 與新 Refresh Token
+     * @throws BusinessException 若 Token 無效或已過期
      */
-    @Transactional
-    public RefreshToken validateAndRotate(String tokenStr) {
-        RefreshToken rt = refreshTokenRepository.findByToken(tokenStr)
-                .orElseThrow(() -> new BusinessException("無效的 Refresh Token"));
-
-        if (rt.getExpiresAt().isBefore(LocalDateTime.now())) {
-            refreshTokenRepository.delete(rt);
-            throw new BusinessException("Refresh Token 已過期，請重新登入");
+    public Long validateAndDelete(String token) {
+        String userIdStr = redisTemplate.opsForValue().get(RT_PREFIX + token);
+        if (userIdStr == null) {
+            throw new BusinessException("無效或已過期的 Refresh Token，請重新登入");
         }
+        Long userId = Long.parseLong(userIdStr);
 
-        // 刪除舊 Token，讓呼叫方 create() 一個新的（Token Rotation）
-        refreshTokenRepository.delete(rt);
-        return rt;
+        redisTemplate.delete(RT_PREFIX + token);
+        redisTemplate.delete(UR_PREFIX + userId);
+
+        return userId;
     }
 
-    @Transactional
-    public void deleteByUser(User user) {
-        refreshTokenRepository.deleteByUser(user);
+    /**
+     * 靜默刪除 Refresh Token（登出時使用，不拋例外）。
+     */
+    public void deleteIfExists(String token) {
+        String userIdStr = redisTemplate.opsForValue().get(RT_PREFIX + token);
+        if (userIdStr != null) {
+            redisTemplate.delete(UR_PREFIX + userIdStr);
+        }
+        redisTemplate.delete(RT_PREFIX + token);
     }
 }

@@ -15,6 +15,10 @@ spring:
     user:
       name: test
       password: test
+  data:
+    redis:
+      host: tu-zhu.soay-fish.ts.net
+      port: 6379
 
 server:
   port: 0
