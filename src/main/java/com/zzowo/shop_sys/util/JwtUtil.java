@@ -1,10 +1,10 @@
 package com.zzowo.shop_sys.util;
 
+import com.zzowo.shop_sys.entity.User;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 
 import java.util.Date;
@@ -91,11 +91,37 @@ public class JwtUtil {
     }
 
     /**
-     * 生成token
+     * 生成token（將 userId 與 role 寫入 claims，讓 Filter 無需查詢資料庫）
      */
-    public String generateToken(UserDetails userDetails) {
+    public String generateToken(User user) {
         Map<String, Object> claims = new HashMap<>();
-        return createToken(claims, userDetails.getUsername());
+        claims.put("userId", user.getId());
+        claims.put("role", user.getRole().name());
+        return createToken(claims, user.getUsername());
+    }
+
+    public Long getUserIdFromToken(String token) {
+        return getClaimFromToken(token, claims -> ((Number) claims.get("userId")).longValue());
+    }
+
+    public String getRoleFromToken(String token) {
+        return getClaimFromToken(token, claims -> (String) claims.get("role"));
+    }
+
+    /**
+     * 僅驗證 token 結構與有效期，不需要查詢資料庫
+     */
+    public Boolean validateToken(String token) {
+        try {
+            getAllClaimsFromToken(token);
+            return !isTokenExpired(token);
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    public long getAccessExpirationSeconds() {
+        return expiration / 1000;
     }
 
     /**
@@ -114,15 +140,4 @@ public class JwtUtil {
                 .compact();
     }
 
-    /**
-     * 驗證 token 是否有效
-     */
-    public Boolean validateToken(String token, UserDetails userDetails) {
-        try {
-            final String username = getUsernameFromToken(token);
-            return (username != null && username.equals(userDetails.getUsername()) && !isTokenExpired(token));
-        } catch (Exception e) {
-            return false;
-        }
-    }
 }
