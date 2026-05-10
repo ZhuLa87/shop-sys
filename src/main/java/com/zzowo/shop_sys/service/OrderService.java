@@ -4,6 +4,7 @@ import com.zzowo.shop_sys.dto.request.order.OrderCreateRequest;
 import com.zzowo.shop_sys.dto.response.order.OrderResponse;
 import com.zzowo.shop_sys.entity.*;
 import com.zzowo.shop_sys.enums.OrderStatus;
+import com.zzowo.shop_sys.enums.Role;
 import com.zzowo.shop_sys.exception.BusinessException;
 import com.zzowo.shop_sys.exception.ResourceNotFoundException;
 import com.zzowo.shop_sys.mapper.OrderMapper;
@@ -130,8 +131,7 @@ public class OrderService {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new ResourceNotFoundException("訂單不存在"));
 
-        // 權限檢查：只能查看自己的訂單，除非是管理員 (這邊假設 Role.ADMIN 是最高權限)
-        if (!order.getUser().getId().equals(user.getId()) && !user.getRole().name().equals("ADMIN")) {
+        if (!order.getUser().getId().equals(user.getId()) && user.getRole() != Role.SUPER_ADMIN) {
              throw new BusinessException("無權限查看此訂單");
         }
 
