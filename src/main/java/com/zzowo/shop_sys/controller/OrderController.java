@@ -8,7 +8,6 @@ import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -26,10 +25,10 @@ public class OrderController {
      */
     @PostMapping
     public ResponseEntity<ApiResponse<OrderResponse>> createOrder(
-            @AuthenticationPrincipal UserDetails userDetails,
+            @AuthenticationPrincipal String email,
             @Valid @RequestBody OrderCreateRequest request) {
 
-        OrderResponse order = orderService.createOrder(userDetails.getUsername(), request);
+        OrderResponse order = orderService.createOrder(email, request);
         return ResponseEntity.ok(ApiResponse.success("訂單建立成功", order));
     }
 
@@ -39,9 +38,9 @@ public class OrderController {
      */
     @GetMapping
     public ResponseEntity<ApiResponse<List<OrderResponse>>> getMyOrders(
-            @AuthenticationPrincipal UserDetails userDetails) {
+            @AuthenticationPrincipal String email) {
 
-        List<OrderResponse> orders = orderService.getMyOrders(userDetails.getUsername());
+        List<OrderResponse> orders = orderService.getMyOrders(email);
         return ResponseEntity.ok(ApiResponse.success("取得訂單列表成功", orders));
     }
 
@@ -51,10 +50,10 @@ public class OrderController {
      */
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<OrderResponse>> getOrder(
-            @AuthenticationPrincipal UserDetails userDetails,
+            @AuthenticationPrincipal String email,
             @PathVariable Long id) {
 
-        OrderResponse order = orderService.getOrderById(userDetails.getUsername(), id);
+        OrderResponse order = orderService.getOrderById(email, id);
         return ResponseEntity.ok(ApiResponse.success("取得訂單詳情成功", order));
     }
 }
