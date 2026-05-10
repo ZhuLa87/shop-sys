@@ -14,7 +14,6 @@ import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -34,9 +33,9 @@ public class UserController {
      * @return
      */
     @GetMapping("/me")
-    public ResponseEntity<ApiResponse<Object>> getCurrentUser(@AuthenticationPrincipal UserDetails userDetails) {
+    public ResponseEntity<ApiResponse<Object>> getCurrentUser(@AuthenticationPrincipal String email) {
 
-        UserResponse userProfile = userService.getUserProfile(userDetails.getUsername());
+        UserResponse userProfile = userService.getUserProfile(email);
         return ResponseEntity.ok(ApiResponse.success("成功通過驗證", userProfile));
     }
 
@@ -48,7 +47,7 @@ public class UserController {
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<Object>> getUserById(
             @PathVariable Long id,
-            @AuthenticationPrincipal UserDetails userDetails) {
+            @AuthenticationPrincipal String email) {
 
         UserResponse userProfile = userService.getUserById(id);
         return ResponseEntity.ok(ApiResponse.success("成功取得使用者資料", userProfile));
@@ -63,7 +62,7 @@ public class UserController {
      */
     @GetMapping
     public ResponseEntity<ApiResponse<Object>> getAllUsers(
-            @AuthenticationPrincipal UserDetails userDetails) {
+            @AuthenticationPrincipal String email) {
 
         return ResponseEntity.ok(ApiResponse.success("成功取得所有使用者資料", userService.getAllUsers()));
     }
@@ -77,10 +76,10 @@ public class UserController {
      */
     @PutMapping("/me")
     public ResponseEntity<ApiResponse<Void>> updateMyProfile(
-            @AuthenticationPrincipal UserDetails userDetails,
+            @AuthenticationPrincipal String email,
             @Valid @RequestBody UserSelfUpdateRequest request) {
 
-        userService.updateMyInfo(userDetails.getUsername(), request);
+        userService.updateMyInfo(email, request);
         return ResponseEntity.ok(ApiResponse.success("個人資料更新成功"));
     }
 
