@@ -25,6 +25,12 @@ spring:
             hibernate:
                 dialect: org.hibernate.dialect.MariaDBDialect
 
+    data:
+        redis:
+            host: tu-zhu.soay-fish.ts.net
+            port: 6379
+            password: zhuladev
+
 # 管理端點配置
 management:
     endpoints:

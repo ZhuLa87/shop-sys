@@ -7,13 +7,14 @@ import com.zzowo.shop_sys.dto.response.ApiResponse;
 import com.zzowo.shop_sys.dto.response.auth.LoginResponse;
 import com.zzowo.shop_sys.dto.response.auth.TokenRefreshResponse;
 import com.zzowo.shop_sys.dto.response.user.RegisterResponse;
-import com.zzowo.shop_sys.entity.RefreshToken;
 import com.zzowo.shop_sys.entity.User;
 import com.zzowo.shop_sys.exception.ResourceNotFoundException;
 import com.zzowo.shop_sys.repository.UserRepository;
 import com.zzowo.shop_sys.service.RefreshTokenService;
+import com.zzowo.shop_sys.service.TokenBlacklistService;
 import com.zzowo.shop_sys.service.UserService;
 import com.zzowo.shop_sys.util.JwtUtil;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -28,6 +29,9 @@ public class AuthController {
 
     @Autowired
     private RefreshTokenService refreshTokenService;
+
+    @Autowired
+    private TokenBlacklistService tokenBlacklistService;
 
     @Autowired
     private JwtUtil jwtUtil;
@@ -50,20 +54,20 @@ public class AuthController {
     }
 
     // POST /api/v1/auth/refresh
-    // 用 Refresh Token 換發新的 Access Token（並輪替 Refresh Token）
+    // 用 Refresh Token 換發新的 Access Token + Refresh Token（Token Rotation）
     @PostMapping("/refresh")
     public ResponseEntity<ApiResponse<TokenRefreshResponse>> refresh(@Valid @RequestBody TokenRefreshRequest request) {
-        RefreshToken old = refreshTokenService.validateAndRotate(request.getRefreshToken());
+        Long userId = refreshTokenService.validateAndDelete(request.getRefreshToken());
 
-        User user = userRepository.findById(old.getUser().getId())
+        User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("使用者不存在"));
 
         String newAccessToken = jwtUtil.generateToken(user);
-        RefreshToken newRefreshToken = refreshTokenService.create(user);
+        String newRefreshToken = refreshTokenService.create(userId);
 
         TokenRefreshResponse body = new TokenRefreshResponse(
                 newAccessToken,
-                newRefreshToken.getToken(),
+                newRefreshToken,
                 "Bearer",
                 jwtUtil.getAccessExpirationSeconds()
         );
@@ -71,11 +75,20 @@ public class AuthController {
     }
 
     // POST /api/v1/auth/logout
-    // 傳入 Refresh Token，登出後使其失效
+    // 1. 將 Access Token 加入黑名單（立即失效）
+    // 2. 刪除 Refresh Token（無法再換發）
     @PostMapping("/logout")
-    public ResponseEntity<ApiResponse<Void>> logout(@Valid @RequestBody TokenRefreshRequest request) {
-        RefreshToken rt = refreshTokenService.validateAndRotate(request.getRefreshToken());
-        // validateAndRotate 已刪除 token，登出完成
+    public ResponseEntity<ApiResponse<Void>> logout(
+            @Valid @RequestBody TokenRefreshRequest request,
+            HttpServletRequest httpRequest) {
+
+        String authHeader = httpRequest.getHeader("Authorization");
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            tokenBlacklistService.blacklist(authHeader.substring(7));
+        }
+
+        refreshTokenService.deleteIfExists(request.getRefreshToken());
+
         return ResponseEntity.ok(ApiResponse.success("已成功登出", null));
     }
 }

@@ -17,7 +17,6 @@ import com.zzowo.shop_sys.dto.request.user.UserSelfUpdateRequest;
 import com.zzowo.shop_sys.dto.response.auth.LoginResponse;
 import com.zzowo.shop_sys.dto.response.user.RegisterResponse;
 import com.zzowo.shop_sys.dto.response.user.UserResponse;
-import com.zzowo.shop_sys.entity.RefreshToken;
 import com.zzowo.shop_sys.entity.User;
 import com.zzowo.shop_sys.enums.Role;
 import com.zzowo.shop_sys.exception.ResourceNotFoundException;
@@ -85,9 +84,9 @@ public class UserService {
         userRepository.save(user);
 
         String accessToken = jwtUtil.generateToken(user);
-        RefreshToken refreshToken = refreshTokenService.create(user);
+        String refreshToken = refreshTokenService.create(user.getId());
 
-        return new LoginResponse(accessToken, refreshToken.getToken(), "Bearer", jwtUtil.getAccessExpirationSeconds());
+        return new LoginResponse(accessToken, refreshToken, "Bearer", jwtUtil.getAccessExpirationSeconds());
     }
 
     @Transactional // 加入事務管理
