@@ -1,8 +1,11 @@
 package com.zzowo.shop_sys.enums;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 /**
  * 定義系統中的使用者角色
  */
+@Schema(description = "使用者角色")
 public enum Role {
     CUSTOMER,          // 一般顧客
     FINANCE,           // 財務人員

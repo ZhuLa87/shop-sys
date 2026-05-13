@@ -1,8 +1,11 @@
 package com.zzowo.shop_sys.enums;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 /**
  * 商品狀態列舉
  */
+@Schema(description = "商品狀態")
 public enum ProductStatus {
     ON_SHELF("上架中"),    // 0
     OFF_SHELF("已下架"),   // 1
