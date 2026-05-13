@@ -1,6 +1,7 @@
 package com.zzowo.shop_sys.service;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.stream.Collectors;
 
 import com.zzowo.shop_sys.mapper.UserMapper; // Import Mapper
@@ -154,7 +155,7 @@ public class UserService {
     }
 
     // 超級管理員取得所有使用者資訊
-    public Object getAllUsers() {
+    public List<UserResponse> getAllUsers() {
         return userRepository.findAll().stream()
                 .map(userMapper::toUserResponse)
                 .collect(Collectors.toList());
