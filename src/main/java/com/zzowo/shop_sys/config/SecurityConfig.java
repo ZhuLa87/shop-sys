@@ -43,6 +43,9 @@ public class SecurityConfig {
                         // 允許 "註冊" 和 "登入"
                         .requestMatchers("/v1/auth/**").permitAll()
 
+                        // Swagger UI
+                        .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll()
+
                         // 取得商品庫存變動紀錄
                         .requestMatchers(HttpMethod.GET, "/v1/products/*/inventory-logs").hasAnyRole("PRODUCT_MANAGER", "SUPER_ADMIN")
                         // 查看所有商品紀錄總覽
