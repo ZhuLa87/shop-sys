@@ -15,7 +15,7 @@ public class InventoryLogResponse {
     @Schema(description = "庫存變動數量（正數為增加，負數為扣減）", example = "-2")
     private Integer changeAmount;
 
-    @Schema(description = "變動原因", example = "ORDER_PLACE")
+    @Schema(description = "變動原因：RESTOCK（進貨）、ORDER（出貨）、ADJUSTMENT（人工調整）、CANCEL（訂單取消回庫）、RETURN（退貨）", example = "ORDER")
     private String reason;
 
     @Schema(description = "操作人員使用者 ID", example = "3")
