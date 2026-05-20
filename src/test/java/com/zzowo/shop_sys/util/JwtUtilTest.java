@@ -62,7 +62,7 @@ class JwtUtilTest {
 
     @Test
     void validateToken_expiredToken_returnsFalse() {
-        // 將 expiration 設為負數，產生一個「發行時已過期」的 token
+        // 將 expiration 設為負數,產生一個"發行時已過期"的 token
         ReflectionTestUtils.setField(jwtUtil, "expiration", -10000L);
         String token = jwtUtil.generateToken(mockUser());
 
@@ -80,7 +80,7 @@ class JwtUtilTest {
 
     @Test
     void getJtiFromToken_expiredToken_stillReturnsJti() {
-        // 過期的 token 仍可取出 jti（供黑名單 TTL 計算使用）
+        // 過期的 token 仍可取出 jti (供黑名單 TTL 計算使用) 
         ReflectionTestUtils.setField(jwtUtil, "expiration", -10000L);
         String token = jwtUtil.generateToken(mockUser());
 

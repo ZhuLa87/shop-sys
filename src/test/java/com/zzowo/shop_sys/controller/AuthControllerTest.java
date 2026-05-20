@@ -48,7 +48,7 @@ class AuthControllerTest {
     @MockitoBean
     TokenBlacklistService tokenBlacklistService;
 
-    // JwtAuthenticationFilter 依賴 JwtUtil，需要 MockitoBean 防止 NPE
+    // JwtAuthenticationFilter 依賴 JwtUtil,需要 MockitoBean 防止 NPE
     @MockitoBean
     JwtUtil jwtUtil;
 
@@ -106,19 +106,19 @@ class AuthControllerTest {
     @Test
     void refresh_invalidRefreshToken_returns4xx() throws Exception {
         when(refreshTokenService.validateAndDelete("expired-rt"))
-                .thenThrow(new BusinessException("無效或已過期的 Refresh Token，請重新登入"));
+                .thenThrow(new BusinessException("無效或已過期的 Refresh Token,請重新登入"));
 
         mockMvc.perform(post("/v1/auth/refresh")
 .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(refreshRequest("expired-rt"))))
                 .andExpect(status().is4xxClientError())
-                .andExpect(jsonPath("$.message").value("無效或已過期的 Refresh Token，請重新登入"));
+                .andExpect(jsonPath("$.message").value("無效或已過期的 Refresh Token,請重新登入"));
     }
 
     @Test
     void refresh_blankRefreshToken_returns400() throws Exception {
         TokenRefreshRequest body = new TokenRefreshRequest();
-        // refreshToken 留空，觸發 @NotBlank 驗證
+        // refreshToken 留空,觸發 @NotBlank 驗證
 
         mockMvc.perform(post("/v1/auth/refresh")
 .contentType(MediaType.APPLICATION_JSON)

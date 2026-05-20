@@ -43,7 +43,7 @@ class CartRepositoryTest {
         List<Cart> result = cartRepository.findByUserId(user.getId());
 
         assertThat(result).hasSize(2);
-        // JOIN FETCH 確認 product 已載入，不是 proxy
+        // JOIN FETCH 確認 product 已載入,不是 proxy
         assertThat(result.get(0).getProduct().getName()).isEqualTo("商品A");
     }
 

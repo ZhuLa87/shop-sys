@@ -47,7 +47,7 @@ class OrderRepositoryTest {
         Order o2 = em.persistAndFlush(buildOrder(user));
         Order o3 = em.persistAndFlush(buildOrder(user));
 
-        // 用 native query 設定明確的時間差，避免依賴 @PrePersist 精度
+        // 用 native query 設定明確的時間差,避免依賴 @PrePersist 精度
         setCreatedAt(o1.getId(), LocalDateTime.now().minusHours(2));
         setCreatedAt(o2.getId(), LocalDateTime.now().minusHours(1));
         setCreatedAt(o3.getId(), LocalDateTime.now());
