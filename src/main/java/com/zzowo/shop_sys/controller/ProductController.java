@@ -30,20 +30,20 @@ public class ProductController {
 
     @Operation(
         summary = "取得上架商品列表",
-        description = "取得所有狀態為 ON_SHELF 的商品，支援分頁、關鍵字搜尋（商品名稱）與排序。" +
-                      "排序欄位：name、price、createdAt（預設 createdAt,desc）"
+        description = "取得所有狀態為 ON_SHELF 的商品,支援分頁,關鍵字搜尋 (商品名稱) 與排序." +
+                      "排序欄位:name,price,createdAt (預設 createdAt,desc) "
     )
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "未登入")
     @GetMapping
     public ResponseEntity<ApiResponse<PageResponse<ProductResponse>>> getProducts(
             @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable,
-            @Parameter(description = "商品名稱關鍵字（選填）") @RequestParam(required = false) String keyword) {
+            @Parameter(description = "商品名稱關鍵字 (選填) ") @RequestParam(required = false) String keyword) {
         PageResponse<ProductResponse> products = productService.getOnShelfProducts(pageable, keyword);
         return ResponseEntity.ok(ApiResponse.success("取得商品列表成功", products));
     }
 
-    @Operation(summary = "取得單一商品詳情", description = "依商品 ID 取得詳細資訊，僅限上架商品")
+    @Operation(summary = "取得單一商品詳情", description = "依商品 ID 取得詳細資訊,僅限上架商品")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "未登入")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "商品不存在")
@@ -54,7 +54,7 @@ public class ProductController {
         return ResponseEntity.ok(ApiResponse.success("取得商品詳情成功", product));
     }
 
-    @Operation(summary = "新增商品", description = "新增商品至系統（需要 PRODUCT_MANAGER 或 SUPER_ADMIN 角色）")
+    @Operation(summary = "新增商品", description = "新增商品至系統 (需要 PRODUCT_MANAGER 或 SUPER_ADMIN 角色) ")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "商品新增成功")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "請求參數錯誤")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "未登入")
@@ -65,7 +65,7 @@ public class ProductController {
         return ResponseEntity.ok(ApiResponse.success("商品新增成功", response));
     }
 
-    @Operation(summary = "修改商品", description = "更新指定商品資訊（需要 PRODUCT_MANAGER 或 SUPER_ADMIN 角色）")
+    @Operation(summary = "修改商品", description = "更新指定商品資訊 (需要 PRODUCT_MANAGER 或 SUPER_ADMIN 角色) ")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "商品更新成功")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "請求參數錯誤")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "未登入")
@@ -79,7 +79,7 @@ public class ProductController {
         return ResponseEntity.ok(ApiResponse.success("商品更新成功", response));
     }
 
-    @Operation(summary = "刪除商品", description = "刪除指定商品（需要 PRODUCT_MANAGER 或 SUPER_ADMIN 角色）")
+    @Operation(summary = "刪除商品", description = "刪除指定商品 (需要 PRODUCT_MANAGER 或 SUPER_ADMIN 角色) ")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "商品刪除成功")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "未登入")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "權限不足")
@@ -91,7 +91,7 @@ public class ProductController {
         return ResponseEntity.ok(ApiResponse.success("商品刪除成功"));
     }
 
-    @Operation(summary = "取得所有商品庫存變動紀錄", description = "管理員總覽所有商品的庫存異動紀錄（需要 PRODUCT_MANAGER 或 SUPER_ADMIN 角色）")
+    @Operation(summary = "取得所有商品庫存變動紀錄", description = "管理員總覽所有商品的庫存異動紀錄 (需要 PRODUCT_MANAGER 或 SUPER_ADMIN 角色) ")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "未登入")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "權限不足")
@@ -101,7 +101,7 @@ public class ProductController {
         return ResponseEntity.ok(ApiResponse.success("取得所有庫存紀錄成功", logs));
     }
 
-    @Operation(summary = "取得指定商品庫存變動紀錄", description = "取得特定商品的所有庫存異動紀錄（需要 PRODUCT_MANAGER 或 SUPER_ADMIN 角色）")
+    @Operation(summary = "取得指定商品庫存變動紀錄", description = "取得特定商品的所有庫存異動紀錄 (需要 PRODUCT_MANAGER 或 SUPER_ADMIN 角色) ")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "未登入")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "權限不足")

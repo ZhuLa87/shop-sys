@@ -32,11 +32,11 @@ public class SecurityConfig {
     }
 
     // 2. 設定基本的網頁安全規則 (SecurityFilterChain)
-    // 因為我們剛加入 Security，如果不設定這個，所有功能(包含註冊)都會預設被擋住需要登入
+    // 因為我們剛加入 Security,如果不設定這個,所有功能(包含註冊)都會預設被擋住需要登入
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                // 暫時關閉 CSRF 防護 (因為我們之後要用 JWT，且目前是前後端分離，先關閉比較好測試)
+                // 暫時關閉 CSRF 防護 (因為我們之後要用 JWT,且目前是前後端分離,先關閉比較好測試)
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
                         // 1. 公開端點
@@ -69,9 +69,9 @@ public class SecurityConfig {
 
                         // 4. 其他所有請求都需要登入才能看
                         .anyRequest().authenticated())
-                // 設定為無狀態 (Stateless), 因為我們用 JWT，伺服器不需要存 Session
+                // 設定為無狀態 (Stateless), 因為我們用 JWT,伺服器不需要存 Session
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                // 把過濾器加在 UsernamePasswordAuthenticationFilter 之前。先檢查 JWT，如果沒有 JWT 才走傳統流程 (但這裡其實只靠 JWT)
+                // 把過濾器加在 UsernamePasswordAuthenticationFilter 之前.先檢查 JWT,如果沒有 JWT 才走傳統流程 (但這裡其實只靠 JWT)
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
                 .exceptionHandling(conf -> conf
                         .authenticationEntryPoint(authenticationEntryPoint())
@@ -80,7 +80,7 @@ public class SecurityConfig {
         return http.build();
     }
 
-    // 自定義 401 處理器：回傳 JSON
+    // 自定義 401 處理器:回傳 JSON
     @Bean
     public AuthenticationEntryPoint authenticationEntryPoint() {
         return (request, response, authException) -> {
@@ -93,7 +93,7 @@ public class SecurityConfig {
         };
     }
 
-    // 自定義 403 處理器：回傳 JSON
+    // 自定義 403 處理器:回傳 JSON
     @Bean
     public AccessDeniedHandler accessDeniedHandler() {
         return (request, response, accessDeniedException) -> {

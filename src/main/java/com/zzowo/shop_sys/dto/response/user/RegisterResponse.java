@@ -19,6 +19,6 @@ public class RegisterResponse {
     @Schema(description = "電話", example = "0912345678")
     private String phone;
 
-    @Schema(description = "帳號建立時間（Unix 毫秒時間戳）", example = "1715000000000")
+    @Schema(description = "帳號建立時間 (Unix 毫秒時間戳) ", example = "1715000000000")
     private Long createdAt;
 }

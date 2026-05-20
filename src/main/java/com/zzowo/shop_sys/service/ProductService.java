@@ -65,7 +65,7 @@ public class ProductService {
         return productMapper.toDetailResponse(savedProduct);
     }
 
-    // 刪除商品 (這裡直接刪除，實務上通常是改狀態為 OFF_SHELF)
+    // 刪除商品 (這裡直接刪除,實務上通常是改狀態為 OFF_SHELF)
     @Transactional
     public void deleteProduct(Long id) {
         if (!productRepository.existsById(id)) {
@@ -74,11 +74,11 @@ public class ProductService {
         productRepository.deleteById(id);
     }
 
-    // 取得上架商品（分頁 + 關鍵字搜尋）
+    // 取得上架商品 (分頁 + 關鍵字搜尋) 
     public PageResponse<ProductResponse> getOnShelfProducts(Pageable pageable, String keyword) {
         pageable.getSort().forEach(order -> {
             if (!ALLOWED_SORT_FIELDS.contains(order.getProperty())) {
-                throw new BusinessException("不支援的排序欄位: " + order.getProperty() + "，允許欄位: name, price, createdAt");
+                throw new BusinessException("不支援的排序欄位: " + order.getProperty() + ",允許欄位: name, price, createdAt");
             }
         });
 
@@ -107,7 +107,7 @@ public class ProductService {
 
     // 查詢特定商品的庫存紀錄
     public List<InventoryLogResponse> getProductInventoryLogs(Long productId) {
-        // 確認商品存在 (這行是為了防呆，若商品不存在 repository 通常會回傳空 list 或報錯，視需求而定)
+        // 確認商品存在 (這行是為了防呆,若商品不存在 repository 通常會回傳空 list 或報錯,視需求而定)
         if (!productRepository.existsById(productId)) {
             throw new ResourceNotFoundException("找不到商品 ID: " + productId);
         }

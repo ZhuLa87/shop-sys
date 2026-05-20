@@ -21,12 +21,12 @@ public class CartItemResponse {
     @Schema(description = "商品封面圖片 URL", example = "https://example.com/images/cover.jpg")
     private String coverImageUrl;
 
-    @Schema(description = "商品單價（新台幣）", example = "39900")
+    @Schema(description = "商品單價 (新台幣) ", example = "39900")
     private BigDecimal price;
 
     @Schema(description = "購買數量", example = "2")
     private Integer quantity;
 
-    @Schema(description = "小計（單價 × 數量）", example = "79800")
+    @Schema(description = "小計 (單價 × 數量) ", example = "79800")
     private BigDecimal subtotal;
 }

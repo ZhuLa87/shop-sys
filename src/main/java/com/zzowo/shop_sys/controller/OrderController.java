@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-@Tag(name = "Order", description = "訂單 API（需登入，僅能操作自己的訂單）")
+@Tag(name = "Order", description = "訂單 API (需登入,僅能操作自己的訂單) ")
 @RestController
 @RequestMapping("/v1/orders")
 public class OrderController {
@@ -23,11 +23,11 @@ public class OrderController {
     @Autowired
     private OrderService orderService;
 
-    @Operation(summary = "建立訂單（結帳）", description = "從目前使用者的購物車建立訂單並扣減庫存，訂單初始狀態為 PENDING（待付款）")
+    @Operation(summary = "建立訂單 (結帳) ", description = "從目前使用者的購物車建立訂單並扣減庫存,訂單初始狀態為 PENDING (待付款) ")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "訂單建立成功")
-    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "請求參數錯誤（必填欄位為空）")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "請求參數錯誤 (必填欄位為空) ")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "未登入")
-    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "422", description = "庫存不足，無法完成下單")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "422", description = "庫存不足,無法完成下單")
     @PostMapping
     public ResponseEntity<ApiResponse<OrderResponse>> createOrder(
             @Parameter(hidden = true) @AuthenticationPrincipal String email,
@@ -36,7 +36,7 @@ public class OrderController {
         return ResponseEntity.ok(ApiResponse.success("訂單建立成功", order));
     }
 
-    @Operation(summary = "查詢我的所有訂單", description = "取得目前登入使用者的所有訂單列表，依建立時間降序排列")
+    @Operation(summary = "查詢我的所有訂單", description = "取得目前登入使用者的所有訂單列表,依建立時間降序排列")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "未登入")
     @GetMapping
@@ -46,7 +46,7 @@ public class OrderController {
         return ResponseEntity.ok(ApiResponse.success("取得訂單列表成功", orders));
     }
 
-    @Operation(summary = "查詢特定訂單詳情", description = "依訂單 ID 取得訂單詳情（含明細）；只能查詢自己的訂單")
+    @Operation(summary = "查詢特定訂單詳情", description = "依訂單 ID 取得訂單詳情 (含明細) ;只能查詢自己的訂單")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "未登入")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "嘗試查詢他人的訂單")

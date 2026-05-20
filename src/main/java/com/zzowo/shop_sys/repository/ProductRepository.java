@@ -27,8 +27,8 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     // 分頁查詢上架商品 + 名稱關鍵字搜尋
     Page<Product> findByStatusAndNameContaining(ProductStatus status, String keyword, Pageable pageable);
 
-    // JOIN FETCH: 告訴 JPA 查詢 Product 時，順便把 images 關聯表抓出來填好
-    // LEFT JOIN: 就算商品沒有圖片，商品本身也要查出來 (避免因沒圖片導致商品消失)
+    // JOIN FETCH: 告訴 JPA 查詢 Product 時,順便把 images 關聯表抓出來填好
+    // LEFT JOIN: 就算商品沒有圖片,商品本身也要查出來 (避免因沒圖片導致商品消失)
     @Query("SELECT p FROM Product p LEFT JOIN FETCH p.images WHERE p.id = :id")
     Optional<Product> findByIdWithImages(@Param("id") Long id);
 }

@@ -11,15 +11,15 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class LoginResponse {
 
-    @Schema(description = "Access Token（JWT），請放入後續請求的 Authorization: Bearer 標頭", example = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...")
+    @Schema(description = "Access Token (JWT) ,請放入後續請求的 Authorization: Bearer 標頭", example = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...")
     private String accessToken;
 
-    @Schema(description = "Refresh Token，用於換發新的 Access Token", example = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...")
+    @Schema(description = "Refresh Token,用於換發新的 Access Token", example = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...")
     private String refreshToken;
 
     @Schema(description = "Token 類型", example = "Bearer")
     private String tokenType;
 
-    @Schema(description = "Access Token 有效期（秒）", example = "1800")
+    @Schema(description = "Access Token 有效期 (秒) ", example = "1800")
     private long expiresIn;
 }

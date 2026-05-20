@@ -33,7 +33,7 @@ public class DataInitializer implements CommandLineRunner {
     @Transactional
     public void run(String... args) {
         if (userRepository.count() > 0) {
-            log.info("[DataInitializer] 資料已存在，跳過初始化");
+            log.info("[DataInitializer] 資料已存在,跳過初始化");
             return;
         }
 
@@ -46,48 +46,48 @@ public class DataInitializer implements CommandLineRunner {
 
         Product earphone = createProduct(
                 "藍芽耳機 Pro",
-                "高音質主動降噪無線耳機，支援 ANC 技術，連續播放 30 小時",
+                "高音質主動降噪無線耳機,支援 ANC 技術,連續播放 30 小時",
                 new BigDecimal("1990.00"), 50, ProductStatus.ON_SHELF,
                 "https://picsum.photos/seed/earphone/400/400");
 
         createProduct(
                 "無線靜音滑鼠",
-                "三段 DPI 切換，側鍵設計，辦公靜音首選",
+                "三段 DPI 切換,側鍵設計,辦公靜音首選",
                 new BigDecimal("890.00"), 120, ProductStatus.ON_SHELF,
                 "https://picsum.photos/seed/mouse/400/400");
 
         createProduct(
                 "機械鍵盤 RGB",
-                "青軸手感，RGB 背光，鋁合金外殼，87 鍵緊湊佈局",
+                "青軸手感,RGB 背光,鋁合金外殼,87 鍵緊湊佈局",
                 new BigDecimal("2490.00"), 30, ProductStatus.ON_SHELF,
                 "https://picsum.photos/seed/keyboard/400/400");
 
         createProduct(
                 "智慧手錶 S3",
-                "血氧偵測、心率監測、GPS 定位，防水 50 米",
+                "血氧偵測,心率監測,GPS 定位,防水 50 米",
                 new BigDecimal("5990.00"), 15, ProductStatus.ON_SHELF,
                 "https://picsum.photos/seed/watch/400/400");
 
         Product hub = createProduct(
                 "USB-C 七合一 Hub",
-                "支援 4K HDMI、100W PD 充電、USB 3.0 × 3、SD/TF 讀卡",
+                "支援 4K HDMI,100W PD 充電,USB 3.0 × 3,SD/TF 讀卡",
                 new BigDecimal("1290.00"), 200, ProductStatus.ON_SHELF,
                 "https://picsum.photos/seed/hub/400/400");
 
         createProduct(
                 "可攜式藍芽音響",
-                "IPX7 防水、360° 環繞音效，內建 5000mAh 電池",
+                "IPX7 防水,360° 環繞音效,內建 5000mAh 電池",
                 new BigDecimal("1590.00"), 45, ProductStatus.ON_SHELF,
                 "https://picsum.photos/seed/speaker/400/400");
 
         createProduct(
                 "舊款有線耳機",
-                "已停產，庫存清倉",
+                "已停產,庫存清倉",
                 new BigDecimal("490.00"), 0, ProductStatus.OFF_SHELF, null);
 
         createProduct(
                 "限量版電競滑鼠",
-                "限量聯名款，預計下季補貨",
+                "限量聯名款,預計下季補貨",
                 new BigDecimal("3290.00"), 0, ProductStatus.OUT_OF_STOCK,
                 "https://picsum.photos/seed/gaming-mouse/400/400");
 
