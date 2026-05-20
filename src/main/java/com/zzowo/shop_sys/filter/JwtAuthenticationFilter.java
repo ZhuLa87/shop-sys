@@ -44,7 +44,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             }
         }
 
-        // 從 JWT claims 直接取得角色，不查資料庫；同時檢查黑名單（已登出的 token）
+        // 從 JWT claims 直接取得角色,不查資料庫;同時檢查黑名單 (已登出的 token) 
         if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
             if (jwtUtil.validateToken(jwt) && !tokenBlacklistService.isBlacklisted(jwt)) {
                 String role = jwtUtil.getRoleFromToken(jwt);

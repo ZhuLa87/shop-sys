@@ -62,7 +62,7 @@ public class UserService {
         // 使用 Mapper 轉換基本資料
         User user = userMapper.toEntity(request);
 
-        // 處理業務邏輯 (加密、預設值)
+        // 處理業務邏輯 (加密,預設值)
         user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
         user.setRole(Role.CUSTOMER);
         user.setLastPasswordChangeAt(LocalDateTime.now());
@@ -97,7 +97,7 @@ public class UserService {
         User user = userRepository.findByEmail(currentEmail)
                 .orElseThrow(() -> new ResourceNotFoundException("使用者不存在"));
 
-        // 如果要改 Email，需檢查新 Email 是否已被其他人使用
+        // 如果要改 Email,需檢查新 Email 是否已被其他人使用
         if (StringUtils.hasText(request.getEmail()) && !request.getEmail().equals(user.getEmail())) {
             if (userRepository.existsByEmail(request.getEmail())) {
                 throw new RuntimeException("該 Email 已被註冊");
@@ -105,7 +105,7 @@ public class UserService {
             user.setEmail(request.getEmail());
         }
 
-        // 如果有傳密碼，就重新加密設定
+        // 如果有傳密碼,就重新加密設定
         if (StringUtils.hasText(request.getPassword())) {
             user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
         }

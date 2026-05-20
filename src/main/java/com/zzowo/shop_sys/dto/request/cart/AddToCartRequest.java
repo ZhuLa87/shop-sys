@@ -13,7 +13,7 @@ public class AddToCartRequest {
     @NotNull(message = "商品 ID 不可為空")
     private Long productId;
 
-    @Schema(description = "購買數量（最少 1 件）", example = "2")
+    @Schema(description = "購買數量 (最少 1 件) ", example = "2")
     @NotNull(message = "數量不可為空")
     @Min(value = 1, message = "至少需要購買 1 件")
     private Integer quantity;

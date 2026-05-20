@@ -13,7 +13,7 @@ public class ApiResponse<T> {
     @Schema(description = "回應訊息", example = "操作成功")
     private String message;
 
-    @Schema(description = "回應資料（失敗時為 null）")
+    @Schema(description = "回應資料 (失敗時為 null) ")
     private T data;
 
     public ApiResponse() {}

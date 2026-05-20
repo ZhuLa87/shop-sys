@@ -24,7 +24,7 @@ public class User implements UserDetails {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // 使用者 Email，需唯一且不可為 null
+    // 使用者 Email,需唯一且不可為 null
     @Column(nullable = false, unique = true)
     private String email;
 
@@ -100,7 +100,7 @@ public class User implements UserDetails {
         enabled = false;
     }
 
-    // 傳回使用者擁有的權限（Authorities）
+    // 傳回使用者擁有的權限 (Authorities) 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         // Spring Security 規定角色格式要是 "ROLE_XXX"
@@ -113,25 +113,25 @@ public class User implements UserDetails {
         return passwordHash;
     }
 
-    // 回傳使用者帳號（email 即 username）
+    // 回傳使用者帳號 (email 即 username) 
     @Override
     public String getUsername() {
         return email;
     }
 
-    // 帳號是否未過期（true = 沒有過期）
+    // 帳號是否未過期 (true = 沒有過期) 
     @Override
     public boolean isAccountNonExpired() {
         return accountNonExpired;
     }
 
-    // 帳號是否未被鎖（true = 沒被鎖）
+    // 帳號是否未被鎖 (true = 沒被鎖) 
     @Override
     public boolean isAccountNonLocked() {
         return accountNonLocked;
     }
 
-    // 密碼是否未過期（true = 沒過期）
+    // 密碼是否未過期 (true = 沒過期) 
     @Override
     public boolean isCredentialsNonExpired() {
         return credentialsNonExpired;

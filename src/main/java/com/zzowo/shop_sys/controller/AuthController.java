@@ -23,7 +23,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-@Tag(name = "Auth", description = "認證相關 API（註冊、登入、Token 刷新、登出）")
+@Tag(name = "Auth", description = "認證相關 API (註冊,登入,Token 刷新,登出) ")
 @RestController
 @RequestMapping("/v1/auth")
 public class AuthController {
@@ -43,9 +43,9 @@ public class AuthController {
     @Autowired
     private UserRepository userRepository;
 
-    @Operation(summary = "註冊新帳號", description = "建立新使用者帳號，預設角色為 CUSTOMER")
+    @Operation(summary = "註冊新帳號", description = "建立新使用者帳號,預設角色為 CUSTOMER")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "註冊成功")
-    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "請求參數錯誤（Email 格式、密碼長度不符）")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "請求參數錯誤 (Email 格式,密碼長度不符) ")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409", description = "Email 已被使用")
     @SecurityRequirements
     @PostMapping("/register")
@@ -54,8 +54,8 @@ public class AuthController {
         return ResponseEntity.ok(ApiResponse.success("註冊成功", newUser));
     }
 
-    @Operation(summary = "登入", description = "使用 Email + 密碼登入，成功後回傳 Access Token 與 Refresh Token")
-    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "登入成功，回傳 Token 資訊")
+    @Operation(summary = "登入", description = "使用 Email + 密碼登入,成功後回傳 Access Token 與 Refresh Token")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "登入成功,回傳 Token 資訊")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "請求參數錯誤")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Email 或密碼錯誤")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "423", description = "帳號已被鎖定")
@@ -66,7 +66,7 @@ public class AuthController {
         return ResponseEntity.ok(ApiResponse.success("登入成功", loginResponse));
     }
 
-    @Operation(summary = "刷新 Token", description = "使用 Refresh Token 換發新的 Access Token 與 Refresh Token（Token Rotation，舊 Refresh Token 立即失效）")
+    @Operation(summary = "刷新 Token", description = "使用 Refresh Token 換發新的 Access Token 與 Refresh Token (Token Rotation,舊 Refresh Token 立即失效) ")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Token 刷新成功")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "請求參數錯誤")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Refresh Token 無效或已過期")
@@ -90,7 +90,7 @@ public class AuthController {
         return ResponseEntity.ok(ApiResponse.success("Token 已刷新", body));
     }
 
-    @Operation(summary = "登出", description = "將目前的 Access Token 加入黑名單，並同步刪除 Refresh Token")
+    @Operation(summary = "登出", description = "將目前的 Access Token 加入黑名單,並同步刪除 Refresh Token")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "登出成功")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "未登入或 Token 無效")
     @PostMapping("/logout")

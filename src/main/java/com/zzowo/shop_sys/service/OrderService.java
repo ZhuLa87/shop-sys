@@ -48,7 +48,7 @@ public class OrderService {
         // 取得購物車
         List<Cart> cartItems = cartRepository.findByUserId(user.getId());
         if (cartItems.isEmpty()) {
-            throw new BusinessException("購物車為空，無法結帳");
+            throw new BusinessException("購物車為空,無法結帳");
         }
 
         // 準備建立訂單
@@ -68,7 +68,7 @@ public class OrderService {
 
             // 檢查庫存 (JPA 的 @Version 會在並發下發揮作用)
             if (product.getStockQuantity() < cart.getQuantity()) {
-                throw new BusinessException("商品 [" + product.getName() + "] 庫存不足，結帳失敗");
+                throw new BusinessException("商品 [" + product.getName() + "] 庫存不足,結帳失敗");
             }
 
             // 扣除庫存

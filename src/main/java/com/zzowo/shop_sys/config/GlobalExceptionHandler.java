@@ -25,15 +25,15 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error(e.getMessage()));
     }
 
-    // 樂觀鎖衝突（高併發下庫存/訂單版本衝突）
+    // 樂觀鎖衝突 (高併發下庫存/訂單版本衝突) 
     @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
     public ResponseEntity<ApiResponse<Void>> handleOptimisticLockingException(ObjectOptimisticLockingFailureException e) {
         log.warn("Optimistic locking conflict: {}", e.getMessage());
         return ResponseEntity.status(HttpStatus.CONFLICT)
-                .body(ApiResponse.error("商品狀態已變動，請重新整理頁面後再試"));
+                .body(ApiResponse.error("商品狀態已變動,請重新整理頁面後再試"));
     }
 
-    // Bean Validation 錯誤（@NotBlank、@Size 等）
+    // Bean Validation 錯誤 (@NotBlank,@Size 等) 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiResponse<Void>> handleValidationException(MethodArgumentNotValidException e) {
         String message = e.getBindingResult().getFieldErrors().stream()
@@ -44,20 +44,20 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error(message));
     }
 
-    // 未預期的 RuntimeException（隱藏內部細節，避免洩漏 stack trace）
+    // 未預期的 RuntimeException (隱藏內部細節,避免洩漏 stack trace) 
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<ApiResponse<Void>> handleRuntimeException(RuntimeException e) {
         log.error("Unhandled RuntimeException", e);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(ApiResponse.error("系統發生錯誤，請稍後再試"));
+                .body(ApiResponse.error("系統發生錯誤,請稍後再試"));
     }
 
-    // 捕捉所有意料之外的 Exception（例如 NullPointerException、資料庫連線失敗）
+    // 捕捉所有意料之外的 Exception (例如 NullPointerException,資料庫連線失敗) 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> handleException(Exception e) {
         log.error("Unhandled Exception", e);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(ApiResponse.error("伺服器發生未預期的錯誤，請聯繫管理員"));
+                .body(ApiResponse.error("伺服器發生未預期的錯誤,請聯繫管理員"));
     }
 
     // 捕捉"找不到資源"的例外

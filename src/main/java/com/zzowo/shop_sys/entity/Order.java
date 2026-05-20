@@ -12,13 +12,13 @@ import java.util.List;
 @Table(name = "orders")
 public class Order {
 
-    // 訂單主鍵 ID（UNSIGNED，自動遞增）
+    // 訂單主鍵 ID (UNSIGNED,自動遞增) 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // 下單者（多對一）
-    // user_id：外鍵，指向 User.id
+    // 下單者 (多對一) 
+    // user_id:外鍵,指向 User.id
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
@@ -49,12 +49,12 @@ public class Order {
     @Column(name = "recipient_address", nullable = false)
     private String recipientAddress;
 
-    // 訂單項目清單（與 OrderItem 建立一對多）
-    // cascade = ALL：建立訂單時自動建立子項目
+    // 訂單項目清單 (與 OrderItem 建立一對多) 
+    // cascade = ALL:建立訂單時自動建立子項目
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL)
     private List<OrderItem> items;
 
-    // 訂單建立時間（不可修改）
+    // 訂單建立時間 (不可修改) 
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 

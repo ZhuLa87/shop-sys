@@ -13,7 +13,7 @@ public class PageResponse<T> {
     @Schema(description = "當頁資料列表")
     private final List<T> content;
 
-    @Schema(description = "當前頁碼（從 0 開始）", example = "0")
+    @Schema(description = "當前頁碼 (從 0 開始) ", example = "0")
     private final int page;
 
     @Schema(description = "每頁筆數", example = "20")

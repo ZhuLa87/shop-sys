@@ -42,7 +42,7 @@ public class UserController {
         return ResponseEntity.ok(ApiResponse.success("成功通過驗證", userProfile));
     }
 
-    @Operation(summary = "取得特定使用者資訊", description = "依使用者 ID 取得資料（需要 SUPER_ADMIN 角色）")
+    @Operation(summary = "取得特定使用者資訊", description = "依使用者 ID 取得資料 (需要 SUPER_ADMIN 角色) ")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "未登入")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "權限不足")
@@ -55,7 +55,7 @@ public class UserController {
         return ResponseEntity.ok(ApiResponse.success("成功取得使用者資料", userProfile));
     }
 
-    @Operation(summary = "取得所有使用者列表", description = "取得系統所有使用者資料（需要 SUPER_ADMIN 角色）")
+    @Operation(summary = "取得所有使用者列表", description = "取得系統所有使用者資料 (需要 SUPER_ADMIN 角色) ")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "未登入")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "權限不足")
@@ -65,7 +65,7 @@ public class UserController {
         return ResponseEntity.ok(ApiResponse.success("成功取得所有使用者資料", userService.getAllUsers()));
     }
 
-    @Operation(summary = "更新自己的個人資料", description = "使用者更新自身資料（email、密碼、姓名、電話）；所有欄位皆為選填，留空則不修改")
+    @Operation(summary = "更新自己的個人資料", description = "使用者更新自身資料 (email,密碼,姓名,電話) ;所有欄位皆為選填,留空則不修改")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "更新成功")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "請求參數錯誤")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "未登入")
@@ -77,7 +77,7 @@ public class UserController {
         return ResponseEntity.ok(ApiResponse.success("個人資料更新成功"));
     }
 
-    @Operation(summary = "管理員更新特定使用者資料", description = "以 SUPER_ADMIN 身份更新任意使用者資料，包含角色與帳號啟用狀態")
+    @Operation(summary = "管理員更新特定使用者資料", description = "以 SUPER_ADMIN 身份更新任意使用者資料,包含角色與帳號啟用狀態")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "更新成功")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "請求參數錯誤")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "未登入")

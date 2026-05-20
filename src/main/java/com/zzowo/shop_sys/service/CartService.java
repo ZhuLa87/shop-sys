@@ -50,7 +50,7 @@ public class CartService {
         Product product = productRepository.findById(request.getProductId())
                 .orElseThrow(() -> new ResourceNotFoundException("商品不存在"));
 
-        // 檢查購物車是否已經有該商品，若有則增加數量，若無則新增
+        // 檢查購物車是否已經有該商品,若有則增加數量,若無則新增
         Cart cart = cartRepository.findByUserIdAndProductId(user.getId(), product.getId())
                 .orElse(new Cart());
 
@@ -59,7 +59,7 @@ public class CartService {
 
         // 檢查庫存 (已有的 + 這次要加的)
         if (product.getStockQuantity() < totalTargetQuantity) {
-            throw new BusinessException("庫存不足，目前購物車內已有 " + existingQuantity + " 件，無法再加入 " + request.getQuantity() + " 件");
+            throw new BusinessException("庫存不足,目前購物車內已有 " + existingQuantity + " 件,無法再加入 " + request.getQuantity() + " 件");
         }
 
         if (cart.getId() == null) {
@@ -68,7 +68,7 @@ public class CartService {
             cart.setProduct(product);
             cart.setQuantity(request.getQuantity());
         } else {
-            // 既有商品，累加數量
+            // 既有商品,累加數量
             cart.setQuantity(totalTargetQuantity);
         }
 
@@ -90,7 +90,7 @@ public class CartService {
         cartRepository.delete(cart);
     }
 
-    // 輔助方法：用 Email 找 User
+    // 輔助方法:用 Email 找 User
     private User getUserByEmail(String email) {
         return userRepository.findByEmail(email)
                 .orElseThrow(() -> new ResourceNotFoundException("使用者不存在"));
