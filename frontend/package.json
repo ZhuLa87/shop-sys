@@ -3,17 +3,27 @@
   "type": "module",
   "private": true,
   "scripts": {
+    "dev": "NODE_TLS_REJECT_UNAUTHORIZED=0 nuxt dev",
     "build": "nuxt build",
-    "dev": "nuxt dev",
     "generate": "nuxt generate",
     "preview": "nuxt preview",
+    "typecheck": "nuxt typecheck",
     "postinstall": "nuxt prepare"
+  },
+  "scriptsDescription": {
+    "dev": "啟動開發伺服器 (https://localhost:8087) ,含 HTTPS 憑證與 API proxy",
+    "build": "生產環境建置,輸出至 .output/",
+    "generate": "靜態網站預渲染 (SSG) ,輸出純 HTML/JS",
+    "preview": "在本機預覽 build 產出的正式版本",
+    "typecheck": "以 vue-tsc 對全專案 (.vue / .ts) 進行型別檢查,不產生輸出檔",
+    "postinstall": "安裝依賴後自動執行,產生 .nuxt/ 型別與設定檔"
   },
   "dependencies": {
     "@element-plus/icons-vue": "^2.3.2",
     "@element-plus/nuxt": "^1.1.5",
     "@pinia/nuxt": "^0.11.3",
     "@vee-validate/zod": "^4.15.1",
+    "dayjs": "^1.11.20",
     "element-plus": "^2.14.0",
     "nuxt": "^4.4.6",
     "pinia": "^3.0.4",
@@ -24,6 +34,7 @@
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.0",
+    "@types/node": "^25.9.1",
     "tailwindcss": "^4.3.0"
   }
 }
