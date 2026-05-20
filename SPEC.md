@@ -24,17 +24,17 @@
 
 ### 1.1 專案目的
 
-Shop-Sys 是一套 **單一廠商 B2C 電商平台 (Single-Vendor B2C E-Commerce Platform)**，定位為「一個賣家對多位消費者」的線上購物系統。系統提供完整的購物流程（商品瀏覽、加入購物車、結帳）以及後台管理功能（商品管理、庫存追蹤、會員管理）。
+Shop-Sys 是一套 **單一廠商 B2C 電商平台 (Single-Vendor B2C E-Commerce Platform)**,定位為"一個賣家對多位消費者"的線上購物系統.系統提供完整的購物流程 (商品瀏覽,加入購物車,結帳) 以及後台管理功能 (商品管理,庫存追蹤,會員管理) .
 
 ### 1.2 核心目標
 
 | 目標 | 說明 |
 | :--- | :--- |
-| **前後端分離** | 後端僅提供 RESTful JSON API，不負責渲染畫面 |
-| **無狀態認證** | 使用 JWT Token 實現 Stateless 架構，可水平擴展 |
+| **前後端分離** | 後端僅提供 RESTful JSON API,不負責渲染畫面 |
+| **無狀態認證** | 使用 JWT Token 實現 Stateless 架構,可水平擴展 |
 | **資料一致性** | 結帳流程全程使用資料庫事務 (Transaction) 保護 |
 | **庫存安全** | 樂觀鎖 (Optimistic Lock) 防止高並發超賣 |
-| **稽核可追蹤** | 所有庫存異動均記錄原因與操作者，留有完整紀錄 |
+| **稽核可追蹤** | 所有庫存異動均記錄原因與操作者,留有完整紀錄 |
 
 ### 1.3 系統邊界
 
@@ -55,13 +55,13 @@ Shop-Sys 是一套 **單一廠商 B2C 電商平台 (Single-Vendor B2C E-Commerce
 | 核心框架 | Spring Boot | 3.5.13 |
 | 程式語言 | Java | 21 |
 | 資料庫 | MariaDB | 11.8 |
-| ORM | Spring Data JPA (Hibernate) | — |
-| 安全框架 | Spring Security | — |
+| ORM | Spring Data JPA (Hibernate) | - |
+| 安全框架 | Spring Security | - |
 | JWT 函式庫 | jjwt-api | 0.12.6 |
 | 密碼雜湊 | Argon2 (via Spring Security) | v5.8 defaults |
 | 建置工具 | Maven | 3.8.x |
-| 程式碼生成 | Lombok | — |
-| 監控 | Spring Boot Actuator | — |
+| 程式碼生成 | Lombok | - |
+| 監控 | Spring Boot Actuator | - |
 
 ### 2.2 前端技術棧
 
@@ -79,9 +79,9 @@ Shop-Sys 是一套 **單一廠商 B2C 電商平台 (Single-Vendor B2C E-Commerce
 | API 版本前綴 | `/v1` |
 | 完整 Base URL | `http://{host}:8088/api/v1` |
 | JPA DDL 模式 | `update` (自動維護 Schema) |
-| JWT 有效期限 | 86400000 ms（24 小時）|
+| JWT 有效期限 | 86400000 ms (24 小時) |
 | JWT 演算法 | HS512 (HMAC-SHA512) |
-| 預設 Spring Profile | `dev`（於 `application.yaml` 設定）|
+| 預設 Spring Profile | `dev` (於 `application.yaml` 設定) |
 
 ### 2.4 專案套件結構
 
@@ -90,7 +90,7 @@ com.zzowo.shop_sys/
 ├── config/
 │   ├── SecurityConfig.java          # Spring Security 設定 + 端點權限規則
 │   ├── GlobalExceptionHandler.java  # 全域例外攔截器
-│   └── DataInitializer.java         # dev profile 專用測試資料初始化（首次啟動時自動執行）
+│   └── DataInitializer.java         # dev profile 專用測試資料初始化 (首次啟動時自動執行) 
 ├── controller/
 │   ├── AuthController.java          # /v1/auth
 │   ├── ProductController.java       # /v1/products
@@ -170,7 +170,7 @@ com.zzowo.shop_sys/
 
 ### 2.5 開發環境測試資料
 
-`application.yaml` 預設啟用 `dev` profile，應用程式啟動時 `DataInitializer` 會自動執行。若資料庫已有資料則跳過，確保冪等性（idempotent）。
+`application.yaml` 預設啟用 `dev` profile,應用程式啟動時 `DataInitializer` 會自動執行.若資料庫已有資料則跳過,確保冪等性 (idempotent) .
 
 #### 預設測試帳號
 
@@ -178,7 +178,7 @@ com.zzowo.shop_sys/
 | :--- | :--- | :--- | :--- |
 | admin@test.com | admin123 | `SUPER_ADMIN` | 可存取所有功能 |
 | manager@test.com | manager123 | `PRODUCT_MANAGER` | 可管理商品與庫存 |
-| test01@example.com | mypassword123 | `CUSTOMER` | 測試員小明，購物車有預設商品 |
+| test01@example.com | mypassword123 | `CUSTOMER` | 測試員小明,購物車有預設商品 |
 | test02@example.com | mypassword123 | `CUSTOMER` | 測試員小王 |
 
 #### 預設測試商品
@@ -202,7 +202,7 @@ DELETE FROM products;
 DELETE FROM users;
 ```
 
-重啟服務後 `DataInitializer` 將重新匯入。
+重啟服務後 `DataInitializer` 將重新匯入.
 
 ---
 
@@ -314,12 +314,12 @@ orders (N) ─────────── (1) coupons        [預留]
 | :--- | :--- | :--- | :--- |
 | `id` | BIGINT | PK, AUTO_INCREMENT | 主鍵 |
 | `product_id` | BIGINT | FK → products.id | 異動商品 |
-| `change_amount` | INT | NOT NULL | 異動量（正=增加，負=減少）|
+| `change_amount` | INT | NOT NULL | 異動量 (正=增加,負=減少) |
 | `reason` | VARCHAR | NOT NULL | 異動原因 (ORDER / RESTOCK / ADJUSTMENT / CANCEL / RETURN) |
 | `operator_id` | BIGINT | NULLABLE | 操作者 ID |
 | `created_at` | DATETIME | NOT NULL | 記錄時間 |
 
-#### **payments** (已建立 Entity，API 尚未完全整合)
+#### **payments** (已建立 Entity,API 尚未完全整合)
 
 | 欄位 | 類型 | 說明 |
 | :--- | :--- | :--- |
@@ -331,7 +331,7 @@ orders (N) ─────────── (1) coupons        [預留]
 | `status` | VARCHAR | 付款狀態 |
 | `paid_at` | DATETIME | 付款時間 |
 
-#### **shipments** (已建立 Entity，API 尚未完全整合)
+#### **shipments** (已建立 Entity,API 尚未完全整合)
 
 | 欄位 | 類型 | 說明 |
 | :--- | :--- | :--- |
@@ -349,20 +349,20 @@ orders (N) ─────────── (1) coupons        [預留]
 
 | 值 | 說明 |
 | :--- | :--- |
-| `CUSTOMER` | 一般消費者（預設角色）|
-| `PRODUCT_MANAGER` | 商品管理員（可管理商品與庫存）|
+| `CUSTOMER` | 一般消費者 (預設角色) |
+| `PRODUCT_MANAGER` | 商品管理員 (可管理商品與庫存) |
 | `ORDER_MANAGER` | 訂單管理員 |
 | `CUSTOMER_SERVICE` | 客服人員 |
 | `MARKETING` | 行銷人員 |
 | `FINANCE` | 財務人員 |
-| `SUPER_ADMIN` | 超級管理員（擁有所有權限）|
+| `SUPER_ADMIN` | 超級管理員 (擁有所有權限) |
 
 #### ProductStatus (商品狀態)
 
 | 值 | 說明 |
 | :--- | :--- |
-| `ON_SHELF` | 上架中（顧客可見）|
-| `OFF_SHELF` | 已下架（後台保留）|
+| `ON_SHELF` | 上架中 (顧客可見) |
+| `OFF_SHELF` | 已下架 (後台保留) |
 | `OUT_OF_STOCK` | 缺貨中 |
 
 #### OrderStatus (訂單狀態)
@@ -381,59 +381,59 @@ orders (N) ─────────── (1) coupons        [預留]
 
 ### 4.1 使用者註冊與登入
 
-- 每個 Email 在系統中唯一，重複使用時拋出 `BusinessException`。
-- 密碼以 Argon2 演算法（Spring Security v5.8 預設參數）雜湊後儲存，不可逆。
-- 所有新注冊帳號預設角色為 `CUSTOMER`，`enabled = true`。
-- 登入成功後更新 `last_login_at`，並回傳 JWT Token（有效 24 小時）。
-- 登入失敗連續 5 次，帳號鎖定 15 分鐘（設定驅動，`auto-unlock: true`）。
+- 每個 Email 在系統中唯一,重複使用時拋出 `BusinessException`.
+- 密碼以 Argon2 演算法 (Spring Security v5.8 預設參數) 雜湊後儲存,不可逆.
+- 所有新注冊帳號預設角色為 `CUSTOMER`,`enabled = true`.
+- 登入成功後更新 `last_login_at`,並回傳 JWT Token (有效 24 小時) .
+- 登入失敗連續 5 次,帳號鎖定 15 分鐘 (設定驅動,`auto-unlock: true`) .
 
 ### 4.2 商品管理
 
-- 商品狀態為 `ON_SHELF` 才可被一般顧客透過公開 API 查詢到。
-- 商品刪除（`DELETE /v1/products/{id}`）為**直接刪除**，非軟刪除。
-- 每次商品更新時，images 列表為**全量替換**（先刪後建）。
-- 商品使用 JPA `@Version` 樂觀鎖，防止並發修改時覆蓋資料。
+- 商品狀態為 `ON_SHELF` 才可被一般顧客透過公開 API 查詢到.
+- 商品刪除 (`DELETE /v1/products/{id}`) 為**直接刪除**,非軟刪除.
+- 每次商品更新時,images 列表為**全量替換** (先刪後建) .
+- 商品使用 JPA `@Version` 樂觀鎖,防止並發修改時覆蓋資料.
 
 ### 4.3 購物車
 
-- 若使用者已將同一商品加入購物車，再次加入時**累加數量**，而非新增一筆。
-- 加入購物車時即時檢查商品庫存：若加入數量超過剩餘庫存，拋出 `BusinessException`。
-- 移除購物車項目時驗證所有權，僅可移除自己的項目。
+- 若使用者已將同一商品加入購物車,再次加入時**累加數量**,而非新增一筆.
+- 加入購物車時即時檢查商品庫存:若加入數量超過剩餘庫存,拋出 `BusinessException`.
+- 移除購物車項目時驗證所有權,僅可移除自己的項目.
 
-### 4.4 結帳（建立訂單）
+### 4.4 結帳 (建立訂單) 
 
-結帳是系統最核心的業務流程，以 `@Transactional` 保護整個操作的原子性：
+結帳是系統最核心的業務流程,以 `@Transactional` 保護整個操作的原子性:
 
 ```
 1. 確認使用者存在
 2. 確認購物車非空
-3. 遍歷購物車：逐一確認每項商品庫存是否充足
+3. 遍歷購物車:逐一確認每項商品庫存是否充足
 4. 逐一扣除商品 stockQuantity
-5. 為每項商品建立 InventoryLog（reason = "ORDER"）
-6. 建立 OrderItem（快照 priceAtPurchase = 商品當下售價）
+5. 為每項商品建立 InventoryLog (reason = "ORDER") 
+6. 建立 OrderItem (快照 priceAtPurchase = 商品當下售價) 
 7. 計算 totalAmount = Σ(priceAtPurchase × quantity)
-8. 建立 Order（初始狀態 PENDING）
+8. 建立 Order (初始狀態 PENDING) 
 9. 清空使用者購物車
 ```
 
-若任一步驟失敗，整個交易回滾 (Rollback)。
+若任一步驟失敗,整個交易回滾 (Rollback).
 
 ### 4.5 訂單查詢
 
-- 一般顧客只能查詢**自己的**訂單，查詢他人訂單時拋出 `BusinessException`。
-- 訂單列表依 `created_at` 降序排列（最新的在最前）。
+- 一般顧客只能查詢**自己的**訂單,查詢他人訂單時拋出 `BusinessException`.
+- 訂單列表依 `created_at` 降序排列 (最新的在最前) .
 
 ### 4.6 庫存紀錄
 
-庫存異動原因 (`reason`) 說明：
+庫存異動原因 (`reason`) 說明:
 
 | reason | 觸發時機 |
 | :--- | :--- |
-| `ORDER` | 顧客結帳，系統自動扣減 |
-| `RESTOCK` | 後台補貨，庫存增加 |
+| `ORDER` | 顧客結帳,系統自動扣減 |
+| `RESTOCK` | 後台補貨,庫存增加 |
 | `ADJUSTMENT` | 手動庫存盤點調整 |
-| `CANCEL` | 訂單取消，庫存歸還 |
-| `RETURN` | 退貨，庫存歸還 |
+| `CANCEL` | 訂單取消,庫存歸還 |
+| `RETURN` | 退貨,庫存歸還 |
 
 ---
 
@@ -454,7 +454,7 @@ orders (N) ─────────── (1) coupons        [預留]
 }
 ```
 
-錯誤回應：
+錯誤回應:
 
 ```json
 {
@@ -466,9 +466,9 @@ orders (N) ─────────── (1) coupons        [預留]
 
 ---
 
-### 5.2 認證 (Authentication) — `/v1/auth`
+### 5.2 認證 (Authentication) - `/v1/auth`
 
-#### POST `/v1/auth/register` — 會員註冊
+#### POST `/v1/auth/register` - 會員註冊
 
 **權限**: 公開  
 **Request Body**:
@@ -487,7 +487,7 @@ orders (N) ─────────── (1) coupons        [預留]
 | `email` | ✅ | 合法 Email 格式 |
 | `password` | ✅ | 最少 8 個字元 |
 | `name` | ✅ | 不可空白 |
-| `phone` | ❌ | — |
+| `phone` | ❌ | - |
 
 **Response** `201 Created`:
 
@@ -507,7 +507,7 @@ orders (N) ─────────── (1) coupons        [預留]
 
 ---
 
-#### POST `/v1/auth/login` — 會員登入
+#### POST `/v1/auth/login` - 會員登入
 
 **權限**: 公開  
 **Request Body**:
@@ -529,13 +529,13 @@ orders (N) ─────────── (1) coupons        [預留]
 }
 ```
 
-> `data` 欄位直接回傳 JWT Token 字串。
+> `data` 欄位直接回傳 JWT Token 字串.
 
 ---
 
-### 5.3 商品 (Products) — `/v1/products`
+### 5.3 商品 (Products) - `/v1/products`
 
-#### GET `/v1/products` — 取得上架商品列表（分頁）
+#### GET `/v1/products` - 取得上架商品列表 (分頁) 
 
 **權限**: 公開
 
@@ -543,12 +543,12 @@ orders (N) ─────────── (1) coupons        [預留]
 
 | 參數 | 類型 | 必填 | 預設值 | 說明 |
 | :--- | :--- | :---: | :--- | :--- |
-| `page` | Integer | ❌ | `0` | 頁碼，從 0 開始 |
-| `size` | Integer | ❌ | `20` | 每頁筆數，上限 100 |
-| `sort` | String | ❌ | `createdAt,desc` | 排序欄位與方向，格式：`欄位,asc\|desc` |
-| `keyword` | String | ❌ | — | 商品名稱關鍵字模糊搜尋 |
+| `page` | Integer | ❌ | `0` | 頁碼,從 0 開始 |
+| `size` | Integer | ❌ | `20` | 每頁筆數,上限 100 |
+| `sort` | String | ❌ | `createdAt,desc` | 排序欄位與方向,格式:`欄位,asc\|desc` |
+| `keyword` | String | ❌ | - | 商品名稱關鍵字模糊搜尋 |
 
-**可排序欄位**: `name`、`price`、`createdAt`
+**可排序欄位**: `name`,`price`,`createdAt`
 
 **範例請求**:
 ```
@@ -586,19 +586,19 @@ GET /api/v1/products?keyword=耳機&sort=price,asc&size=10
 }
 ```
 
-> `imageUrls` 在列表頁為 `null`，詳情頁 (`GET /v1/products/{id}`) 才回傳完整圖片列表。
+> `imageUrls` 在列表頁為 `null`,詳情頁 (`GET /v1/products/{id}`) 才回傳完整圖片列表.
 
 ---
 
-#### GET `/v1/products/{id}` — 取得商品詳情
+#### GET `/v1/products/{id}` - 取得商品詳情
 
 **權限**: 公開  
 **Path Variable**: `id` (商品 ID)  
-**Response** `200 OK`: 同上，但 `imageUrls` 包含完整圖片列表。
+**Response** `200 OK`: 同上,但 `imageUrls` 包含完整圖片列表.
 
 ---
 
-#### POST `/v1/products` — 新增商品
+#### POST `/v1/products` - 新增商品
 
 **權限**: `PRODUCT_MANAGER`, `SUPER_ADMIN`  
 **Request Body**:
@@ -621,26 +621,26 @@ GET /api/v1/products?keyword=耳機&sort=price,asc&size=10
 | 欄位 | 必填 | 驗證規則 |
 | :--- | :---: | :--- |
 | `name` | ✅ | 不可空白 |
-| `price` | ✅ | 不可為 null，最小值 0 |
-| `stockQuantity` | ✅ | 不可為 null，最小值 0 |
+| `price` | ✅ | 不可為 null,最小值 0 |
+| `stockQuantity` | ✅ | 不可為 null,最小值 0 |
 | `status` | ✅ | 合法的 ProductStatus 值 |
-| `description` | ❌ | — |
-| `coverImageUrl` | ❌ | — |
-| `imageUrls` | ❌ | — |
+| `description` | ❌ | - |
+| `coverImageUrl` | ❌ | - |
+| `imageUrls` | ❌ | - |
 
 **Response** `200 OK`: 回傳建立後的 `ProductResponse`
 
 ---
 
-#### PUT `/v1/products/{id}` — 修改商品
+#### PUT `/v1/products/{id}` - 修改商品
 
 **權限**: `PRODUCT_MANAGER`, `SUPER_ADMIN`  
-**Request Body**: 同 POST，欄位全量更新（images 為全量替換）  
+**Request Body**: 同 POST,欄位全量更新 (images 為全量替換)   
 **Response** `200 OK`: 回傳更新後的 `ProductResponse`
 
 ---
 
-#### DELETE `/v1/products/{id}` — 刪除商品
+#### DELETE `/v1/products/{id}` - 刪除商品
 
 **權限**: `PRODUCT_MANAGER`, `SUPER_ADMIN`  
 **Response** `200 OK`:
@@ -655,7 +655,7 @@ GET /api/v1/products?keyword=耳機&sort=price,asc&size=10
 
 ---
 
-#### GET `/v1/products/{id}/inventory-logs` — 查詢單一商品庫存紀錄
+#### GET `/v1/products/{id}/inventory-logs` - 查詢單一商品庫存紀錄
 
 **權限**: `PRODUCT_MANAGER`, `SUPER_ADMIN`  
 **Response** `200 OK`:
@@ -680,18 +680,18 @@ GET /api/v1/products?keyword=耳機&sort=price,asc&size=10
 
 ---
 
-#### GET `/v1/products/inventory-logs` — 查詢所有庫存紀錄
+#### GET `/v1/products/inventory-logs` - 查詢所有庫存紀錄
 
 **權限**: `PRODUCT_MANAGER`, `SUPER_ADMIN`  
-**Response** `200 OK`: 同上，為全系統所有商品的庫存異動列表，依 `created_at` 降序。
+**Response** `200 OK`: 同上,為全系統所有商品的庫存異動列表,依 `created_at` 降序.
 
 ---
 
-### 5.4 購物車 (Cart) — `/v1/carts`
+### 5.4 購物車 (Cart) - `/v1/carts`
 
-> 所有購物車 API 均需 JWT 驗證。
+> 所有購物車 API 均需 JWT 驗證.
 
-#### GET `/v1/carts` — 查詢我的購物車
+#### GET `/v1/carts` - 查詢我的購物車
 
 **Response** `200 OK`:
 
@@ -715,7 +715,7 @@ GET /api/v1/products?keyword=耳機&sort=price,asc&size=10
 
 ---
 
-#### POST `/v1/carts` — 加入商品至購物車
+#### POST `/v1/carts` - 加入商品至購物車
 
 **Request Body**:
 
@@ -735,7 +735,7 @@ GET /api/v1/products?keyword=耳機&sort=price,asc&size=10
 
 ---
 
-#### DELETE `/v1/carts/{id}` — 移除購物車項目
+#### DELETE `/v1/carts/{id}` - 移除購物車項目
 
 **Path Variable**: `id` (Cart 項目 ID)  
 **Response** `200 OK`:
@@ -750,11 +750,11 @@ GET /api/v1/products?keyword=耳機&sort=price,asc&size=10
 
 ---
 
-### 5.5 訂單 (Orders) — `/v1/orders`
+### 5.5 訂單 (Orders) - `/v1/orders`
 
-> 所有訂單 API 均需 JWT 驗證。
+> 所有訂單 API 均需 JWT 驗證.
 
-#### POST `/v1/orders` — 結帳（建立訂單）
+#### POST `/v1/orders` - 結帳 (建立訂單) 
 
 **Request Body**:
 
@@ -801,22 +801,22 @@ GET /api/v1/products?keyword=耳機&sort=price,asc&size=10
 
 ---
 
-#### GET `/v1/orders` — 查詢我的訂單列表
+#### GET `/v1/orders` - 查詢我的訂單列表
 
-**Response** `200 OK`: 回傳 `List<OrderResponse>`，依建立時間降序排列。
+**Response** `200 OK`: 回傳 `List<OrderResponse>`,依建立時間降序排列.
 
 ---
 
-#### GET `/v1/orders/{id}` — 查詢特定訂單詳情
+#### GET `/v1/orders/{id}` - 查詢特定訂單詳情
 
 **Path Variable**: `id` (Order ID)  
-**Response** `200 OK`: 回傳單一 `OrderResponse`（含訂單明細）。
+**Response** `200 OK`: 回傳單一 `OrderResponse` (含訂單明細) .
 
 ---
 
-### 5.6 會員 (Users) — `/v1/users`
+### 5.6 會員 (Users) - `/v1/users`
 
-#### GET `/v1/users/me` — 取得個人資料
+#### GET `/v1/users/me` - 取得個人資料
 
 **權限**: 已登入任何角色  
 **Response** `200 OK`:
@@ -839,10 +839,10 @@ GET /api/v1/products?keyword=耳機&sort=price,asc&size=10
 
 ---
 
-#### PUT `/v1/users/me` — 更新個人資料
+#### PUT `/v1/users/me` - 更新個人資料
 
 **權限**: 已登入任何角色  
-**Request Body** (所有欄位均為選填，只更新提供的欄位):
+**Request Body** (所有欄位均為選填,只更新提供的欄位):
 
 ```json
 {
@@ -857,21 +857,21 @@ GET /api/v1/products?keyword=耳機&sort=price,asc&size=10
 
 ---
 
-#### GET `/v1/users` — 取得所有會員列表
+#### GET `/v1/users` - 取得所有會員列表
 
 **權限**: `SUPER_ADMIN`  
 **Response** `200 OK`: 回傳 `List<UserResponse>`
 
 ---
 
-#### GET `/v1/users/{id}` — 取得指定會員資料
+#### GET `/v1/users/{id}` - 取得指定會員資料
 
 **權限**: `SUPER_ADMIN`  
 **Response** `200 OK`: 回傳 `UserResponse`
 
 ---
 
-#### PUT `/v1/users/{id}` — 管理員更新指定會員
+#### PUT `/v1/users/{id}` - 管理員更新指定會員
 
 **權限**: `SUPER_ADMIN`  
 **Request Body** (所有欄位均為選填):
@@ -904,9 +904,9 @@ AuthController → UserService.login()
     ↓
 成功 → JwtUtil.generateToken(email)
     ↓
-回傳 JWT Token（HS512，有效 24 小時）
+回傳 JWT Token (HS512,有效 24 小時) 
 
-後續每次請求：
+後續每次請求:
 Authorization: Bearer {token}
     ↓
 JwtAuthenticationFilter 攔截
@@ -920,9 +920,9 @@ Controller 執行業務邏輯
 
 ### 6.2 密碼安全
 
-- 使用 **Argon2** (Spring Security v5.8 預設參數)：記憶體硬化雜湊，抵抗暴力破解。
-- 密碼明文**永不儲存**，系統中僅存 Hash 值。
-- 密碼最小長度 8 碼（由 DTO 驗證層保障）。
+- 使用 **Argon2** (Spring Security v5.8 預設參數):記憶體硬化雜湊,抵抗暴力破解.
+- 密碼明文**永不儲存**,系統中僅存 Hash 值.
+- 密碼最小長度 8 碼 (由 DTO 驗證層保障) .
 
 ### 6.3 帳號鎖定機制
 
@@ -960,14 +960,14 @@ Controller 執行業務邏輯
 
 | HTTP Code | 觸發情境 | 範例 |
 | :--- | :--- | :--- |
-| `200 OK` | 所有成功操作 | — |
-| `201 Created` | （目前未使用，統一用 200）| — |
-| `400 Bad Request` | 業務邏輯錯誤 | 庫存不足、Email 重複 |
-| `400 Bad Request` | 請求格式/驗證錯誤 | 必填欄位空白、格式錯誤 |
-| `401 Unauthorized` | 未提供或無效 JWT Token | — |
+| `200 OK` | 所有成功操作 | - |
+| `201 Created` |  (目前未使用,統一用 200) | - |
+| `400 Bad Request` | 業務邏輯錯誤 | 庫存不足,Email 重複 |
+| `400 Bad Request` | 請求格式/驗證錯誤 | 必填欄位空白,格式錯誤 |
+| `401 Unauthorized` | 未提供或無效 JWT Token | - |
 | `403 Forbidden` | 角色權限不足 | CUSTOMER 存取管理端點 |
 | `404 Not Found` | 資源不存在 | 商品 ID 不存在 |
-| `500 Internal Server Error` | 未預期的系統錯誤 | — |
+| `500 Internal Server Error` | 未預期的系統錯誤 | - |
 
 ### 7.2 錯誤回應格式
 
@@ -983,8 +983,8 @@ Controller 執行業務邏輯
 
 | 類別 | 用途 | 對應 HTTP Code |
 | :--- | :--- | :--- |
-| `BusinessException` | 業務邏輯錯誤（庫存不足、Email 重複等）| 400 |
-| `ResourceNotFoundException` | 資源查無（商品/訂單/使用者不存在）| 404 |
+| `BusinessException` | 業務邏輯錯誤 (庫存不足,Email 重複等) | 400 |
+| `ResourceNotFoundException` | 資源查無 (商品/訂單/使用者不存在) | 404 |
 
 ---
 
@@ -994,19 +994,19 @@ Controller 執行業務邏輯
 
 | 角色 | 代碼 | 主要用途 |
 | :--- | :--- | :--- |
-| 一般消費者 | `CUSTOMER` | 瀏覽商品、加入購物車、下訂單 |
-| 商品管理員 | `PRODUCT_MANAGER` | 管理商品上下架、查詢庫存紀錄 |
-| 訂單管理員 | `ORDER_MANAGER` | （預留）管理訂單狀態 |
-| 客服人員 | `CUSTOMER_SERVICE` | （預留）處理客訴 |
-| 行銷人員 | `MARKETING` | （預留）管理優惠券 |
-| 財務人員 | `FINANCE` | （預留）查詢金流資料 |
-| 超級管理員 | `SUPER_ADMIN` | 擁有所有權限，管理會員 |
+| 一般消費者 | `CUSTOMER` | 瀏覽商品,加入購物車,下訂單 |
+| 商品管理員 | `PRODUCT_MANAGER` | 管理商品上下架,查詢庫存紀錄 |
+| 訂單管理員 | `ORDER_MANAGER` |  (預留) 管理訂單狀態 |
+| 客服人員 | `CUSTOMER_SERVICE` |  (預留) 處理客訴 |
+| 行銷人員 | `MARKETING` |  (預留) 管理優惠券 |
+| 財務人員 | `FINANCE` |  (預留) 查詢金流資料 |
+| 超級管理員 | `SUPER_ADMIN` | 擁有所有權限,管理會員 |
 
 ### 8.2 功能權限矩陣
 
 | 功能 | CUSTOMER | PRODUCT_MANAGER | SUPER_ADMIN |
 | :--- | :---: | :---: | :---: |
-| 瀏覽商品（上架中）| ✅ | ✅ | ✅ |
+| 瀏覽商品 (上架中) | ✅ | ✅ | ✅ |
 | 新增/修改/刪除商品 | ❌ | ✅ | ✅ |
 | 查詢庫存紀錄 | ❌ | ✅ | ✅ |
 | 購物車操作 | ✅ | ✅ | ✅ |
@@ -1025,24 +1025,24 @@ Controller 執行業務邏輯
 
 | 功能 | Entity | 狀態 |
 | :--- | :--- | :--- |
-| 金流/付款 | `Payment` | Entity 已建立，API 未實作 |
-| 物流/出貨 | `Shipment` | Entity 已建立，API 未實作 |
-| 優惠券 | `Coupon` | Entity 已建立，API 未實作 |
-| 商品評價 | `Review` | Entity 已建立，API 未實作 |
+| 金流/付款 | `Payment` | Entity 已建立,API 未實作 |
+| 物流/出貨 | `Shipment` | Entity 已建立,API 未實作 |
+| 優惠券 | `Coupon` | Entity 已建立,API 未實作 |
+| 商品評價 | `Review` | Entity 已建立,API 未實作 |
 
 ### 9.2 部分功能預留設計
 
 | 設計 | 說明 |
 | :--- | :--- |
-| `users.deleted_at` | 軟刪除欄位已建立，Repository Query 尚未排除已刪除帳號 |
-| `orders.coupon_id` | 優惠券 FK 欄位已在訂單表中，待優惠券模組完成後接入 |
-| `ORDER_MANAGER`, `CUSTOMER_SERVICE`, `MARKETING`, `FINANCE` | 角色已定義，相關端點尚未實作 |
+| `users.deleted_at` | 軟刪除欄位已建立,Repository Query 尚未排除已刪除帳號 |
+| `orders.coupon_id` | 優惠券 FK 欄位已在訂單表中,待優惠券模組完成後接入 |
+| `ORDER_MANAGER`, `CUSTOMER_SERVICE`, `MARKETING`, `FINANCE` | 角色已定義,相關端點尚未實作 |
 
 ### 9.3 建議優先開發項目
 
-1. **訂單狀態流轉 API** — 讓 `ORDER_MANAGER` 可更新訂單狀態（付款、出貨、完成、取消）
-2. **金流整合** — 對接 ECPay 或其他金流，確認付款後更新 `Payment` 與 `Order.status`
-3. **物流整合** — 出貨後記錄物流追蹤號，更新 `Shipment`
-4. **優惠券系統** — 實作優惠券建立、核銷，結帳時套用折扣
-5. **商品評價** — 顧客完成訂單後可留下評價
-6. **軟刪除** — 完整實作 `users.deleted_at` 的查詢過濾
+1. **訂單狀態流轉 API** - 讓 `ORDER_MANAGER` 可更新訂單狀態 (付款,出貨,完成,取消) 
+2. **金流整合** - 對接 ECPay 或其他金流,確認付款後更新 `Payment` 與 `Order.status`
+3. **物流整合** - 出貨後記錄物流追蹤號,更新 `Shipment`
+4. **優惠券系統** - 實作優惠券建立,核銷,結帳時套用折扣
+5. **商品評價** - 顧客完成訂單後可留下評價
+6. **軟刪除** - 完整實作 `users.deleted_at` 的查詢過濾
