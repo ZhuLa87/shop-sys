@@ -35,7 +35,7 @@ class InventoryLogRepositoryTest {
     void findByProductIdOrderByCreatedAtDesc_returnsOnlyTargetProductLogsNewestFirst() {
         InventoryLog log1 = em.persistAndFlush(buildLog(productA, -2, "ORDER"));
         InventoryLog log2 = em.persistAndFlush(buildLog(productA, 10, "RESTOCK"));
-        em.persistAndFlush(buildLog(productB, -1, "ORDER")); // 不同商品，不應出現
+        em.persistAndFlush(buildLog(productB, -1, "ORDER")); // 不同商品,不應出現
 
         setCreatedAt(log1.getId(), LocalDateTime.now().minusHours(1));
         setCreatedAt(log2.getId(), LocalDateTime.now());
