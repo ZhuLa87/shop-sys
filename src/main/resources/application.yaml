@@ -40,8 +40,8 @@ management:
 # JWT 配置
 jwt:
     secret: mySecretKeyForShopSYSThatIsLongEnoughForHS512Algorithm
-    expiration: 1800000        # Access Token:30 分鐘 (毫秒) 
-    refresh-expiration: 604800000 # Refresh Token:7 天 (毫秒) 
+    expiration: 1800000        # Access Token:30 分鐘 (毫秒)
+    refresh-expiration: 604800000 # Refresh Token:7 天 (毫秒)
 
 # 日誌配置
 logging:
@@ -59,9 +59,9 @@ app:
             enabled: true
             # 允許的最大登入失敗次數
             max-failed-attempts: 5
-            # 帳戶鎖定持續時間 (分鐘) 
+            # 帳戶鎖定持續時間 (分鐘)
             lock-duration-minutes: 15
-            # 失敗次數重置時間 (分鐘) 
+            # 失敗次數重置時間 (分鐘)
             reset-failure-count-minutes: 60
             # 啟用自動解鎖功能
             auto-unlock: true
