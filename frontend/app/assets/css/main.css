@@ -1,0 +1,25 @@
+@import "tailwindcss";
+
+/* 現代簡約風全域樣式微調 */
+body {
+  background-color: var(--color-slate-50);
+  color: var(--color-slate-900);
+  font-family: var(--font-sans);
+}
+
+/* 自訂淡入與漸變動畫 */
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+
+/* 自定義毛玻璃與按鈕效果 */
+.glass-panel {
+  backdrop-filter: blur(12px);
+  background-color: rgba(255, 255, 255, 0.8);
+}
