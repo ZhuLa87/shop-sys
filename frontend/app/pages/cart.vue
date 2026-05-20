@@ -24,11 +24,11 @@
 
     <div v-else class="space-y-8">
       <!-- Step indicator -->
-      <el-steps :active="step - 1" finish-status="success" align-center>
+      <el-steps :active="step === 4 ? step : step - 1" finish-status="success" align-center>
         <el-step title="確認購物車" />
         <el-step title="寄送資訊" />
         <el-step title="付款資訊" />
-        <el-step title="完成" />
+        <el-step title="成功送出訂單" />
       </el-steps>
 
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
