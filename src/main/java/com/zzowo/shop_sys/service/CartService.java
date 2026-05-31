@@ -6,6 +6,7 @@ import com.zzowo.shop_sys.entity.Cart;
 import com.zzowo.shop_sys.entity.Product;
 import com.zzowo.shop_sys.entity.User;
 import com.zzowo.shop_sys.exception.BusinessException;
+import org.springframework.http.HttpStatus;
 import com.zzowo.shop_sys.exception.ResourceNotFoundException;
 import com.zzowo.shop_sys.mapper.CartMapper;
 import com.zzowo.shop_sys.repository.CartRepository;
@@ -84,7 +85,7 @@ public class CartService {
 
         // 確保只能刪除自己的購物車
         if (!cart.getUser().getId().equals(user.getId())) {
-            throw new BusinessException("無權限操作此購物車");
+            throw new BusinessException("無權限操作此購物車", HttpStatus.FORBIDDEN);
         }
 
         cartRepository.delete(cart);
