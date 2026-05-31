@@ -132,7 +132,9 @@ Base URL: `http://localhost:8088/api/v1`
 | 方法 | 路徑 | 說明 | 權限 |
 | :--- | :--- | :--- | :--- |
 | POST | `/v1/auth/register` | 會員註冊 | 公開 |
-| POST | `/v1/auth/login` | 登入,回傳 JWT | 公開 |
+| POST | `/v1/auth/login` | 登入,回傳 Access + Refresh Token | 公開 |
+| POST | `/v1/auth/refresh` | 換發新 Token (Token Rotation) | 公開 |
+| POST | `/v1/auth/logout` | 登出 (黑名單 Access Token + 刪除 Refresh Token) | 已登入 |
 
 ### 商品
 
