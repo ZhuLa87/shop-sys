@@ -16,10 +16,12 @@ public class UserMapper {
             return null;
 
         UserResponse response = new UserResponse();
+        response.setId(user.getId());
         response.setEmail(user.getEmail());
         response.setName(user.getName());
         response.setRole(user.getRole().name());
         response.setPhone(user.getPhone());
+        response.setAvatarUrl(user.getAvatarUrl());
 
         if (user.getCreatedAt() != null) {
             response.setCreatedAt(user.getCreatedAt().atZone(ZoneId.systemDefault()).toInstant().toEpochMilli());

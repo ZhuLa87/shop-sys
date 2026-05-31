@@ -114,6 +114,7 @@ public class UserService {
         // 更新其他基本資料 (如果有傳值才更新)
         if (StringUtils.hasText(request.getName())) user.setName(request.getName());
         if (StringUtils.hasText(request.getPhone())) user.setPhone(request.getPhone());
+        if (StringUtils.hasText(request.getAvatarUrl())) user.setAvatarUrl(request.getAvatarUrl());
 
         userRepository.save(user);
     }
