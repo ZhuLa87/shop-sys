@@ -28,9 +28,14 @@
       <el-table :data="products" style="width: 100%" v-loading="loading">
         <el-table-column label="商品封面" width="100">
           <template #default="{ row }">
-            <div class="w-12 h-12 rounded-lg bg-slate-50 border border-slate-100 overflow-hidden">
-              <img :src="row.coverImageUrl || 'https://picsum.photos/seed/default/100/100'" class="w-full h-full object-cover" loading="lazy" :alt="row.name" />
-            </div>
+            <el-image
+              :src="row.coverImageUrl || 'https://picsum.photos/seed/default/100/100'"
+              :preview-src-list="row.coverImageUrl ? [row.coverImageUrl] : []"
+              fit="cover"
+              :alt="row.name"
+              preview-teleported
+              class="w-12 h-12 rounded-lg overflow-hidden border border-slate-100 bg-slate-50 cursor-zoom-in"
+            />
           </template>
         </el-table-column>
 
@@ -61,8 +66,8 @@
         <el-table-column label="操作" width="160" align="right">
           <template #default="{ row }">
             <div class="flex justify-end gap-2">
-              <el-button size="small" @click="openEditDialog(row)">編輯</el-button>
-              <el-button size="small" type="danger" plain @click="handleDelete(row)">刪除</el-button>
+              <el-button @click="openEditDialog(row)">編輯</el-button>
+              <el-button type="danger" plain @click="handleDelete(row)">刪除</el-button>
             </div>
           </template>
         </el-table-column>
