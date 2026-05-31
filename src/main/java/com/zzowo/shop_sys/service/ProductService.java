@@ -88,10 +88,10 @@ public class ProductService {
 
         Page<Product> productPage;
         if (keyword != null && !keyword.isBlank()) {
-            productPage = productRepository.findByStatusAndNameContaining(
+            productPage = productRepository.findByStatusAndNameContainingSoldOutLast(
                     ProductStatus.ON_SHELF, keyword.trim(), pageable);
         } else {
-            productPage = productRepository.findByStatus(ProductStatus.ON_SHELF, pageable);
+            productPage = productRepository.findByStatusSoldOutLast(ProductStatus.ON_SHELF, pageable);
         }
 
         return new PageResponse<>(productPage.map(productMapper::toSummaryResponse));
