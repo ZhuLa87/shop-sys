@@ -7,6 +7,9 @@ import lombok.Data;
 @Data
 public class UserResponse {
 
+    @Schema(description = "使用者 ID")
+    private Long id;
+
     @Schema(description = "電子郵件", example = "user@example.com")
     private String email;
 
@@ -27,4 +30,7 @@ public class UserResponse {
 
     @Schema(description = "最後修改密碼時間", example = "2024-01-15T10:30:00")
     private String lastPasswordChangeAt;
+
+    @Schema(description = "頭像圖片 URL")
+    private String avatarUrl;
 }

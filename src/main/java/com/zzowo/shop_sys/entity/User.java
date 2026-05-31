@@ -77,6 +77,10 @@ public class User implements UserDetails {
     @Column(name = "is_account_non_locked", nullable = false)
     private Boolean accountNonLocked = true;
 
+    // 頭像圖片 URL
+    @Column(name = "avatar_url")
+    private String avatarUrl;
+
     // 密碼是否未過期
     @Column(name = "is_credentials_non_expired", nullable = false)
     private Boolean credentialsNonExpired = true;
