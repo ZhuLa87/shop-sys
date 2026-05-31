@@ -37,7 +37,7 @@ export default defineNuxtConfig({
     '@element-plus/nuxt',
   ],
 
-  css: ['~/assets/css/main.css'],
+  css: ['~/assets/css/main.css', 'cropperjs/dist/cropper.css'],
 
   vite: {
     plugins: [tailwindcss()],
@@ -49,6 +49,7 @@ export default defineNuxtConfig({
         'dayjs',
         'dayjs/plugin/*.js',
         'lodash-unified',
+        'cropperjs',
       ]
     },
   },

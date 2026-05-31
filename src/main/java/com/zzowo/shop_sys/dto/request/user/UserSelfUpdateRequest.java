@@ -22,4 +22,7 @@ public class UserSelfUpdateRequest {
 
     @Schema(description = "電話", example = "0912345678")
     private String phone;
+
+    @Schema(description = "頭像圖片 URL (MinIO 公開 URL) ")
+    private String avatarUrl;
 }

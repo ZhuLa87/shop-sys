@@ -51,6 +51,16 @@ logging:
         org.springframework.security: WARN
         org.springframework.web.bind.MethodArgumentNotValidException: WARN
 
+# MinIO 物件儲存設定
+# 注意: port 9000 是 MinIO S3 API,port 9001 是 Console 管理介面
+minio:
+  endpoint: https://tu-zhu.soay-fish.ts.net:9000
+  access-key: RuLuG2be2Bqz1GqiPxJk
+  secret-key: cVOP2fD774xN7oeMJ7Bgq3o9IRCrJTMDseSgD5DX
+  bucket-name: shop-sys-public
+  # 產生給前端使用的公開 URL base,可替換為 CDN 域名
+  public-url: https://tu-zhu.soay-fish.ts.net:9000
+
 # 帳戶鎖定配置
 app:
     security:
