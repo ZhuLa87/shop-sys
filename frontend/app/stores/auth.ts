@@ -8,6 +8,7 @@ interface UserProfile {
   phone: string | null
   createdAt: number
   lastLoginAt: number | null
+  avatarUrl: string | null
 }
 
 interface LoginResponse {

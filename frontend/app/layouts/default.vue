@@ -45,8 +45,9 @@
               <template v-if="authStore.isAuthenticated">
                 <el-dropdown trigger="click">
                   <span class="flex items-center gap-2 cursor-pointer outline-none">
-                    <div class="w-8 h-8 rounded-full bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-700 font-bold text-sm select-none">
-                      {{ authStore.user?.name ? authStore.user.name[0] : 'U' }}
+                    <div class="w-8 h-8 rounded-full bg-indigo-50 border border-indigo-100 overflow-hidden flex items-center justify-center text-indigo-700 font-bold text-sm select-none shrink-0">
+                      <img v-if="authStore.user?.avatarUrl" :src="authStore.user.avatarUrl" class="w-full h-full object-cover" alt="頭像" />
+                      <span v-else>{{ authStore.user?.name ? authStore.user.name[0].toUpperCase() : 'U' }}</span>
                     </div>
                     <span class="text-sm font-medium text-slate-700 hover:text-slate-900">{{ authStore.user?.name }}</span>
                     <el-icon class="text-slate-400"><arrow-down /></el-icon>
