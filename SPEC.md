@@ -1062,6 +1062,185 @@ Controller 執行業務邏輯
 
 ---
 
+### 7.4 開發標準
+
+本節規範所有開發者在 Service 層拋出例外、Controller 層處理回應時必須遵守的規則.
+
+#### 7.4.1 例外選用決策樹
+
+```
+需要中斷業務流程?
+├── 資源查無 (findById / findByEmail 找不到)
+│   └── 使用 ResourceNotFoundException("找不到 X ID: " + id)  → 404
+│
+├── 業務規則違反 (庫存不足,Email 重複,購物車為空...)
+│   └── 使用 BusinessException("...")  → 400
+│
+└── 以上都不是 → 讓例外自然往上拋,由 GlobalExceptionHandler 處理 → 500
+```
+
+#### 7.4.2 Service 層規則
+
+**規則 1: 禁止在 Service 層直接拋出 `RuntimeException`**
+
+```java
+// ❌ 錯誤 - 會被 GlobalExceptionHandler 兜底為 500
+throw new RuntimeException("帳號已被註冊");
+
+// ✅ 正確 - 明確的業務例外,回傳 400
+throw new BusinessException("帳號已被註冊");
+```
+
+**規則 2: 資源查無統一使用 `orElseThrow` 搭配 `ResourceNotFoundException`**
+
+```java
+// ✅ 正確
+Product product = productRepository.findById(id)
+        .orElseThrow(() -> new ResourceNotFoundException("找不到商品 ID: " + id));
+
+// ❌ 錯誤 - 不要 if/else 手動處理
+Optional<Product> opt = productRepository.findById(id);
+if (opt.isEmpty()) {
+    throw new RuntimeException("商品不存在");
+}
+```
+
+**規則 3: 禁止對外洩漏系統內部細節**
+
+```java
+// ❌ 錯誤 - 暴露 stack trace 或技術細節
+throw new BusinessException("DB constraint violation: Duplicate entry");
+
+// ✅ 正確 - 使用業務語言
+throw new BusinessException("該 Email 已被註冊");
+```
+
+**規則 4: 登入失敗不區分帳號不存在與密碼錯誤 (防止使用者枚舉)**
+
+```java
+// ✅ 正確 - 兩種失敗統一訊息
+User user = userRepository.findByEmail(email)
+        .orElseThrow(() -> new BusinessException("帳號或密碼錯誤"));
+
+if (!passwordEncoder.matches(rawPassword, user.getPasswordHash())) {
+    throw new BusinessException("帳號或密碼錯誤");
+}
+
+// ❌ 錯誤 - 分別給出不同訊息讓攻擊者探測帳號是否存在
+.orElseThrow(() -> new BusinessException("帳號不存在"));  // 攻擊者可知道帳號不存在
+```
+
+#### 7.4.3 GlobalExceptionHandler 維護規則
+
+**規則 5: Handler 宣告順序必須 specific → general**
+
+```
+ResourceNotFoundException      (最具體)
+BusinessException
+ObjectOptimisticLockingFailureException
+MethodArgumentNotValidException
+ConstraintViolationException
+HttpMessageNotReadableException
+MissingServletRequestParameterException
+HttpRequestMethodNotSupportedException
+AuthenticationException
+AccessDeniedException
+RuntimeException               (兜底)
+Exception                      (最後防線)
+```
+
+新增 Handler 時,插入到比它更具體的 Handler 之後,比它更通用的 Handler 之前.
+
+**規則 6: 禁止在 4xx 錯誤中洩漏 Spring 內部訊息**
+
+```java
+// ❌ 錯誤 - e.getMessage() 可能暴露框架內部字串
+.body(ApiResponse.error("權限不足: " + e.getMessage()));
+
+// ✅ 正確 - 固定的對使用者友善訊息
+.body(ApiResponse.error("您的權限不足以執行此操作"));
+```
+
+**規則 7: 日誌記錄原則**
+
+| 例外類型 | 日誌層級 | 原因 |
+| :--- | :--- | :--- |
+| 4xx 業務例外 (`BusinessException`, `ResourceNotFoundException`) | 不記錄 | 屬於正常業務流程,大量記錄會淹沒有效日誌 |
+| 409 樂觀鎖衝突 | `log.warn` | 需監控但非系統錯誤 |
+| 5xx 未預期例外 (`RuntimeException`, `Exception`) | `log.error` (含完整 stack trace) | 需要開發者立即關注 |
+
+```java
+// ✅ 正確 - 5xx 才記錄 error
+@ExceptionHandler(RuntimeException.class)
+public ResponseEntity<...> handleRuntimeException(RuntimeException e) {
+    log.error("Unhandled RuntimeException", e);   // 含 stack trace
+    return ResponseEntity.status(500)...;
+}
+
+// ✅ 正確 - 409 記錄 warn
+@ExceptionHandler(ObjectOptimisticLockingFailureException.class)
+public ResponseEntity<...> handleOptimisticLocking(ObjectOptimisticLockingFailureException e) {
+    log.warn("Optimistic locking conflict: {}", e.getMessage());  // 不需 stack trace
+    return ResponseEntity.status(409)...;
+}
+```
+
+#### 7.4.4 驗證錯誤規則
+
+**規則 8: Request Body 欄位驗證使用 `@Valid`,回傳 422**
+
+DTO 使用 JSR-380 注解 (`@NotBlank`, `@Email`, `@Min` 等),Controller 方法加 `@Valid`:
+
+```java
+// Controller
+public ResponseEntity<?> createProduct(@Valid @RequestBody ProductRequest req) { ... }
+
+// DTO
+public class ProductRequest {
+    @NotBlank(message = "商品名稱不可空白")
+    private String name;
+
+    @NotNull @Min(value = 0, message = "價格不得為負數")
+    private BigDecimal price;
+}
+```
+
+驗證失敗由 `GlobalExceptionHandler` 統一攔截,回傳 **422** 並列出所有失敗欄位:
+
+```json
+{
+  "success": false,
+  "message": "name 商品名稱不可空白; price 價格不得為負數",
+  "data": null
+}
+```
+
+**規則 9: Path Variable / Query Param 驗證使用 `@Validated` + `@Positive` 等**
+
+```java
+// Controller class 加 @Validated
+@RestController
+@Validated
+public class ProductController {
+
+    @GetMapping("/{id}")
+    public ResponseEntity<?> getProduct(@PathVariable @Positive Long id) { ... }
+}
+```
+
+#### 7.4.5 禁止事項 (Anti-patterns)
+
+| 禁止行為 | 替代方案 |
+| :--- | :--- |
+| Service 層拋出 `RuntimeException` | 改用 `BusinessException` 或 `ResourceNotFoundException` |
+| Controller 層 try/catch 業務例外後自行組裝回應 | 讓例外向上拋,由 `GlobalExceptionHandler` 統一處理 |
+| 在錯誤訊息中包含 SQL 語句、Stack trace、類別名稱 | 使用業務語言描述問題 |
+| 帳號/密碼錯誤給出不同提示 | 統一回傳 `"帳號或密碼錯誤"` |
+| 在 `@ExceptionHandler` 方法中直接 `return null` | 永遠回傳結構化的 `ApiResponse.error(...)` |
+| 新增 `@ExceptionHandler` 到個別 Controller | 除非該 Controller 需要特殊回應格式,否則統一寫在 `GlobalExceptionHandler` |
+
+---
+
 ## 8. 角色與權限
 
 ### 8.1 角色總覽
