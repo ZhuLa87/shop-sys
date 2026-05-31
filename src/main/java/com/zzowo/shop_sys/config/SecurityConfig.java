@@ -67,7 +67,10 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/v1/users/{id}").hasRole("SUPER_ADMIN") // 超級管理員取得特定用戶
                         .requestMatchers(HttpMethod.GET, "/v1/users").hasRole("SUPER_ADMIN") // 超級管理員取得所有用戶
 
-                        // 4. 其他所有請求都需要登入才能看
+                        // 4. 上傳授權端點 (登入即可,角色細分由 UploadController 內部處理)
+                        .requestMatchers(HttpMethod.POST, "/v1/upload/**").authenticated()
+
+                        // 5. 其他所有請求都需要登入才能看
                         .anyRequest().authenticated())
                 // 設定為無狀態 (Stateless), 因為我們用 JWT,伺服器不需要存 Session
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
