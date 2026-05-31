@@ -27,6 +27,12 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     // 分頁查詢上架商品 + 名稱關鍵字搜尋
     Page<Product> findByStatusAndNameContaining(ProductStatus status, String keyword, Pageable pageable);
 
+    @Query("SELECT p FROM Product p WHERE p.status = :status ORDER BY CASE WHEN p.stockQuantity > 0 THEN 0 ELSE 1 END ASC")
+    Page<Product> findByStatusSoldOutLast(@Param("status") ProductStatus status, Pageable pageable);
+
+    @Query("SELECT p FROM Product p WHERE p.status = :status AND p.name LIKE %:keyword% ORDER BY CASE WHEN p.stockQuantity > 0 THEN 0 ELSE 1 END ASC")
+    Page<Product> findByStatusAndNameContainingSoldOutLast(@Param("status") ProductStatus status, @Param("keyword") String keyword, Pageable pageable);
+
     // JOIN FETCH: 告訴 JPA 查詢 Product 時,順便把 images 關聯表抓出來填好
     // LEFT JOIN: 就算商品沒有圖片,商品本身也要查出來 (避免因沒圖片導致商品消失)
     @Query("SELECT p FROM Product p LEFT JOIN FETCH p.images WHERE p.id = :id")
