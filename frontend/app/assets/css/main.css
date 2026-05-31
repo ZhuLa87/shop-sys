@@ -18,6 +18,11 @@ body {
   opacity: 0;
 }
 
+/* el-image 燈箱: 隱藏底部縮放/旋轉操作列 */
+.el-image-viewer__wrapper .el-image-viewer__actions {
+  display: none;
+}
+
 /* 自定義毛玻璃與按鈕效果 */
 .glass-panel {
   backdrop-filter: blur(12px);
