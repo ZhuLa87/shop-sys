@@ -1,7 +1,7 @@
 # Shop-Sys 系統規格書 (System Specification)
 
-> **版本**: 1.1.0  
-> **最後更新**: 2026-05-10  
+> **版本**: 1.2.0  
+> **最後更新**: 2026-05-31  
 > **狀態**: 開發中 (In Development)
 
 ---
@@ -90,6 +90,7 @@ com.zzowo.shop_sys/
 ├── config/
 │   ├── SecurityConfig.java          # Spring Security 設定 + 端點權限規則
 │   ├── GlobalExceptionHandler.java  # 全域例外攔截器
+│   ├── SwaggerConfig.java           # Springdoc OpenAPI (Swagger UI) 設定
 │   └── DataInitializer.java         # dev profile 專用測試資料初始化 (首次啟動時自動執行) 
 ├── controller/
 │   ├── AuthController.java          # /v1/auth
@@ -99,6 +100,7 @@ com.zzowo.shop_sys/
 │   └── UserController.java          # /v1/users
 ├── dto/
 │   ├── request/                     # 接收前端輸入的 DTO
+│   │   ├── auth/TokenRefreshRequest.java
 │   │   ├── cart/AddToCartRequest.java
 │   │   ├── order/OrderCreateRequest.java
 │   │   ├── product/ProductRequest.java
@@ -110,6 +112,9 @@ com.zzowo.shop_sys/
 │   └── response/                    # 回傳給前端的 DTO
 │       ├── ApiResponse.java          # 統一回應封裝
 │       ├── PageResponse.java         # 分頁回應封裝 (content, page, size, totalElements, totalPages, last)
+│       ├── auth/
+│       │   ├── LoginResponse.java    # accessToken, refreshToken, tokenType, expiresIn
+│       │   └── TokenRefreshResponse.java
 │       ├── cart/CartItemResponse.java
 │       ├── order/
 │       │   ├── OrderResponse.java
@@ -162,6 +167,8 @@ com.zzowo.shop_sys/
 │   ├── ProductService.java
 │   ├── CartService.java
 │   ├── OrderService.java
+│   ├── RefreshTokenService.java     # Refresh Token 建立 / 驗證 / 刪除
+│   ├── TokenBlacklistService.java   # Access Token 登出黑名單 (記憶體)
 │   └── CustomUserDetailsService.java
 ├── util/
 │   └── JwtUtil.java
@@ -385,6 +392,7 @@ orders (N) ─────────── (1) coupons        [預留]
 - 密碼以 Argon2 演算法 (Spring Security v5.8 預設參數) 雜湊後儲存,不可逆.
 - 所有新注冊帳號預設角色為 `CUSTOMER`,`enabled = true`.
 - 登入成功後更新 `last_login_at`,並回傳 JWT Token (有效 24 小時) .
+- 登入失敗時,無論是帳號不存在或密碼錯誤,統一回傳 `"帳號或密碼錯誤"`,避免使用者枚舉攻擊 (User Enumeration).
 - 登入失敗連續 5 次,帳號鎖定 15 分鐘 (設定驅動,`auto-unlock: true`) .
 
 ### 4.2 商品管理
@@ -420,7 +428,7 @@ orders (N) ─────────── (1) coupons        [預留]
 
 ### 4.5 訂單查詢
 
-- 一般顧客只能查詢**自己的**訂單,查詢他人訂單時拋出 `BusinessException`.
+- 一般顧客只能查詢**自己的**訂單,查詢他人訂單時拋出 `BusinessException(403 FORBIDDEN)`.
 - 訂單列表依 `created_at` 降序排列 (最新的在最前) .
 
 ### 4.6 庫存紀錄
@@ -525,11 +533,73 @@ orders (N) ─────────── (1) coupons        [預留]
 {
   "success": true,
   "message": "登入成功",
-  "data": "eyJhbGciOiJIUzUxMiJ9..."
+  "data": {
+    "accessToken": "eyJhbGciOiJIUzUxMiJ9...",
+    "refreshToken": "eyJhbGciOiJIUzUxMiJ9...",
+    "tokenType": "Bearer",
+    "expiresIn": 86400
+  }
 }
 ```
 
-> `data` 欄位直接回傳 JWT Token 字串.
+---
+
+#### POST `/v1/auth/refresh` - 刷新 Token
+
+**權限**: 公開 (帶有效 Refresh Token)  
+**Request Body**:
+
+```json
+{
+  "refreshToken": "eyJhbGciOiJIUzUxMiJ9..."
+}
+```
+
+| 欄位 | 必填 | 說明 |
+| :--- | :---: | :--- |
+| `refreshToken` | ✅ | 上次登入或刷新時取得的 Refresh Token |
+
+**Response** `200 OK`:
+
+```json
+{
+  "success": true,
+  "message": "Token 已刷新",
+  "data": {
+    "accessToken": "eyJhbGciOiJIUzUxMiJ9...",
+    "refreshToken": "eyJhbGciOiJIUzUxMiJ9...",
+    "tokenType": "Bearer",
+    "expiresIn": 86400
+  }
+}
+```
+
+> Token Rotation: 每次刷新後舊 Refresh Token 立即失效,回傳全新的一組.
+
+---
+
+#### POST `/v1/auth/logout` - 登出
+
+**權限**: 已登入 (需帶 Access Token)  
+**Request Body**:
+
+```json
+{
+  "refreshToken": "eyJhbGciOiJIUzUxMiJ9..."
+}
+```
+
+**Response** `200 OK`:
+
+```json
+{
+  "success": true,
+  "message": "已成功登出",
+  "data": null
+}
+```
+
+> 同時執行兩件事: (1) 將 Access Token 加入記憶體黑名單使其立即失效; (2) 從資料庫刪除 Refresh Token.
 
 ---
 
@@ -961,12 +1031,14 @@ Controller 執行業務邏輯
 | HTTP Code | 觸發情境 | 範例 |
 | :--- | :--- | :--- |
 | `200 OK` | 所有成功操作 | - |
-| `201 Created` |  (目前未使用,統一用 200) | - |
-| `400 Bad Request` | 業務邏輯錯誤 | 庫存不足,Email 重複 |
-| `400 Bad Request` | 請求格式/驗證錯誤 | 必填欄位空白,格式錯誤 |
+| `201 Created` | (目前未使用,統一用 200) | - |
+| `400 Bad Request` | 業務邏輯錯誤 / 格式錯誤 / 缺少必填參數 | 庫存不足,Email 重複,缺少 Query Param,JSON 格式錯誤 |
 | `401 Unauthorized` | 未提供或無效 JWT Token | - |
-| `403 Forbidden` | 角色權限不足 | CUSTOMER 存取管理端點 |
+| `403 Forbidden` | 角色權限不足 / 跨使用者資源存取 | CUSTOMER 存取管理端點,查看他人訂單 |
 | `404 Not Found` | 資源不存在 | 商品 ID 不存在 |
+| `405 Method Not Allowed` | HTTP Method 不支援 | 對 GET-only 端點發 POST |
+| `409 Conflict` | 樂觀鎖版本衝突 | 高併發同時修改同一商品庫存 |
+| `422 Unprocessable Entity` | Bean Validation 欄位驗證失敗 | 必填欄位空白,格式不符 (@NotBlank, @Email 等) |
 | `500 Internal Server Error` | 未預期的系統錯誤 | - |
 
 ### 7.2 錯誤回應格式
@@ -983,8 +1055,10 @@ Controller 執行業務邏輯
 
 | 類別 | 用途 | 對應 HTTP Code |
 | :--- | :--- | :--- |
-| `BusinessException` | 業務邏輯錯誤 (庫存不足,Email 重複等) | 400 |
+| `BusinessException` | 業務邏輯錯誤 (庫存不足,Email 重複等),可攜帶自訂 HttpStatus | 預設 400,授權失敗場景傳入 403 |
 | `ResourceNotFoundException` | 資源查無 (商品/訂單/使用者不存在) | 404 |
+
+> `BusinessException(String message)` 預設 400;跨資源授權失敗應使用 `BusinessException(String message, HttpStatus.FORBIDDEN)` 明確傳入 403.
 
 ---
 
