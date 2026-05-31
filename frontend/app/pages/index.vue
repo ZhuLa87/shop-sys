@@ -81,9 +81,10 @@
 
     <div v-else class="space-y-8">
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        <div
+        <NuxtLink
           v-for="product in products"
           :key="product.id"
+          :to="`/products/${product.id}`"
           class="group relative bg-white border border-slate-200/80 rounded-xl overflow-hidden hover:-translate-y-1 hover:shadow-lg transition-all duration-300 flex flex-col h-full"
         >
           <!-- Product Image & Badges -->
@@ -106,11 +107,9 @@
           <!-- Product Details -->
           <div class="p-4 flex flex-col flex-grow justify-between">
             <div class="space-y-1">
-              <NuxtLink :to="`/products/${product.id}`" class="block">
-                <h3 class="font-bold text-slate-800 text-sm group-hover:text-indigo-600 transition-colors line-clamp-1">
-                  {{ product.name }}
-                </h3>
-              </NuxtLink>
+              <h3 class="font-bold text-slate-800 text-sm group-hover:text-indigo-600 transition-colors line-clamp-1">
+                {{ product.name }}
+              </h3>
               <p class="text-xs text-slate-500 line-clamp-2 min-h-8">
                 {{ product.description || '無詳細描述' }}
               </p>
@@ -123,31 +122,20 @@
               </span>
               
               <div class="flex gap-2">
-                <NuxtLink
-                  :to="`/products/${product.id}`"
-                  class="p-2 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 transition-colors cursor-pointer"
-                  title="查看詳情"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
-                  </svg>
-                </NuxtLink>
-                
                 <button
                   :disabled="product.stockQuantity <= 0"
-                  class="p-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 disabled:bg-slate-100 disabled:text-slate-400 transition-all cursor-pointer flex items-center justify-center"
+                  class="p-3 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 disabled:bg-slate-100 disabled:text-slate-400 transition-all cursor-pointer flex items-center justify-center"
                   title="快速加入購物車"
-                  @click="quickAddToCart(product)"
+                  @click.prevent.stop="quickAddToCart(product)"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 0 0-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 0 0-16.536-1.84M7.5 14.25 5.106 5.272M6 20.25a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Zm12.75 0a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Z" />
                   </svg>
                 </button>
               </div>
             </div>
           </div>
-        </div>
+        </NuxtLink>
       </div>
 
       <!-- Element Plus Pagination -->
