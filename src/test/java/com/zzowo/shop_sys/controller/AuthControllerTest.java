@@ -116,14 +116,14 @@ class AuthControllerTest {
     }
 
     @Test
-    void refresh_blankRefreshToken_returns400() throws Exception {
+    void refresh_blankRefreshToken_returns422() throws Exception {
         TokenRefreshRequest body = new TokenRefreshRequest();
         // refreshToken 留空,觸發 @NotBlank 驗證
 
         mockMvc.perform(post("/v1/auth/refresh")
-.contentType(MediaType.APPLICATION_JSON)
+                        .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(body)))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isUnprocessableEntity());
     }
 
     // ── POST /v1/auth/logout ─────────────────────────────────────────────────
