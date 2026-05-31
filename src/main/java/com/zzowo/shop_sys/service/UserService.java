@@ -20,6 +20,7 @@ import com.zzowo.shop_sys.dto.response.user.RegisterResponse;
 import com.zzowo.shop_sys.dto.response.user.UserResponse;
 import com.zzowo.shop_sys.entity.User;
 import com.zzowo.shop_sys.enums.Role;
+import com.zzowo.shop_sys.exception.BusinessException;
 import com.zzowo.shop_sys.exception.ResourceNotFoundException;
 import com.zzowo.shop_sys.repository.UserRepository;
 import com.zzowo.shop_sys.util.JwtUtil;
@@ -56,7 +57,7 @@ public class UserService {
     @Transactional // 加入事務管理
     public RegisterResponse register(UserRegisterRequest request) {
         if (userRepository.existsByEmail(request.getEmail())) {
-            throw new RuntimeException("帳號已被註冊");
+            throw new BusinessException("帳號已被註冊");
         }
 
         // 使用 Mapper 轉換基本資料
@@ -75,10 +76,10 @@ public class UserService {
     @Transactional
     public LoginResponse login(UserLoginRequest request) {
         User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new RuntimeException("帳號不存在"));
+                .orElseThrow(() -> new BusinessException("帳號或密碼錯誤"));
 
         if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
-            throw new RuntimeException("帳號或密碼錯誤");
+            throw new BusinessException("帳號或密碼錯誤");
         }
 
         user.setLastLoginAt(LocalDateTime.now());
@@ -100,7 +101,7 @@ public class UserService {
         // 如果要改 Email,需檢查新 Email 是否已被其他人使用
         if (StringUtils.hasText(request.getEmail()) && !request.getEmail().equals(user.getEmail())) {
             if (userRepository.existsByEmail(request.getEmail())) {
-                throw new RuntimeException("該 Email 已被註冊");
+                throw new BusinessException("該 Email 已被註冊");
             }
             user.setEmail(request.getEmail());
         }
@@ -126,7 +127,7 @@ public class UserService {
         // 管理員修改 Email 也要檢查重複
         if (StringUtils.hasText(request.getEmail()) && !request.getEmail().equals(user.getEmail())) {
             if (userRepository.existsByEmail(request.getEmail())) {
-                throw new RuntimeException("該 Email 已被註冊");
+                throw new BusinessException("該 Email 已被註冊");
             }
             user.setEmail(request.getEmail());
         }
