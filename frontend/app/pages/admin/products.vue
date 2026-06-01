@@ -23,8 +23,47 @@
       </div>
     </div>
 
-    <!-- Product Table -->
+    <!-- Product Table Card: toolbar + table + pagination -->
     <div class="bg-white border border-slate-200/80 rounded-2xl overflow-hidden shadow-sm">
+
+      <!-- Toolbar -->
+      <div class="flex flex-col sm:flex-row sm:items-center gap-3 px-4 py-3 border-b border-slate-100">
+        <!-- Search input -->
+        <div class="relative w-full sm:w-64">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"
+            class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none">
+            <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+          </svg>
+          <input
+            v-model="searchKeyword"
+            type="text"
+            placeholder="搜尋商品名稱..."
+            class="w-full pl-9 pr-4 py-1.5 text-sm border border-slate-200 rounded-lg bg-slate-50 text-slate-700 placeholder-slate-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400 transition-all"
+          />
+        </div>
+
+        <!-- Status segmented control -->
+        <div class="flex items-center gap-0.5 bg-slate-100 rounded-lg p-0.5 shrink-0">
+          <button
+            v-for="opt in statusOptions"
+            :key="opt.value"
+            class="px-3 py-1.5 text-xs font-medium rounded-md transition-all cursor-pointer"
+            :class="statusFilter === opt.value
+              ? 'bg-white shadow-sm text-slate-900 font-semibold'
+              : 'text-slate-500 hover:text-slate-700'"
+            @click="setStatusFilter(opt.value)"
+          >
+            {{ opt.label }}
+          </button>
+        </div>
+
+        <!-- Result count -->
+        <div class="sm:ml-auto text-xs text-slate-400 shrink-0">
+          共 <span class="font-semibold text-slate-600">{{ totalElements }}</span> 筆商品
+        </div>
+      </div>
+
+      <!-- Table -->
       <el-table :data="products" style="width: 100%" v-loading="loading">
         <el-table-column label="商品封面" width="100">
           <template #default="{ row }">
@@ -79,7 +118,23 @@
         </el-table-column>
       </el-table>
 
-      <div v-if="totalPages > 1" class="p-4 border-t border-slate-100 flex justify-end">
+      <!-- Empty state -->
+      <div v-if="!loading && products.length === 0" class="py-16 flex flex-col items-center gap-3">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.2" stroke="currentColor" class="w-12 h-12 text-slate-200">
+          <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+        </svg>
+        <p class="text-sm text-slate-400">找不到符合條件的商品</p>
+        <button
+          v-if="searchKeyword || statusFilter"
+          class="text-xs text-indigo-500 hover:text-indigo-700 underline underline-offset-2 cursor-pointer transition-colors"
+          @click="clearFilters"
+        >
+          清除篩選條件
+        </button>
+      </div>
+
+      <!-- Pagination -->
+      <div v-if="totalPages > 1" class="px-4 py-3 border-t border-slate-100 flex justify-end">
         <el-pagination
           v-model:current-page="currentPage"
           :page-size="pageSize"
@@ -87,6 +142,57 @@
           :total="totalElements"
           @current-change="handlePageChange"
         />
+      </div>
+    </div>
+
+    <!-- Trash / Deleted Products -->
+    <div class="bg-white border border-slate-200/80 rounded-2xl overflow-hidden shadow-sm">
+      <button
+        class="w-full flex items-center justify-between px-6 py-4 text-left hover:bg-slate-50 transition-colors cursor-pointer"
+        @click="trashOpen = !trashOpen; trashOpen && loadDeletedProducts()"
+      >
+        <div class="flex items-center gap-2">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-slate-400">
+            <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+          </svg>
+          <span class="font-semibold text-slate-700">已刪除商品</span>
+          <span v-if="deletedProducts.length" class="text-xs font-semibold bg-rose-100 text-rose-600 rounded-full px-2 py-0.5">
+            {{ deletedProducts.length }}
+          </span>
+        </div>
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"
+          class="w-4 h-4 text-slate-400 transition-transform duration-200"
+          :class="trashOpen ? 'rotate-180' : ''"
+        >
+          <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+        </svg>
+      </button>
+
+      <div v-if="trashOpen" class="border-t border-slate-100">
+        <div v-if="trashLoading" class="p-8 flex justify-center text-slate-400 text-sm">載入中...</div>
+        <div v-else-if="deletedProducts.length === 0" class="p-8 text-center text-slate-400 text-sm">回收桶是空的</div>
+        <el-table v-else :data="deletedProducts" style="width: 100%">
+          <el-table-column label="封面" width="80">
+            <template #default="{ row }">
+              <el-image :src="row.coverImageUrl || ''" fit="cover" class="w-10 h-10 rounded-lg border border-slate-100 bg-slate-50">
+                <template #error>
+                  <div class="w-full h-full flex items-center justify-center text-slate-300 text-xs">無</div>
+                </template>
+              </el-image>
+            </template>
+          </el-table-column>
+          <el-table-column prop="name" label="商品名稱" min-width="160" show-overflow-tooltip />
+          <el-table-column label="刪除時間" width="180">
+            <template #default="{ row }">
+              <span class="text-sm text-slate-500">{{ formatDeletedAt(row.deletedAt) }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" width="100" align="right">
+            <template #default="{ row }">
+              <el-button size="small" @click="handleRestore(row)">還原</el-button>
+            </template>
+          </el-table-column>
+        </el-table>
       </div>
     </div>
 
@@ -113,7 +219,7 @@
             <el-input-number v-model="form.price" :min="0" class="w-full" controls-position="right" />
           </el-form-item>
 
-          <el-form-item label="初始庫存量" prop="stockQuantity">
+          <el-form-item label="庫存量" prop="stockQuantity">
             <el-input-number v-model="form.stockQuantity" :min="0" class="w-full" controls-position="right" />
           </el-form-item>
         </div>
@@ -126,55 +232,54 @@
           </el-radio-group>
         </el-form-item>
 
-        <!-- Cover Image Upload -->
-        <el-form-item label="商品封面圖片">
-          <div class="w-full space-y-2">
-            <div class="flex items-center gap-4">
-              <!-- Preview -->
-              <div class="w-20 h-20 rounded-xl overflow-hidden border-2 border-slate-200 bg-slate-50 shrink-0 flex items-center justify-center">
-                <img v-if="form.coverImageUrl" :src="form.coverImageUrl" class="w-full h-full object-cover" alt="封面預覽" />
-                <svg v-else xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8 text-slate-300">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 0 0 1.5-1.5V6a1.5 1.5 0 0 0-1.5-1.5H3.75A1.5 1.5 0 0 0 2.25 6v12a1.5 1.5 0 0 0 1.5 1.5Zm10.5-11.25h.008v.008h-.008V8.25Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
-                </svg>
-              </div>
-              <!-- Actions -->
-              <div class="flex gap-2 flex-wrap">
-                <label :class="uploadingCover ? 'opacity-60 cursor-not-allowed pointer-events-none' : 'cursor-pointer'">
-                  <input
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp,image/gif"
-                    class="sr-only"
-                    :disabled="uploadingCover"
-                    @change="handleCoverFileSelect"
-                  />
-                  <span class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 hover:border-indigo-400 text-slate-700 hover:text-indigo-600 text-sm font-medium rounded-lg transition-all">
-                    <span v-if="uploadingCover" class="animate-spin h-3.5 w-3.5 border-2 border-current border-t-transparent rounded-full" />
-                    <svg v-else xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3.5 h-3.5">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
-                    </svg>
-                    {{ uploadingCover ? '上傳中...' : (form.coverImageUrl ? '更換圖片' : '選擇圖片') }}
-                  </span>
-                </label>
-                <button
-                  v-if="form.coverImageUrl"
-                  type="button"
-                  class="px-3 py-1.5 text-sm text-slate-400 hover:text-rose-600 border border-slate-200 hover:border-rose-200 rounded-lg transition-all cursor-pointer"
-                  @click="form.coverImageUrl = ''"
-                >
-                  清除
-                </button>
-              </div>
-            </div>
-            <p class="text-xs text-slate-400">選擇後可裁切顯示範圍 (1:1),支援 JPEG, PNG, WebP, GIF,上限 5MB.</p>
-          </div>
-        </el-form-item>
-
-        <!-- Sub Images Upload -->
+        <!-- Images Upload (cover + sub in unified grid) -->
         <div class="space-y-2">
-          <label class="block text-sm font-semibold text-slate-700">商品附圖 (可多張)</label>
+          <div class="flex items-center justify-between">
+            <label class="block text-sm font-semibold text-slate-700">商品圖片</label>
+            <span class="text-xs text-slate-400">第一格為封面,支援 JPEG, PNG, WebP, GIF</span>
+          </div>
 
           <div class="grid grid-cols-5 gap-2">
-            <!-- Existing images -->
+
+            <!-- Cover cell (always first) -->
+            <div class="relative group aspect-square">
+              <!-- Uploading -->
+              <div
+                v-if="uploadingCover"
+                class="w-full h-full rounded-lg border-2 border-dashed border-indigo-300 bg-indigo-50/50 flex items-center justify-center"
+              >
+                <span class="animate-spin h-5 w-5 border-2 border-indigo-400 border-t-transparent rounded-full" />
+              </div>
+              <!-- Has image -->
+              <template v-else-if="form.coverImageUrl">
+                <div class="w-full h-full rounded-lg overflow-hidden border-2 border-indigo-300 bg-slate-50">
+                  <img :src="form.coverImageUrl" class="w-full h-full object-cover" alt="封面" />
+                </div>
+                <button
+                  type="button"
+                  class="absolute top-1 right-1 w-5 h-5 bg-black/60 hover:bg-rose-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all cursor-pointer"
+                  @click="form.coverImageUrl = ''"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-3 h-3">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </template>
+              <!-- Empty upload zone -->
+              <label
+                v-else
+                class="w-full h-full rounded-lg border-2 border-dashed border-indigo-200 hover:border-indigo-400 bg-indigo-50/30 hover:bg-indigo-50/60 flex flex-col items-center justify-center gap-1 cursor-pointer transition-all"
+              >
+                <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" class="sr-only" @change="handleCoverFileSelect" />
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5 text-indigo-300">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                </svg>
+              </label>
+              <!-- Cover badge -->
+              <span class="absolute bottom-1 left-1/2 -translate-x-1/2 text-[9px] bg-indigo-600 text-white px-1.5 py-0.5 rounded font-bold leading-none pointer-events-none whitespace-nowrap z-10">封面</span>
+            </div>
+
+            <!-- Sub image cells -->
             <div
               v-for="(url, idx) in form.imageUrls"
               :key="url + idx"
@@ -192,33 +297,25 @@
               </button>
             </div>
 
-            <!-- Upload slot -->
+            <!-- Sub image upload slot -->
             <label
               v-if="!uploadingSubImage"
               class="aspect-square rounded-lg border-2 border-dashed border-slate-200 hover:border-indigo-400 bg-slate-50 hover:bg-indigo-50/40 flex flex-col items-center justify-center gap-1 cursor-pointer transition-all"
             >
-              <input
-                type="file"
-                accept="image/jpeg,image/png,image/webp,image/gif"
-                class="sr-only"
-                @change="handleSubImageFileSelect"
-              />
+              <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" class="sr-only" @change="handleSubImageFileSelect" />
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5 text-slate-400">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
               </svg>
               <span class="text-xs text-slate-400">新增</span>
             </label>
-
-            <!-- Loading slot -->
             <div
               v-else
               class="aspect-square rounded-lg border-2 border-dashed border-indigo-300 bg-indigo-50/50 flex items-center justify-center"
             >
               <span class="animate-spin h-5 w-5 border-2 border-indigo-400 border-t-transparent rounded-full" />
             </div>
-          </div>
 
-          <p class="text-xs text-slate-400">選擇後可裁切顯示範圍 (1:1),支援 JPEG, PNG, WebP, GIF.</p>
+          </div>
         </div>
 
         <el-form-item label="商品描述" prop="description">
@@ -255,7 +352,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, watch, onMounted } from 'vue'
 import { useAuthStore } from '~/stores/auth'
 import { ElMessageBox } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
@@ -278,6 +375,39 @@ onMounted(() => {
   }
 })
 
+// 搜尋/篩選狀態
+const searchKeyword = ref('')
+const statusFilter = ref('')
+let debounceTimer: ReturnType<typeof setTimeout> | null = null
+
+const statusOptions = [
+  { label: '全部', value: '' },
+  { label: '上架中', value: 'ON_SHELF' },
+  { label: '已下架', value: 'OFF_SHELF' },
+  { label: '缺貨中', value: 'OUT_OF_STOCK' },
+]
+
+watch(searchKeyword, () => {
+  if (debounceTimer) clearTimeout(debounceTimer)
+  debounceTimer = setTimeout(() => {
+    currentPage.value = 1
+    loadProducts()
+  }, 400)
+})
+
+const setStatusFilter = (value: string) => {
+  statusFilter.value = value
+  currentPage.value = 1
+  loadProducts()
+}
+
+const clearFilters = () => {
+  searchKeyword.value = ''
+  statusFilter.value = ''
+  currentPage.value = 1
+  loadProducts()
+}
+
 // 分頁狀態
 const products = ref<any[]>([])
 const loading = ref(false)
@@ -285,6 +415,10 @@ const currentPage = ref(1)
 const pageSize = ref(10)
 const totalElements = ref(0)
 const totalPages = ref(0)
+
+const trashOpen = ref(false)
+const trashLoading = ref(false)
+const deletedProducts = ref<any[]>([])
 
 const dialogVisible = ref(false)
 const isEdit = ref(false)
@@ -318,7 +452,15 @@ const loadProducts = async () => {
   loading.value = true
   try {
     const pageIndex = currentPage.value - 1
-    const res = await api.request(`/products?page=${pageIndex}&size=${pageSize.value}&sort=createdAt,desc`)
+    const params = new URLSearchParams({
+      page: String(pageIndex),
+      size: String(pageSize.value),
+      sort: 'createdAt,desc',
+    })
+    if (searchKeyword.value.trim()) params.set('keyword', searchKeyword.value.trim())
+    if (statusFilter.value) params.set('status', statusFilter.value)
+
+    const res = await api.request(`/products/admin?${params}`)
     if (res.success && res.data) {
       products.value = res.data.content
       totalElements.value = res.data.totalElements
@@ -466,12 +608,42 @@ const handleSave = async () => {
   })
 }
 
+const loadDeletedProducts = async () => {
+  trashLoading.value = true
+  try {
+    const res = await api.request('/products/deleted')
+    if (res.success && res.data) deletedProducts.value = res.data
+  } catch (error) {
+    console.error('載入回收桶出錯:', error)
+  } finally {
+    trashLoading.value = false
+  }
+}
+
+const handleRestore = async (row: any) => {
+  try {
+    const res = await api.request(`/products/${row.id}/restore`, { method: 'PUT' })
+    if (res.success) {
+      notify({ title: '還原成功', message: `商品"${row.name}"已還原.`, type: 'success', duration: 3000 })
+      deletedProducts.value = deletedProducts.value.filter(p => p.id !== row.id)
+      loadProducts()
+    }
+  } catch (error: any) {
+    notify({ title: '還原失敗', message: error.message || '還原時出錯.', type: 'error', duration: 4000 })
+  }
+}
+
+const formatDeletedAt = (iso: string) => {
+  if (!iso) return '-'
+  return new Date(iso).toLocaleString('zh-TW', { dateStyle: 'short', timeStyle: 'short' })
+}
+
 const handleDelete = async (row: any) => {
   try {
     await ElMessageBox.confirm(
-      `您確定要"直接刪除"商品"${row.name}"嗎?這將會直接從資料庫移除,且無法復原!`,
-      '高風險警告',
-      { confirmButtonText: '確定刪除', cancelButtonText: '取消', confirmButtonClass: 'el-button--danger', type: 'error' }
+      `確定要刪除商品"${row.name}"嗎?刪除後將不再對顧客顯示.`,
+      '確認刪除',
+      { confirmButtonText: '確定刪除', cancelButtonText: '取消', confirmButtonClass: 'el-button--danger', type: 'warning' }
     )
     const res = await api.request(`/products/${row.id}`, { method: 'DELETE' })
     if (res.success) {
