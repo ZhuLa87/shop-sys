@@ -4,6 +4,7 @@ import com.zzowo.shop_sys.dto.response.order.OrderItemResponse;
 import com.zzowo.shop_sys.dto.response.order.OrderResponse;
 import com.zzowo.shop_sys.entity.Order;
 import com.zzowo.shop_sys.entity.OrderItem;
+import com.zzowo.shop_sys.entity.Product;
 import org.springframework.stereotype.Component;
 
 import java.time.ZoneId;
@@ -39,11 +40,22 @@ public class OrderMapper {
 
     private OrderItemResponse toOrderItemResponse(OrderItem item) {
         OrderItemResponse res = new OrderItemResponse();
-        res.setProductId(item.getProduct().getId());
-        res.setProductName(item.getProduct().getName());
+
+        // product 可能因軟刪除而為 null (@NotFound(IGNORE)),優先使用快照欄位
+        Product product = item.getProduct();
+        res.setProductId(product != null ? product.getId() : null);
+        res.setProductName(
+            item.getProductName() != null ? item.getProductName()
+            : product != null ? product.getName()
+            : "已刪除商品"
+        );
+        res.setCoverImageUrl(
+            item.getCoverImageUrl() != null ? item.getCoverImageUrl()
+            : product != null ? product.getCoverImageUrl()
+            : null
+        );
         res.setPriceAtPurchase(item.getPriceAtPurchase());
         res.setQuantity(item.getQuantity());
-        // 計算小計
         res.setSubtotal(item.getPriceAtPurchase().multiply(java.math.BigDecimal.valueOf(item.getQuantity())));
         return res;
     }

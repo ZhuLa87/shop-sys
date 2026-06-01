@@ -2,6 +2,8 @@ package com.zzowo.shop_sys.entity;
 
 import jakarta.persistence.*;
 import lombok.Data;
+import org.hibernate.annotations.NotFound;
+import org.hibernate.annotations.NotFoundAction;
 import java.time.LocalDateTime;
 
 @Data
@@ -21,11 +23,12 @@ public class Cart {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    // 所屬商品 (多對一) 
-    // product_id:外鍵,連結到 Product 的 id
-    // LAZY:避免一次載入所有商品資料提升效能
+    // 所屬商品 (多對一)
+    // @NotFound(IGNORE): 商品軟刪除後 @SQLRestriction 使 JPA 找不到該列,
+    // 加上此注解使 Hibernate 回傳 null 而非拋出 ObjectNotFoundException
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "product_id", nullable = false)
+    @NotFound(action = NotFoundAction.IGNORE)
     private Product product;
 
     // 購買數量 (預設至少為 1) 

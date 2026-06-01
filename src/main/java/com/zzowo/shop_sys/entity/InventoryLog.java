@@ -2,6 +2,8 @@ package com.zzowo.shop_sys.entity;
 
 import jakarta.persistence.*;
 import lombok.Data;
+import org.hibernate.annotations.NotFound;
+import org.hibernate.annotations.NotFoundAction;
 import java.time.LocalDateTime;
 
 @Data
@@ -14,10 +16,12 @@ public class InventoryLog {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // 所屬商品 (多對一關聯) 
-    // product_id 為外鍵,用來指向被異動的商品
+    // 所屬商品 (多對一關聯)
+    // @NotFound(IGNORE): 商品軟刪除後 @SQLRestriction 使 JPA 找不到該列,
+    // 加上此注解使 Hibernate 回傳 null 而非拋出 ObjectNotFoundException
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "product_id", nullable = false)
+    @NotFound(action = NotFoundAction.IGNORE)
     private Product product;
 
     // 庫存變動數量:正數＝補貨,負數＝出貨或退貨扣除

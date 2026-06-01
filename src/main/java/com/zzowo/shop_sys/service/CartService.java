@@ -35,11 +35,23 @@ public class CartService {
     private CartMapper cartMapper;
 
     // 取得某使用者的購物車清單
+    @Transactional
     public List<CartItemResponse> getUserCart(String email) {
         User user = getUserByEmail(email);
         List<Cart> carts = cartRepository.findByUserId(user.getId());
 
+        // 過濾並自動清除購物車中已被軟刪除的商品
+        // (product 為 null 表示商品已刪除,@NotFound(IGNORE) 使 Hibernate 回傳 null 而非拋出例外)
+        List<Long> staleIds = carts.stream()
+                .filter(c -> c.getProduct() == null)
+                .map(Cart::getId)
+                .collect(Collectors.toList());
+        if (!staleIds.isEmpty()) {
+            cartRepository.deleteAllById(staleIds);
+        }
+
         return carts.stream()
+                .filter(c -> c.getProduct() != null)
                 .map(cartMapper::toCartItemResponse)
                 .collect(Collectors.toList());
     }
