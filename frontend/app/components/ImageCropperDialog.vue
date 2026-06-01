@@ -19,7 +19,7 @@
         />
       </div>
       <p class="text-xs text-slate-400 self-start">
-        拖曳裁切框調整顯示範圍,使用滾輪縮放圖片.輸出比例 {{ aspectRatio }}:1.
+        拖曳裁切框調整顯示範圍,使用滾輪縮放圖片
       </p>
     </div>
 
