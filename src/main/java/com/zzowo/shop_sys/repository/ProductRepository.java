@@ -27,6 +27,9 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     // 分頁查詢上架商品 + 名稱關鍵字搜尋
     Page<Product> findByStatusAndNameContaining(ProductStatus status, String keyword, Pageable pageable);
 
+    // 管理員: 分頁查詢全部商品 (含關鍵字,不限狀態)
+    Page<Product> findByNameContaining(String keyword, Pageable pageable);
+
     @Query("SELECT p FROM Product p WHERE p.status = :status ORDER BY CASE WHEN p.stockQuantity > 0 THEN 0 ELSE 1 END ASC")
     Page<Product> findByStatusSoldOutLast(@Param("status") ProductStatus status, Pageable pageable);
 
@@ -37,4 +40,13 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     // LEFT JOIN: 就算商品沒有圖片,商品本身也要查出來 (避免因沒圖片導致商品消失)
     @Query("SELECT p FROM Product p LEFT JOIN FETCH p.images WHERE p.id = :id")
     Optional<Product> findByIdWithImages(@Param("id") Long id);
+
+    // 以下兩個 native query 刻意繞過 @SQLRestriction,專供軟刪除回收桶使用
+    @Query(value = "SELECT * FROM products WHERE deleted_at IS NOT NULL ORDER BY deleted_at DESC",
+           nativeQuery = true)
+    List<Product> findAllDeleted();
+
+    @Query(value = "SELECT * FROM products WHERE id = :id AND deleted_at IS NOT NULL",
+           nativeQuery = true)
+    Optional<Product> findDeletedById(@Param("id") Long id);
 }

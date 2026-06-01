@@ -9,6 +9,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import com.zzowo.shop_sys.dto.request.product.ProductRequest;
+import com.zzowo.shop_sys.enums.ProductStatus;
 import com.zzowo.shop_sys.dto.response.ApiResponse;
 import com.zzowo.shop_sys.dto.response.PageResponse;
 import com.zzowo.shop_sys.dto.response.product.InventoryLogResponse;
@@ -89,6 +90,37 @@ public class ProductController {
             @Parameter(description = "商品 ID") @PathVariable Long id) {
         productService.deleteProduct(id);
         return ResponseEntity.ok(ApiResponse.success("商品刪除成功"));
+    }
+
+    @Operation(
+        summary = "管理員取得所有商品列表",
+        description = "管理員查詢全部商品 (含下架/缺貨),支援關鍵字搜尋與狀態篩選 (需要 PRODUCT_MANAGER 或 SUPER_ADMIN 角色)"
+    )
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "未登入")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "權限不足")
+    @GetMapping("/admin")
+    public ResponseEntity<ApiResponse<PageResponse<ProductResponse>>> getAdminProducts(
+            @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable,
+            @Parameter(description = "商品名稱關鍵字 (選填)") @RequestParam(required = false) String keyword,
+            @Parameter(description = "狀態篩選 (選填): ON_SHELF, OFF_SHELF, OUT_OF_STOCK") @RequestParam(required = false) ProductStatus status) {
+        PageResponse<ProductResponse> products = productService.getAdminProducts(pageable, keyword, status);
+        return ResponseEntity.ok(ApiResponse.success("取得商品列表成功", products));
+    }
+
+    @Operation(summary = "取得已刪除商品清單", description = "回收桶:列出所有軟刪除商品 (需要 PRODUCT_MANAGER 或 SUPER_ADMIN 角色) ")
+    @GetMapping("/deleted")
+    public ResponseEntity<ApiResponse<List<ProductResponse>>> getDeletedProducts() {
+        List<ProductResponse> deleted = productService.getDeletedProducts();
+        return ResponseEntity.ok(ApiResponse.success("取得已刪除商品成功", deleted));
+    }
+
+    @Operation(summary = "還原已刪除商品", description = "將軟刪除商品恢復為原狀態 (需要 PRODUCT_MANAGER 或 SUPER_ADMIN 角色) ")
+    @PutMapping("/{id}/restore")
+    public ResponseEntity<ApiResponse<ProductResponse>> restoreProduct(
+            @Parameter(description = "商品 ID") @PathVariable Long id) {
+        ProductResponse restored = productService.restoreProduct(id);
+        return ResponseEntity.ok(ApiResponse.success("商品已還原", restored));
     }
 
     @Operation(summary = "取得所有商品庫存變動紀錄", description = "管理員總覽所有商品的庫存異動紀錄 (需要 PRODUCT_MANAGER 或 SUPER_ADMIN 角色) ")

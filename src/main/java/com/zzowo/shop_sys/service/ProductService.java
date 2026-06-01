@@ -20,6 +20,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -65,13 +66,13 @@ public class ProductService {
         return productMapper.toDetailResponse(savedProduct);
     }
 
-    // 刪除商品 (這裡直接刪除,實務上通常是改狀態為 OFF_SHELF)
+    // 軟刪除商品 (設定 deletedAt,資料保留於 DB)
     @Transactional
     public void deleteProduct(Long id) {
-        if (!productRepository.existsById(id)) {
-            throw new ResourceNotFoundException("找不到商品 ID: " + id);
-        }
-        productRepository.deleteById(id);
+        Product product = productRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("找不到商品 ID: " + id));
+        product.setDeletedAt(LocalDateTime.now());
+        productRepository.save(product);
     }
 
     // 取得上架商品 (分頁 + 關鍵字搜尋) 
@@ -118,6 +119,50 @@ public class ProductService {
         return logs.stream()
                 .map(inventoryLogMapper::toResponse)
                 .collect(Collectors.toList());
+    }
+
+    // 管理員查詢所有商品 (分頁 + 關鍵字 + 狀態篩選)
+    public PageResponse<ProductResponse> getAdminProducts(Pageable pageable, String keyword, ProductStatus status) {
+        pageable.getSort().forEach(order -> {
+            if (!ALLOWED_SORT_FIELDS.contains(order.getProperty())) {
+                throw new BusinessException("不支援的排序欄位: " + order.getProperty() + ",允許欄位: name, price, createdAt");
+            }
+        });
+
+        if (pageable.getPageSize() > MAX_PAGE_SIZE) {
+            pageable = PageRequest.of(pageable.getPageNumber(), MAX_PAGE_SIZE, pageable.getSort());
+        }
+
+        boolean hasKeyword = keyword != null && !keyword.isBlank();
+        Page<Product> productPage;
+
+        if (status != null && hasKeyword) {
+            productPage = productRepository.findByStatusAndNameContaining(status, keyword.trim(), pageable);
+        } else if (status != null) {
+            productPage = productRepository.findByStatus(status, pageable);
+        } else if (hasKeyword) {
+            productPage = productRepository.findByNameContaining(keyword.trim(), pageable);
+        } else {
+            productPage = productRepository.findAll(pageable);
+        }
+
+        return new PageResponse<>(productPage.map(productMapper::toSummaryResponse));
+    }
+
+    // 取得已軟刪除的商品清單 (管理員回收桶用)
+    public List<ProductResponse> getDeletedProducts() {
+        return productRepository.findAllDeleted().stream()
+                .map(productMapper::toSummaryResponse)
+                .collect(Collectors.toList());
+    }
+
+    // 還原已軟刪除的商品
+    @Transactional
+    public ProductResponse restoreProduct(Long id) {
+        Product product = productRepository.findDeletedById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("找不到已刪除的商品 ID: " + id));
+        product.setDeletedAt(null);
+        return productMapper.toSummaryResponse(productRepository.save(product));
     }
 
     // 取得所有商品的庫存紀錄 (管理員總覽用)
