@@ -2,6 +2,8 @@ package com.zzowo.shop_sys.entity;
 
 import jakarta.persistence.*;
 import lombok.Data;
+import org.hibernate.annotations.SQLRestriction;
+
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -9,6 +11,7 @@ import java.util.List;
 import com.zzowo.shop_sys.enums.ProductStatus;
 
 @Data
+@SQLRestriction("deleted_at IS NULL")
 @Entity
 @Table(name = "products")
 public class Product {
@@ -49,7 +52,11 @@ public class Product {
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ProductImage> images;
 
-    // 建立時間 (建立後不可修改) 
+    // 軟刪除時間戳記,null 表示未刪除
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
+
+    // 建立時間 (建立後不可修改)
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 

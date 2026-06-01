@@ -4,6 +4,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Schema(description = "商品資訊")
@@ -33,4 +34,7 @@ public class ProductResponse {
 
     @Schema(description = "商品狀態:ON_SHELF / OFF_SHELF / OUT_OF_STOCK", example = "ON_SHELF")
     private String status;
+
+    @Schema(description = "軟刪除時間,null 表示未刪除")
+    private LocalDateTime deletedAt;
 }
