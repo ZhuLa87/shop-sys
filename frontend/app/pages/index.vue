@@ -90,11 +90,19 @@
           <!-- Product Image & Badges -->
           <div class="relative bg-slate-50 aspect-square overflow-hidden shrink-0">
             <img
-              :src="product.coverImageUrl || 'https://picsum.photos/seed/default/400/400'"
+              v-if="product.coverImageUrl && !failedImages.has(product.id)"
+              :src="product.coverImageUrl"
               :alt="product.name"
               class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
               loading="lazy"
+              @error="failedImages.add(product.id)"
             />
+            <div
+              v-else
+              class="w-full h-full flex items-center justify-center text-slate-400 text-sm"
+            >
+              此商品沒有圖片
+            </div>
             
             <!-- Out of Stock Overlay -->
             <div v-if="product.stockQuantity <= 0" class="absolute inset-0 bg-black/40 backdrop-blur-[1px] flex items-center justify-center">
@@ -159,6 +167,8 @@ import { useCartStore } from '~/stores/cart'
 const authStore = useAuthStore()
 const cartStore = useCartStore()
 const api = useApi()
+
+const failedImages = reactive(new Set<number>())
 
 // 分頁與篩選狀態
 const products = ref<any[]>([])
