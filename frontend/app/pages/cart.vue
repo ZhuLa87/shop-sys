@@ -43,7 +43,18 @@
               class="flex items-center gap-4 py-4 border-b border-slate-100 last:border-0 last:pb-0 first:pt-0"
             >
               <div class="w-20 h-20 bg-slate-50 border border-slate-100 rounded-lg overflow-hidden shrink-0">
-                <img :src="item.coverImageUrl || 'https://picsum.photos/seed/default/200/200'" class="w-full h-full object-cover" />
+                <img
+                  v-if="item.coverImageUrl && !failedCartImages.has(item.id)"
+                  :src="item.coverImageUrl"
+                  class="w-full h-full object-cover"
+                  @error="failedCartImages.add(item.id)"
+                />
+                <div
+                  v-else
+                  class="w-full h-full flex items-center justify-center text-slate-400 text-xs text-center px-1 leading-tight"
+                >
+                  此商品沒有圖片
+                </div>
               </div>
               <div class="flex-grow min-w-0 space-y-1">
                 <NuxtLink :to="`/products/${item.productId}`" class="font-bold text-slate-800 text-sm hover:text-indigo-600 transition-colors line-clamp-1 block">
@@ -300,6 +311,8 @@ import type { FormInstance, FormRules } from 'element-plus'
 
 const cartStore = useCartStore()
 const api = useApi()
+
+const failedCartImages = reactive(new Set<number>())
 
 const loading = ref(false)
 const submitting = ref(false)

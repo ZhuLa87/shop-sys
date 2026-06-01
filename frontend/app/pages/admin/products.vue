@@ -29,13 +29,19 @@
         <el-table-column label="商品封面" width="100">
           <template #default="{ row }">
             <el-image
-              :src="row.coverImageUrl || 'https://picsum.photos/seed/default/100/100'"
+              :src="row.coverImageUrl || ''"
               :preview-src-list="row.coverImageUrl ? [row.coverImageUrl] : []"
               fit="cover"
               :alt="row.name"
               preview-teleported
               class="w-12 h-12 rounded-lg overflow-hidden border border-slate-100 bg-slate-50 cursor-zoom-in"
-            />
+            >
+              <template #error>
+                <div class="w-full h-full flex items-center justify-center text-slate-400 text-xs text-center leading-tight px-0.5">
+                  沒有圖片
+                </div>
+              </template>
+            </el-image>
           </template>
         </el-table-column>
 

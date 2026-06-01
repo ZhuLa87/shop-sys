@@ -47,10 +47,18 @@
         <!-- Main Image -->
         <div class="relative bg-slate-50 border border-slate-200/80 rounded-2xl overflow-hidden aspect-square">
           <img
-            :src="activeImage || 'https://picsum.photos/seed/default/600/600'"
+            v-if="activeImage && !activeImageFailed"
+            :src="activeImage"
             :alt="product.name"
             class="w-full h-full object-cover transition-all duration-300"
+            @error="activeImageFailed = true"
           />
+          <div
+            v-else
+            class="w-full h-full flex items-center justify-center text-slate-400 text-sm"
+          >
+            此商品沒有封面圖
+          </div>
           <!-- Status Overlay -->
           <div
             v-if="product.status !== 'ON_SHELF'"
@@ -171,6 +179,9 @@ const loading = ref(true)
 const quantity = ref(1)
 const addingToCart = ref(false)
 const activeImage = ref<string>('')
+const activeImageFailed = ref(false)
+
+watch(activeImage, () => { activeImageFailed.value = false })
 
 // 所有圖片 (封面 + 附圖) 
 const allImages = computed<string[]>(() => {
@@ -182,7 +193,6 @@ const allImages = computed<string[]>(() => {
       if (url && !imgs.includes(url)) imgs.push(url)
     })
   }
-  if (imgs.length === 0) imgs.push('https://picsum.photos/seed/default/600/600')
   return imgs
 })
 
@@ -193,7 +203,7 @@ const loadProduct = async () => {
     const res = await api.request(`/products/${route.params.id}`)
     if (res.success && res.data) {
       product.value = res.data
-      activeImage.value = res.data.coverImageUrl || 'https://picsum.photos/seed/default/600/600'
+      activeImage.value = res.data.coverImageUrl || ''
     }
   } catch (error: any) {
     if (error?.status === 404) {
