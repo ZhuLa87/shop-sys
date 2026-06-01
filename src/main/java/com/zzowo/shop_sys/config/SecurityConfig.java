@@ -51,6 +51,10 @@ public class SecurityConfig {
                         // 查看所有商品紀錄總覽
                         .requestMatchers(HttpMethod.GET, "/v1/products/inventory-logs").hasAnyRole("PRODUCT_MANAGER", "SUPER_ADMIN")
 
+                        // 已刪除商品清單 / 管理員商品列表:僅管理員可見,必須在 permitAll 萬用規則之前宣告
+                        .requestMatchers(HttpMethod.GET, "/v1/products/deleted").hasAnyRole("PRODUCT_MANAGER", "SUPER_ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/v1/products/admin").hasAnyRole("PRODUCT_MANAGER", "SUPER_ADMIN")
+
                         // 允許商品瀏覽端點
                         .requestMatchers(HttpMethod.GET, "/v1/products/**").permitAll()
 
