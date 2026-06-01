@@ -29,6 +29,8 @@ public class ProductMapper {
             response.setStatus(product.getStatus().name());
         }
 
+        response.setDeletedAt(product.getDeletedAt());
+
         return response;
     }
 
