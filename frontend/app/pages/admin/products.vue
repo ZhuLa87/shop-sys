@@ -649,6 +649,7 @@ const handleDelete = async (row: any) => {
     if (res.success) {
       notify({ title: '刪除成功', message: `商品"${row.name}"已被刪除.`, type: 'success', duration: 3000 })
       loadProducts()
+      if (trashOpen.value) loadDeletedProducts()
     }
   } catch (error: any) {
     if (error !== 'cancel') {
