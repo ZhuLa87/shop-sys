@@ -9,6 +9,7 @@ import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -73,6 +74,84 @@ class ProductRepositoryTest {
 
         assertThat(result).isPresent();
         assertThat(result.get().getImages()).isEmpty();
+    }
+
+    // ── soft delete ──────────────────────────────────────────────────────────
+
+    @Test
+    void sqlRestriction_excludesSoftDeletedFromNormalQueries() {
+        Product active = buildProduct("正常商品", ProductStatus.ON_SHELF);
+        Product deleted = buildProduct("已刪除商品", ProductStatus.ON_SHELF);
+        deleted.setDeletedAt(LocalDateTime.now());
+        em.persistAndFlush(active);
+        em.persistAndFlush(deleted);
+        em.clear();
+
+        List<Product> all = productRepository.findAll();
+        Optional<Product> byId = productRepository.findById(deleted.getId());
+
+        assertThat(all).hasSize(1).extracting("name").containsExactly("正常商品");
+        assertThat(byId).isEmpty();
+    }
+
+    @Test
+    void findAllDeleted_returnsOnlySoftDeletedProducts() {
+        Product active = buildProduct("正常商品", ProductStatus.ON_SHELF);
+        Product d1 = buildProduct("刪除商品A", ProductStatus.ON_SHELF);
+        Product d2 = buildProduct("刪除商品B", ProductStatus.OFF_SHELF);
+        d1.setDeletedAt(LocalDateTime.now());
+        d2.setDeletedAt(LocalDateTime.now());
+        em.persistAndFlush(active);
+        em.persistAndFlush(d1);
+        em.persistAndFlush(d2);
+        em.clear();
+
+        List<Product> result = productRepository.findAllDeleted();
+
+        assertThat(result).hasSize(2)
+                .extracting("name")
+                .containsExactlyInAnyOrder("刪除商品A", "刪除商品B");
+    }
+
+    @Test
+    void findDeletedById_returnsDeletedProductWithNonNullDeletedAt() {
+        Product p = buildProduct("已刪除商品", ProductStatus.ON_SHELF);
+        p.setDeletedAt(LocalDateTime.now());
+        em.persistAndFlush(p);
+        em.clear();
+
+        Optional<Product> result = productRepository.findDeletedById(p.getId());
+
+        assertThat(result).isPresent();
+        assertThat(result.get().getDeletedAt()).isNotNull();
+        assertThat(result.get().getName()).isEqualTo("已刪除商品");
+    }
+
+    @Test
+    void findDeletedById_activeProduct_returnsEmpty() {
+        Product p = buildProduct("正常商品", ProductStatus.ON_SHELF);
+        em.persistAndFlush(p);
+
+        Optional<Product> result = productRepository.findDeletedById(p.getId());
+
+        assertThat(result).isEmpty();
+    }
+
+    @Test
+    void restore_clearedDeletedAt_reappearsInNormalQueries() {
+        Product p = buildProduct("恢復商品", ProductStatus.ON_SHELF);
+        p.setDeletedAt(LocalDateTime.now());
+        em.persistAndFlush(p);
+        em.clear();
+
+        // 用 findDeletedById 取出,清除 deletedAt,儲存
+        Product deleted = productRepository.findDeletedById(p.getId()).orElseThrow();
+        deleted.setDeletedAt(null);
+        productRepository.saveAndFlush(deleted);
+        em.clear();
+
+        assertThat(productRepository.findById(p.getId())).isPresent();
+        assertThat(productRepository.findAllDeleted()).isEmpty();
     }
 
     // ── helpers ──────────────────────────────────────────────────────────────
