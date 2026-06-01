@@ -12,13 +12,18 @@ public class CartMapper {
     public CartItemResponse toCartItemResponse(Cart cart) {
         CartItemResponse res = new CartItemResponse();
         res.setId(cart.getId());
-        res.setProductId(cart.getProduct().getId());
-        res.setProductName(cart.getProduct().getName());
-        res.setCoverImageUrl(cart.getProduct().getCoverImageUrl());
-        res.setPrice(cart.getProduct().getPrice());
         res.setQuantity(cart.getQuantity());
-        // 計算小計
-        res.setSubtotal(cart.getProduct().getPrice().multiply(BigDecimal.valueOf(cart.getQuantity())));
+
+        // CartService 已在上游過濾 null product,此處僅作防禦性保護
+        var product = cart.getProduct();
+        if (product != null) {
+            res.setProductId(product.getId());
+            res.setProductName(product.getName());
+            res.setCoverImageUrl(product.getCoverImageUrl());
+            res.setPrice(product.getPrice());
+            res.setSubtotal(product.getPrice().multiply(BigDecimal.valueOf(cart.getQuantity())));
+        }
+
         return res;
     }
 }

@@ -15,6 +15,9 @@ public class OrderItemResponse {
     @Schema(description = "商品名稱", example = "iPhone 16 Pro")
     private String productName;
 
+    @Schema(description = "下單時的封面圖片 URL 快照")
+    private String coverImageUrl;
+
     @Schema(description = "下單時的商品單價 (新台幣) ", example = "39900")
     private BigDecimal priceAtPurchase;
 
