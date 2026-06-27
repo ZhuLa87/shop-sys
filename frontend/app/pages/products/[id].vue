@@ -206,7 +206,9 @@ const loadProduct = async () => {
       activeImage.value = res.data.coverImageUrl || ''
     }
   } catch (error: any) {
-    if (error?.status === 404) {
+    const status = error?.status ?? error?.statusCode
+    if (status === 404 || status === 400) {
+      // 404: 商品不存在或已刪除;400: URL 帶入了無效 ID (如 null)
       product.value = null
     } else {
       notify({

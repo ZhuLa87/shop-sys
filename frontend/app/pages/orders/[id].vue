@@ -123,11 +123,16 @@
 
               <div class="flex-grow min-w-0">
                 <NuxtLink
+                  v-if="item.productId"
                   :to="`/products/${item.productId}`"
                   class="font-semibold text-slate-800 text-sm hover:text-indigo-600 transition-colors line-clamp-1 block"
-                >
-                  {{ item.productName }}
-                </NuxtLink>
+                >{{ item.productName }}</NuxtLink>
+                <span
+                  v-else
+                  class="font-semibold text-slate-400 text-sm line-clamp-1 block"
+                  title="此商品已下架或不再販售"
+                >{{ item.productName }}</span>
+                <span v-if="!item.productId" class="text-xs text-slate-300">已下架</span>
                 <div class="text-xs text-slate-400 mt-0.5">
                   單價 NT$ {{ formatPrice(item.priceAtPurchase) }} × {{ item.quantity }} 件
                 </div>
