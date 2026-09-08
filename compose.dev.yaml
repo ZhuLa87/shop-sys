@@ -21,6 +21,31 @@ services:
             # MinIO Console 管理介面 (S3 API 走 nginx 的 NGINX_S3_PORT)
             - "${DEBUG_MINIO_CONSOLE_PORT:-19001}:9001"
 
+    # Redis 的網頁管理介面.dev 專用,staging / prod 不會有這個服務.
+    # 與 MariaDB / MinIO Console 一樣綁在 0.0.0.0,方便從其他電腦經由 tailscale 連進來,
+    # 因此掛上憑證走 HTTPS,不讓 Redis 內容以明文在網路上傳輸.
+    redisinsight:
+        image: redis/redisinsight:latest
+        restart: unless-stopped
+        depends_on:
+            redis:
+                condition: service_healthy
+        ports:
+            - "${DEBUG_REDISINSIGHT_PORT:-15540}:5540"
+        environment:
+            TZ: ${TZ:-Asia/Taipei}
+            RI_SERVER_TLS_CERT: /certs/${TLS_CERT_FILE}
+            RI_SERVER_TLS_KEY: /certs/${TLS_KEY_FILE}
+        # 連線需首次開啟時手動新增一次 (host: redis, port: 6379, 密碼見 env/.env.dev) ,
+        # 之後存在 redisinsight-data volume 裡不會消失.
+        # RI_REDIS_* 那組變數只對 Redis Stack 單庫模式有效,一般模式不會生效 (已實測) ;
+        # 唯一可行的預設機制 RI_PRE_SETUP_DATABASES_PATH 需要把密碼寫進掛載的 JSON,
+        # 為了一次性的便利不值得為此多一層產生設定檔的機制
+        volumes:
+            - redisinsight-data:/data
+            - ${TLS_CERT_DIR}:/certs:ro
+        networks: [shop-sys-net]
+
     backend:
         build:
             context: .
@@ -63,3 +88,4 @@ volumes:
     frontend-node-modules:
     frontend-nuxt-cache:
     frontend-pnpm-store:
+    redisinsight-data:

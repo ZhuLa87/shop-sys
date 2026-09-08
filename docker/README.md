@@ -52,9 +52,14 @@ chmod 600 env/.env.dev
 | `https://tu-zhu.soay-fish.ts.net:8443/api/swagger-ui/index.html` | Swagger |
 | `https://tu-zhu.soay-fish.ts.net:8443/api/health` | 健康檢查 |
 | `https://tu-zhu.soay-fish.ts.net:8444/` | MinIO S3 端點 |
-| `http://localhost:19001/` | MinIO Console |
-| `localhost:13306` | MariaDB (給 DBeaver 等工具) |
-| `localhost:16379` | Redis (給 RedisInsight 等工具) |
+| `http://<PUBLIC_HOST>:19001/` | MinIO Console |
+| `https://<PUBLIC_HOST>:15540/` | RedisInsight (Redis 網頁管理介面) |
+| `<PUBLIC_HOST>:13306` | MariaDB (給 DBeaver 等資料庫工具) |
+| `<PUBLIC_HOST>:16379` | Redis (給 CLI 或其他工具) |
+
+除錯用的四個埠綁在 `0.0.0.0`,可從 tailnet 上的其他電腦直接連入,
+所以那組密碼是真的在擋人.RedisInsight 因此掛憑證走 HTTPS.
+這些服務只在 dev override 裡,staging 與 prod 不會有.
 
 dev profile 會由 `DataInitializer` 建立測試帳號 (`admin@test.com` / `admin123` 等,詳見啟動日誌) .
 
