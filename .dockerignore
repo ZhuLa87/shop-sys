@@ -1,0 +1,25 @@
+# 後端 image 的 build context 是專案根目錄,把不需要進入 context 的東西排除,
+# 可大幅縮短 build 時間並避免機密外洩到 image layer
+
+.git
+.github
+.vscode
+.idea
+.claude
+
+# 機密:絕對不能進 image
+env/.env.*
+!env/.env.*.example
+
+# 前端有自己的 build context (frontend/) ,後端 image 不需要
+frontend
+
+target
+*.iml
+*.log
+
+docker
+compose*.yaml
+Makefile
+*.md
+skills

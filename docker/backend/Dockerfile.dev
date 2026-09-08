@@ -1,0 +1,28 @@
+# 開發用:不打包 jar,直接在容器內跑 mvn spring-boot:run
+# 原始碼由 compose.dev.yaml 以 volume 掛載進 /workspace
+#
+# hot reload 機制:
+#   spring-boot-devtools 監看 target/classes.在主機端重新編譯 (IDE 自動編譯,
+#   或 ./mvnw compile) 後,掛載進來的 class 檔變動會觸發容器內應用自動重啟.
+
+FROM maven:3.9-eclipse-temurin-21
+
+# curl 供 compose healthcheck 使用
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# 容器要以與主機使用者相同的 uid 執行 (見 compose.dev.yaml 的 user 設定) ,
+# 否則 maven 寫進掛載目錄的 target/ 會變成 root 所有,主機上的 ./mvnw 隨即失敗.
+# 這裡預先建好該 uid 可寫的 HOME,maven 才有地方放本機倉庫.
+ARG DEV_UID=1000
+ARG DEV_GID=1000
+ENV HOME=/home/dev
+RUN mkdir -p ${HOME}/.m2 && chown -R ${DEV_UID}:${DEV_GID} ${HOME}
+
+WORKDIR /workspace
+USER ${DEV_UID}:${DEV_GID}
+
+EXPOSE 8088
+
+CMD ["mvn", "spring-boot:run"]

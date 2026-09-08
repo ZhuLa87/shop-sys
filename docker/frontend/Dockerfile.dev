@@ -1,0 +1,40 @@
+# 開發用:容器內跑 nuxt dev,保留 HMR
+# 原始碼由 compose.dev.yaml 以 volume 掛載進 /app,
+# node_modules 與 .nuxt 則使用具名 volume,不被主機端的版本覆蓋
+
+FROM node:22-alpine
+
+# Alpine 預設不含時區資料庫,少了它 TZ 環境變數完全無效,容器會停在 UTC.
+# 對 SSR 來說這是實質 bug:頁面用 toLocaleString('zh-TW') 格式化時間,
+# 伺服器端算出 UTC,瀏覽器端算出當地時間,兩邊對不上就是 hydration mismatch.
+RUN apk add --no-cache tzdata
+
+# 用 npm 全域安裝而非 corepack:corepack 會把下載的 pnpm 放進 root 的 cache,
+# 切換成非 root 使用者後就讀不到
+RUN npm install -g pnpm@10.33.0
+
+# node:alpine 內建的 node 使用者 uid 正好是 1000,與主機使用者相符,
+# 因此容器寫進掛載目錄的檔案不會變成 root 所有.
+# 具名 volume 初次建立時會沿用 image 中該路徑的擁有者;若該路徑在 image 裡不存在,
+# docker 會以 root 建立而導致容器內寫入失敗,所以每個 volume 掛載點都要先建好並 chown.
+RUN mkdir -p /app/node_modules /app/.nuxt /home/node/.pnpm-store \
+    && chown -R node:node /app /home/node
+
+WORKDIR /app
+USER node
+
+ENV NODE_ENV=development \
+    NUXT_DEV_PORT=3000 \
+    NUXT_DEV_HTTPS=false
+
+# pnpm 的 store 預設會落在專案目錄下的 .pnpm-store (約 300MB) ,而專案目錄是掛載
+# 進來的,會污染主機工作區.移到容器內,並由 compose 以具名 volume 保留
+ENV npm_config_store_dir=/home/node/.pnpm-store
+# store 換位置後 pnpm 需要重建 node_modules,預設會等待互動確認,
+# 但容器內沒有 TTY,會直接以 ERR_PNPM_ABORTED_REMOVE_MODULES_DIR_NO_TTY 失敗
+ENV npm_config_confirm_modules_purge=false
+
+EXPOSE 3000
+
+# 每次啟動先確保相依與掛載進來的 package.json 一致 (node_modules 為具名 volume,會被保留)
+CMD ["sh", "-c", "pnpm install --frozen-lockfile && pnpm run dev"]

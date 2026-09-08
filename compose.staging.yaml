@@ -1,0 +1,18 @@
+# staging (測試) 環境 override:與 prod 用同一組 image 建置流程,
+# 差別只在 .env.staging 的資料庫,金鑰,埠號與 SPRING_PROFILES_ACTIVE=staging.
+#
+# 與 dev 的差異:不掛載原始碼,一律使用 build 產出 (fat jar 與 nuxt .output) ,
+# 因此改動程式碼後必須重新 build:make staging-build
+
+services:
+    backend:
+        build:
+            context: .
+            dockerfile: docker/backend/Dockerfile
+        image: shop-sys/backend:${IMAGE_TAG:-staging}
+
+    frontend:
+        build:
+            context: ./frontend
+            dockerfile: ../docker/frontend/Dockerfile
+        image: shop-sys/frontend:${IMAGE_TAG:-staging}

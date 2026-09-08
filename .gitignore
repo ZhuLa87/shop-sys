@@ -34,3 +34,8 @@ build/
 
 ### Claude Code ###
 skills/
+
+### Docker ###
+# 實際使用的 env 檔含機密,只保留 *.example 範本進版控
+env/.env.*
+!env/.env.*.example

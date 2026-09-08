@@ -1,0 +1,201 @@
+# shop-sys 基礎服務定義 (所有環境共用)
+#
+# 這個檔案不單獨使用,必須搭配環境 override 檔:
+#   dev      docker compose --env-file env/.env.dev     -f compose.yaml -f compose.dev.yaml     up -d
+#   staging  docker compose --env-file env/.env.staging -f compose.yaml -f compose.staging.yaml up -d
+#   prod     docker compose --env-file env/.env.prod    -f compose.yaml -f compose.prod.yaml    up -d
+# 或用根目錄的 ./stack.sh 包起來: ./stack.sh up / ./stack.sh staging up / ./stack.sh prod up
+#
+# 對外只開放 nginx.mariadb / redis / minio 都留在內部網路 shop-sys-net,
+# 不發佈 host port (這台機器上 3306 / 6379 / 9000 / 443 已被其他服務佔用) .
+# 開發時若需要用 GUI 連進去,compose.dev.yaml 會另外開出除錯用埠號.
+
+name: ${COMPOSE_PROJECT_NAME:-shop-sys}
+
+services:
+    mariadb:
+        image: mariadb:11.4
+        restart: unless-stopped
+        environment:
+            MARIADB_DATABASE: ${DB_NAME}
+            MARIADB_USER: ${DB_USERNAME}
+            MARIADB_PASSWORD: ${DB_PASSWORD}
+            MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+            TZ: ${TZ:-Asia/Taipei}
+        volumes:
+            - mariadb-data:/var/lib/mysql
+        healthcheck:
+            # 用真實查詢而非 ping,ping 在初始化尚未完成時就會回成功
+            test: ["CMD-SHELL", "mariadb -u$$MARIADB_USER -p$$MARIADB_PASSWORD -D $$MARIADB_DATABASE -e 'SELECT 1' >/dev/null 2>&1"]
+            interval: 5s
+            timeout: 5s
+            retries: 30
+            start_period: 30s
+        networks: [shop-sys-net]
+
+    redis:
+        image: redis:7-alpine
+        restart: unless-stopped
+        command: ["redis-server", "--requirepass", "${REDIS_PASSWORD}", "--appendonly", "yes"]
+        environment:
+            TZ: ${TZ:-Asia/Taipei}
+            # healthcheck 需要在容器內取得密碼才能通過認證
+            REDIS_PASSWORD: ${REDIS_PASSWORD}
+        volumes:
+            - redis-data:/data
+        healthcheck:
+            test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" ping | grep -q PONG"]
+            interval: 5s
+            timeout: 3s
+            retries: 20
+            start_period: 10s
+        networks: [shop-sys-net]
+
+    minio:
+        image: minio/minio:RELEASE.2025-04-22T22-12-26Z
+        restart: unless-stopped
+        command: ["server", "/data", "--console-address", ":9001"]
+        environment:
+            MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+            MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+            TZ: ${TZ:-Asia/Taipei}
+        volumes:
+            - minio-data:/data
+            # MinIO 的映像不含時區資料庫,少了它 TZ 無效,log 會停在 UTC 而與其他服務差 8 小時.
+            # 這裡不能只掛 /etc/localtime:MinIO 是 Go 程式,TZ 有值時會去 zoneinfo 目錄查名稱,
+            # 查不到就退回 UTC,不會去讀 /etc/localtime (已實測) .
+            # 註:S3 API 回傳的物件時間戳仍是 UTC,那是協定規定,不受這裡影響.
+            - /usr/share/zoneinfo:/usr/share/zoneinfo:ro
+        healthcheck:
+            test: ["CMD-SHELL", "mc ready local || exit 1"]
+            interval: 5s
+            timeout: 5s
+            retries: 20
+            start_period: 15s
+        networks: [shop-sys-net]
+
+    # 一次性初始化:建立 bucket,設定匿名讀取,建立後端專用的存取金鑰
+    minio-init:
+        image: minio/mc:RELEASE.2025-04-16T18-13-26Z
+        depends_on:
+            minio:
+                condition: service_healthy
+        environment:
+            MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+            MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+            MINIO_BUCKET: ${MINIO_BUCKET}
+            MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
+            MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
+        entrypoint: ["/bin/sh", "/init-bucket.sh"]
+        volumes:
+            - ./docker/minio/init-bucket.sh:/init-bucket.sh:ro
+        restart: "no"
+        networks: [shop-sys-net]
+
+    backend:
+        restart: unless-stopped
+        depends_on:
+            mariadb:
+                condition: service_healthy
+            redis:
+                condition: service_healthy
+            minio-init:
+                condition: service_completed_successfully
+        environment:
+            SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE}
+            SERVER_PORT: 8088
+            TZ: ${TZ:-Asia/Taipei}
+
+            DB_URL: jdbc:mariadb://mariadb:3306/${DB_NAME}
+            DB_USERNAME: ${DB_USERNAME}
+            DB_PASSWORD: ${DB_PASSWORD}
+
+            REDIS_HOST: redis
+            REDIS_PORT: 6379
+            REDIS_PASSWORD: ${REDIS_PASSWORD}
+
+            JWT_SECRET: ${JWT_SECRET}
+            JWT_EXPIRATION: ${JWT_EXPIRATION:-1800000}
+            JWT_REFRESH_EXPIRATION: ${JWT_REFRESH_EXPIRATION:-604800000}
+
+            # endpoint 與 public-url 都必須是"瀏覽器看得到的位址":
+            # presigned URL 的 SigV4 簽章涵蓋 Host 標頭,用內部主機名簽出來的網址在瀏覽器端會驗簽失敗
+            MINIO_ENDPOINT: ${PUBLIC_S3_URL}
+            MINIO_PUBLIC_URL: ${PUBLIC_S3_URL}
+            MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
+            MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
+            MINIO_BUCKET: ${MINIO_BUCKET}
+
+            LOG_LEVEL_APP: ${LOG_LEVEL_APP:-INFO}
+            JPA_SHOW_SQL: ${JPA_SHOW_SQL:-false}
+            ACCOUNT_LOCKING_ENABLED: ${ACCOUNT_LOCKING_ENABLED:-true}
+        healthcheck:
+            # readiness 群組含 db + redis,DB 或 Redis 斷線時才會 DOWN
+            test: ["CMD-SHELL", "curl -fsS http://localhost:8088/api/health/readiness | grep -q '\"status\":\"UP\"'"]
+            interval: 10s
+            timeout: 5s
+            retries: 12
+            start_period: 90s
+        networks: [shop-sys-net]
+
+    frontend:
+        restart: unless-stopped
+        depends_on:
+            backend:
+                condition: service_healthy
+        environment:
+            TZ: ${TZ:-Asia/Taipei}
+            # SSR 期間 nitro 內部代理 /api/** 的目標 (走容器內部網路,不繞出去經過 nginx)
+            NUXT_API_TARGET: http://backend:8088
+        networks: [shop-sys-net]
+
+    nginx:
+        image: nginx:1.27-alpine
+        restart: unless-stopped
+        depends_on:
+            - backend
+            - frontend
+        ports:
+            # 容器內外用同一個埠號,對外網址 (含埠) 在容器內外因此完全一致 —
+            # 這是 MinIO presigned URL 能同時被瀏覽器與後端使用的前提
+            - "${NGINX_HTTPS_PORT}:${NGINX_HTTPS_PORT}"
+            - "${NGINX_HTTP_PORT}:${NGINX_HTTP_PORT}"
+            # MinIO S3 端點:必須是獨立埠而非路徑前綴,
+            # 因為 SigV4 簽章綁定 Host,nginx 不能改寫路徑
+            - "${NGINX_S3_PORT}:${NGINX_S3_PORT}"
+        environment:
+            TZ: ${TZ:-Asia/Taipei}
+            # 供 nginx 官方 image 的 envsubst 模板使用
+            NGINX_HTTP_PORT: ${NGINX_HTTP_PORT}
+            NGINX_HTTPS_PORT: ${NGINX_HTTPS_PORT}
+            NGINX_S3_PORT: ${NGINX_S3_PORT}
+            PUBLIC_HOST: ${PUBLIC_HOST}
+            MAX_UPLOAD_SIZE: ${MAX_UPLOAD_SIZE:-20m}
+            TLS_CERT_FILE: ${TLS_CERT_FILE}
+            TLS_KEY_FILE: ${TLS_KEY_FILE}
+        volumes:
+            - ./docker/nginx/templates:/etc/nginx/templates:ro
+            - ${TLS_CERT_DIR}:/etc/nginx/certs:ro
+        healthcheck:
+            test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:${NGINX_HTTP_PORT}/nginx-health || exit 1"]
+            interval: 10s
+            timeout: 5s
+            retries: 5
+            start_period: 10s
+        networks:
+            shop-sys-net:
+                # 讓對外網域在 compose 網路內解析到 nginx 容器.
+                # 後端要用對外位址連 MinIO (presigned URL 的簽章綁定該 Host) ,
+                # 有了這個別名就能直接走內部網路,不必繞回主機的已發佈埠 —
+                # 主機防火牆通常會擋掉容器往 docker gateway 的連線.
+                aliases:
+                    - ${PUBLIC_HOST}
+
+volumes:
+    mariadb-data:
+    redis-data:
+    minio-data:
+
+networks:
+    shop-sys-net:
+        driver: bridge

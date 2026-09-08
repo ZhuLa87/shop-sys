@@ -1,0 +1,26 @@
+# 正式環境 override
+#
+# 目前仍以"在部署機器上 build"的方式運作 (與 staging 相同流程) .
+# 未來要改成推送 registry image 時,把 build 區塊拿掉,只保留 image 並指向 registry 位址即可,
+# compose 其餘部分不需更動.
+
+services:
+    backend:
+        build:
+            context: .
+            dockerfile: docker/backend/Dockerfile
+        image: shop-sys/backend:${IMAGE_TAG:-latest}
+        deploy:
+            resources:
+                limits:
+                    memory: ${BACKEND_MEMORY_LIMIT:-1g}
+
+    frontend:
+        build:
+            context: ./frontend
+            dockerfile: ../docker/frontend/Dockerfile
+        image: shop-sys/frontend:${IMAGE_TAG:-latest}
+        deploy:
+            resources:
+                limits:
+                    memory: ${FRONTEND_MEMORY_LIMIT:-512m}
