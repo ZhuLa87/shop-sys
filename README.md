@@ -110,9 +110,16 @@ TLS 由 nginx 終結,用的是主機上既有的 tailscale 憑證,不會跳憑�
 | `https://tu-zhu.soay-fish.ts.net:8443/api/swagger-ui/index.html` | Swagger |
 | `https://tu-zhu.soay-fish.ts.net:8443/api/health` | 健康檢查 |
 | `https://tu-zhu.soay-fish.ts.net:8444/` | MinIO S3 端點 |
-| `http://localhost:19001/` | MinIO Console (帳密見 `env/.env.dev` 的 `MINIO_ROOT_*`) |
-| `localhost:13306` | MariaDB (給 DBeaver 等工具) |
-| `localhost:16379` | Redis (給 RedisInsight 等工具) |
+| `http://tu-zhu.soay-fish.ts.net:19001/` | MinIO Console (帳密見 `env/.env.dev` 的 `MINIO_ROOT_*`) |
+| `https://tu-zhu.soay-fish.ts.net:15540/` | RedisInsight (Redis 網頁管理介面) |
+| `tu-zhu.soay-fish.ts.net:13306` | MariaDB (給 DBeaver 等資料庫工具) |
+| `tu-zhu.soay-fish.ts.net:16379` | Redis (給 CLI 或其他工具) |
+
+除錯用的四個埠都綁在 `0.0.0.0`,所以**從 tailnet 上的其他電腦也連得進來**,
+不必待在這台機器前面.RedisInsight 因此掛了憑證走 HTTPS,不讓 Redis 內容明文傳輸.
+
+> RedisInsight 首次開啟要手動新增一次連線:host `redis`,port `6379`,
+> 密碼見 `env/.env.dev` 的 `REDIS_PASSWORD`.設定存在 volume 裡,之後不會再問.
 
 埠號全部定義在 `env/.env.dev`,與其他服務衝突時直接改該檔即可
 (注意 `PUBLIC_S3_URL` 的埠必須與 `NGINX_S3_PORT` 一致) .
