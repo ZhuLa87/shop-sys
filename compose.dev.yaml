@@ -1,0 +1,65 @@
+# 開發環境 override:原始碼掛載 + hot reload
+#
+# backend  掛載整個專案,容器內跑 mvn spring-boot:run.
+#          spring-boot-devtools 監看 target/classes,所以在"主機端"重新編譯
+#          (IDE 自動編譯,或 ./mvnw compile) 就會觸發容器內自動重啟.
+# frontend 容器內跑 nuxt dev,Vite HMR 走 websocket 經由 nginx 轉發.
+#
+# 另外開出除錯用埠號,方便用 DBeaver / RedisInsight / MinIO Console 直接連進去.
+
+services:
+    mariadb:
+        ports:
+            - "${DEBUG_DB_PORT:-13306}:3306"
+
+    redis:
+        ports:
+            - "${DEBUG_REDIS_PORT:-16379}:6379"
+
+    minio:
+        ports:
+            # MinIO Console 管理介面 (S3 API 走 nginx 的 NGINX_S3_PORT)
+            - "${DEBUG_MINIO_CONSOLE_PORT:-19001}:9001"
+
+    backend:
+        build:
+            context: .
+            dockerfile: docker/backend/Dockerfile.dev
+            args:
+                DEV_UID: ${DEV_UID:-1000}
+                DEV_GID: ${DEV_GID:-1000}
+        # 以主機使用者的 uid 執行,否則 maven 寫進 target/ 的檔案會變成 root 所有,
+        # 主機上再跑 ./mvnw 就會因權限不足而失敗
+        user: "${DEV_UID:-1000}:${DEV_GID:-1000}"
+        volumes:
+            - .:/workspace
+            # Maven 本機倉庫用具名 volume 快取,避免每次重建都重新下載相依
+            - maven-repo:/home/dev/.m2
+        environment:
+            # devtools 在容器內需要放寬輪詢間隔,避免掛載檔案系統事件不可靠
+            SPRING_DEVTOOLS_RESTART_POLL_INTERVAL: 2s
+            SPRING_DEVTOOLS_RESTART_QUIET_PERIOD: 1s
+        # 掛載原始碼後首次啟動要編譯,啟動時間較長
+        healthcheck:
+            start_period: 240s
+
+    frontend:
+        build:
+            context: ./frontend
+            dockerfile: ../docker/frontend/Dockerfile.dev
+        volumes:
+            - ./frontend:/app
+            # node_modules 用具名 volume,不讓主機上的版本覆蓋容器內安裝的結果
+            - frontend-node-modules:/app/node_modules
+            - frontend-nuxt-cache:/app/.nuxt
+            - frontend-pnpm-store:/home/node/.pnpm-store
+        environment:
+            NODE_ENV: development
+            # Vite 需要放行經由 nginx 轉發進來的 Host 標頭
+            NUXT_DEV_ALLOWED_HOST: ${PUBLIC_HOST}
+
+volumes:
+    maven-repo:
+    frontend-node-modules:
+    frontend-nuxt-cache:
+    frontend-pnpm-store:

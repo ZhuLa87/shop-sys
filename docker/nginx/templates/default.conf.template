@@ -1,0 +1,134 @@
+# 由 nginx 官方 image 的 envsubst 機制在啟動時展開 (只替換環境變數中存在的名稱,
+# $host / $request_uri 等 nginx 內建變數不受影響) .
+
+# websocket 升級用:只有帶了 Upgrade 標頭的請求才送出 Connection: upgrade,
+# 一般請求維持 keep-alive
+map $http_upgrade $connection_upgrade {
+    default upgrade;
+    ''      close;
+}
+
+upstream shop_backend {
+    server backend:8088;
+}
+
+upstream shop_frontend {
+    server frontend:3000;
+}
+
+upstream shop_minio {
+    server minio:9000;
+}
+
+# ── HTTP:健康檢查 + 轉址至 HTTPS ─────────────────────────────────────────────
+server {
+    listen ${NGINX_HTTP_PORT};
+    server_name _;
+
+    # compose healthcheck 用,不寫入 access log
+    location = /nginx-health {
+        access_log off;
+        add_header Content-Type text/plain;
+        return 200 "ok\n";
+    }
+
+    location / {
+        return 301 https://${PUBLIC_HOST}:${NGINX_HTTPS_PORT}$request_uri;
+    }
+}
+
+# ── HTTPS:應用統一入口 ───────────────────────────────────────────────────────
+server {
+    listen ${NGINX_HTTPS_PORT} ssl;
+    http2 on;
+    server_name ${PUBLIC_HOST};
+
+    ssl_certificate     /etc/nginx/certs/${TLS_CERT_FILE};
+    ssl_certificate_key /etc/nginx/certs/${TLS_KEY_FILE};
+    ssl_protocols       TLSv1.2 TLSv1.3;
+    ssl_session_cache   shared:SSL:10m;
+    ssl_session_timeout 10m;
+
+    client_max_body_size ${MAX_UPLOAD_SIZE};
+
+    location = /nginx-health {
+        access_log off;
+        add_header Content-Type text/plain;
+        return 200 "ok\n";
+    }
+
+    # 後端 API.Spring 的 context-path 就是 /api,因此不改寫路徑原樣轉發.
+    location /api/ {
+        proxy_pass http://shop_backend;
+        proxy_http_version 1.1;
+
+        proxy_set_header Host              $host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        # Spring 的 forward-headers-strategy: framework 會據此還原原始請求的協定與埠,
+        # 少了這些標頭,後端產生的重導向網址會變成 http://backend:8088/...
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Host  $host;
+        proxy_set_header X-Forwarded-Port  ${NGINX_HTTPS_PORT};
+
+        proxy_connect_timeout 10s;
+        proxy_read_timeout    60s;
+    }
+
+    # 前端 Nuxt (SSR) .開發模式下 Vite HMR 也走這條,因此需要 websocket 升級標頭.
+    location / {
+        proxy_pass http://shop_frontend;
+        proxy_http_version 1.1;
+
+        proxy_set_header Host              $host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # websocket (Vite HMR)
+        proxy_set_header Upgrade    $http_upgrade;
+        proxy_set_header Connection $connection_upgrade;
+
+        proxy_connect_timeout 10s;
+        # HMR 的長連線需要較長的閒置逾時
+        proxy_read_timeout    3600s;
+        proxy_send_timeout    3600s;
+    }
+}
+
+# ── HTTPS:MinIO S3 端點 ──────────────────────────────────────────────────────
+# 必須是獨立埠而不是主站的路徑前綴:presigned URL 的 SigV4 簽章涵蓋 Host 與完整路徑,
+# 一旦 nginx 改寫路徑 (例如把 /s3/xxx 轉成 /xxx) 簽章就會驗證失敗.
+server {
+    listen ${NGINX_S3_PORT} ssl;
+    http2 on;
+    server_name ${PUBLIC_HOST};
+
+    ssl_certificate     /etc/nginx/certs/${TLS_CERT_FILE};
+    ssl_certificate_key /etc/nginx/certs/${TLS_KEY_FILE};
+    ssl_protocols       TLSv1.2 TLSv1.3;
+
+    # 上傳大小上限,需大於前端允許的單檔大小
+    client_max_body_size ${MAX_UPLOAD_SIZE};
+    # 大檔上傳不要先緩衝到磁碟再轉發
+    proxy_request_buffering off;
+    proxy_buffering off;
+
+    location / {
+        proxy_pass http://shop_minio;
+        proxy_http_version 1.1;
+
+        # $http_host 保留原始的 host:port,SigV4 驗簽必須拿到與簽章時一致的值.
+        # 這裡不能用 $host (會少掉埠號) .
+        proxy_set_header Host              $http_host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Connection        "";
+
+        chunked_transfer_encoding off;
+        proxy_connect_timeout 10s;
+        proxy_read_timeout    300s;
+        proxy_send_timeout    300s;
+    }
+}
