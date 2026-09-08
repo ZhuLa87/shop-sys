@@ -1,0 +1,18 @@
+# 正式環境:關閉所有除錯與探索性端點
+spring:
+    jpa:
+        show-sql: false
+
+logging:
+    level:
+        root: WARN
+        com.zzowo.shop_sys: INFO
+        org.flywaydb: INFO
+
+# 關閉 Swagger:SecurityConfig 對 /swagger-ui/** 與 /v3/api-docs/** 是 permitAll,
+# 正式環境不應對外公開完整 API 結構
+springdoc:
+    api-docs:
+        enabled: false
+    swagger-ui:
+        enabled: false

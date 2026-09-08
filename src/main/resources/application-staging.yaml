@@ -1,0 +1,15 @@
+# 測試 (staging) 環境:組態貼近 prod,但保留 Swagger 與較詳細的日誌以便驗收
+spring:
+    jpa:
+        show-sql: false
+
+logging:
+    level:
+        com.zzowo.shop_sys: INFO
+        org.flywaydb: INFO
+
+springdoc:
+    api-docs:
+        enabled: true
+    swagger-ui:
+        enabled: true
