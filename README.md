@@ -8,50 +8,118 @@
 
 | 類別 | 技術 | 版本 |
 | :--- | :--- | :--- |
-| 後端框架 | Spring Boot | 3.5.13 |
+| 後端框架 | Spring Boot | 3.5.14 |
 | 程式語言 | Java | 21 |
-| 資料庫 | MariaDB | 11.8 |
-| 安全框架 | Spring Security + JWT | HS512, 24h |
+| 資料庫 | MariaDB | 11.4 |
+| Schema 版控 | Flyway | - |
+| 快取 / Token | Redis | 7 |
+| 物件儲存 | MinIO | S3 相容 |
+| 安全框架 | Spring Security + JWT | HS512 (access 30 分,refresh 7 天) |
 | 密碼雜湊 | Argon2 | v5.8 defaults |
 | ORM | Spring Data JPA (Hibernate) | - |
-| 建置工具 | Maven | 3.8.x |
-| 前端框架 | Vue 3 (Composition API) | SPA |
+| 建置工具 | Maven Wrapper (`./mvnw`) | 3.9 |
+| 前端框架 | Nuxt (Vue 3, SSR) | 4.x |
+| 反向代理 | nginx (TLS 終結) | 1.27 |
+| 容器編排 | Docker Compose | - |
 
 ---
 
-## 快速啟動
+## 開發環境
+
+整套環境以 docker compose 啟動:nginx 作為統一入口,後方是 Spring Boot,Nuxt SSR,MariaDB,Redis 與 MinIO,前後端都支援 hot reload.
 
 ### 前置需求
 
-- Java 21+
-- Maven 3.8+
-- MariaDB 11.8 (或相容版本) 
+只需要 `docker` 與 `docker compose`.
+**不需要**在主機安裝 Java / Maven / Node,全部跑在容器內.
 
-### 設定資料庫
+> 例外:後端的 hot reload 靠"主機端編譯"觸發,所以你仍會用到 `./mvnw`
+> (Maven wrapper 會自動下載 Maven,主機只要有 JDK 21 即可) .
 
-在 `src/main/resources/application.yaml` 修改連線資訊:
-
-```yaml
-spring:
-  datasource:
-    url: jdbc:mariadb://{host}:{port}/shop-sys
-    username: {username}
-    password: {password}
-```
-
-DDL 模式預設為 `update`,首次啟動將自動建立資料表.
-
-### 啟動服務
+### 首次啟動
 
 ```bash
-./mvnw spring-boot:run
+cd /home/zhu/project/shop-sys
+
+# 1. 建立 env 檔
+cp env/.env.dev.example env/.env.dev
+chmod 600 env/.env.dev
+
+# 2. 把檔案裡的 CHANGE_ME 全部換掉
+openssl rand -base64 18 | tr -dc 'A-Za-z0-9'   # 給各組密碼
+openssl rand -base64 48                        # 給 JWT_SECRET
+
+# 3. 啟動
+./stack.sh up
 ```
 
-服務啟動後:`http://localhost:8088/api`
+> 範本不附任何可用憑證,連開發環境也一樣.
+> 因為除錯用埠 (13306 / 16379 / 19001) 綁在 `0.0.0.0`,同網段或 tailnet 上的其他裝置
+> 連得到你的 dev 資料庫,擋在前面的就只有這組密碼 —— 這種東西不該進版控.
+>
+> 若 `CHANGE_ME` 沒換完,`./stack.sh up` 會直接擋下並列出漏掉哪幾個變數.
 
-### 測試資料 (Dev Profile) 
+`./stack.sh up` 等同於:
 
-`application.yaml` 已預設啟用 `dev` profile.首次啟動時,`DataInitializer` 會自動偵測資料庫是否為空,並在空白時匯入測試資料.
+```bash
+docker compose --env-file env/.env.dev -f compose.yaml -f compose.dev.yaml up -d
+```
+
+三個參數缺一不可,所以包成腳本避免打錯.第一次要 build image 並下載相依,約 **5-10 分鐘**.
+
+> 若你習慣打 `make`,根目錄也有一份 `Makefile` (`make dev-up` 等) ,
+> 它只是 `./stack.sh` 的薄包裝,行為完全一致.本專案不強制安裝 `make`.
+
+指令返回時,`mariadb` / `redis` / `minio` / `backend` / `nginx` 都已通過健康檢查
+(compose 的 `depends_on: condition: service_healthy` 會等) .
+**只有 `frontend` 例外** — 它要先跑 `pnpm install` 與首次編譯,通常再等 **幾十秒**
+(網路慢時較久) ,期間開首頁會是 502:
+
+```bash
+./stack.sh logs        # 看到 "Local: http://0.0.0.0:3000/" 就是前端好了
+```
+
+> `env/.env.dev` 的 `DEV_UID` / `DEV_GID` 預設 1000,必須與你的 uid 相符
+> (用 `id -u` / `id -g` 確認) .不符的話後端容器寫進 `target/` 的檔案會變成 root 所有,
+> 主機端的 `./mvnw` 隨即因權限不足而失敗.
+
+### 確認啟動成功
+
+```bash
+./stack.sh ps          # 六個服務,除 frontend 外應皆為 (healthy)
+```
+
+```bash
+H=tu-zhu.soay-fish.ts.net
+
+curl https://$H:8443/api/health                                    # {"status":"UP",...}
+curl https://$H:8443/api/v1/products                               # 商品列表 JSON
+curl -o /dev/null -w "%{http_code}\n" https://$H:8443/              # 前端首頁 200
+curl -o /dev/null -w "%{http_code}\n" https://$H:8444/minio/health/live   # S3 200
+```
+
+瀏覽器開 `https://tu-zhu.soay-fish.ts.net:8443/`.
+TLS 由 nginx 終結,用的是主機上既有的 tailscale 憑證,不會跳憑證警告.
+
+### 服務位址
+
+| 位址 | 用途 |
+| :--- | :--- |
+| `https://tu-zhu.soay-fish.ts.net:8443/` | 前端 |
+| `https://tu-zhu.soay-fish.ts.net:8443/api/v1/...` | 後端 API |
+| `https://tu-zhu.soay-fish.ts.net:8443/api/swagger-ui/index.html` | Swagger |
+| `https://tu-zhu.soay-fish.ts.net:8443/api/health` | 健康檢查 |
+| `https://tu-zhu.soay-fish.ts.net:8444/` | MinIO S3 端點 |
+| `http://localhost:19001/` | MinIO Console (帳密見 `env/.env.dev` 的 `MINIO_ROOT_*`) |
+| `localhost:13306` | MariaDB (給 DBeaver 等工具) |
+| `localhost:16379` | Redis (給 RedisInsight 等工具) |
+
+埠號全部定義在 `env/.env.dev`,與其他服務衝突時直接改該檔即可
+(注意 `PUBLIC_S3_URL` 的埠必須與 `NGINX_S3_PORT` 一致) .
+
+### 測試帳號 (dev profile)
+
+`DataInitializer` 只在 `dev` profile 下執行,偵測到資料庫為空時匯入測試資料:
 
 | Email | 密碼 | 角色 |
 | :--- | :--- | :--- |
@@ -60,17 +128,122 @@ DDL 模式預設為 `update`,首次啟動將自動建立資料表.
 | test01@example.com | mypassword123 | CUSTOMER |
 | test02@example.com | mypassword123 | CUSTOMER |
 
-同時會建立 8 筆商品 (6 件上架,1 件下架,1 件缺貨) 及測試購物車資料.
+同時建立 8 筆商品 (6 件上架,1 件下架,1 件缺貨) 及測試購物車資料.
+資料已存在時自動跳過,不重複插入;要重置用 `./stack.sh reset`.
 
-> 資料已存在時會自動跳過,不重複插入.若需重置,清空 `carts`,`products`,`users` 三張表後重啟即可.
+### 日常開發
+
+**改後端** — 在主機端編譯,容器內的 `spring-boot-devtools` 監看到 `target/classes` 變動就會自動重啟 (實測約 4 秒) :
+
+```bash
+./mvnw compile       # 或讓 IDE 自動編譯
+```
+
+**改前端** — 直接存檔,Vite HMR 立即生效,不需要任何指令.
+
+**改 entity** — 必須新增對應的 migration,否則 `ddl-auto: validate` 會讓後端啟動失敗:
+
+```bash
+# 新增 src/main/resources/db/migration/V2__add_xxx.sql
+./mvnw compile       # 後端重啟時 Flyway 會自動套用
+```
+
+開發階段若不想寫 migration,可以 `./stack.sh reset` 清掉資料 volume 從頭來過.
+
+**跑測試** — 測試用 H2 記憶體資料庫,不依賴任何容器:
+
+```bash
+./mvnw test
+```
+
+### 常用指令
+
+```bash
+./stack.sh --help      # 列出全部指令
+./stack.sh up          # 啟動
+./stack.sh down        # 停止並移除容器 (保留資料 volume)
+./stack.sh reset       # 停止並刪除資料 volume,下次啟動會重建空資料庫
+./stack.sh logs        # 追蹤全部服務的 log
+./stack.sh logs backend    # 只看單一服務
+./stack.sh ps          # 服務狀態與健康檢查結果
+./stack.sh restart     # 只重啟後端容器
+./stack.sh build       # 重新 build dev image
+./stack.sh config      # 展開後的完整 compose 設定,用來確認變數有正確代入
+./stack.sh exec mariadb sh # 進到容器內
+```
+
+第一個參數可指定環境 (`dev` / `staging` / `prod`,預設 `dev`) :
+
+```bash
+./stack.sh staging up
+./stack.sh prod logs
+```
+
+### 從零重來
+
+```bash
+./stack.sh reset       # 停止並清空所有資料
+rm env/.env.dev
+
+cp env/.env.dev.example env/.env.dev
+./stack.sh up
+```
+
+### 其他環境
+
+`staging` 與 `prod` 使用 build 產出 (fat jar + Nuxt `.output`) ,不掛載原始碼,無 hot reload:
+
+```bash
+cp env/.env.staging.example env/.env.staging   # 把 CHANGE_ME 全部換掉
+./stack.sh staging up
+```
+
+架構說明,環境差異,設計取捨與疑難排解見 **[docker/README.md](docker/README.md)**.
+
+### 不使用 Docker
+
+前置需求:Java 21+,Maven 3.8+,MariaDB 11.4+,Redis,MinIO.
+
+連線資訊與機密一律由環境變數提供 (`application.yaml` 內不寫死任何密碼,
+且機密類變數沒有預設值,缺少時會直接啟動失敗) :
+
+```bash
+export DB_URL=jdbc:mariadb://{host}:{port}/shop_sys
+export DB_USERNAME={username}
+export DB_PASSWORD={password}
+export REDIS_HOST={host} REDIS_PASSWORD={password}
+export JWT_SECRET=$(openssl rand -base64 48)
+export MINIO_ACCESS_KEY={key} MINIO_SECRET_KEY={secret}
+
+./mvnw spring-boot:run      # http://localhost:8088/api
+```
+
+資料表由 **Flyway** 建立 (`src/main/resources/db/migration/`) ,`ddl-auto` 固定為 `validate`.
 
 ---
 
 ## 系統架構
 
 ```
-[Vue 3 SPA] ←── HTTP JSON ──→ [Spring Boot :8088/api] ←──→ [MariaDB]
+                         ┌──────────────────────────────┐
+   瀏覽器 ──── :8443 ────▶│ nginx (TLS 終結)             │
+             (HTTPS)     │  /      → frontend:3000      │
+                         │  /api/  → backend:8088       │
+   瀏覽器 ──── :8444 ────▶│  (獨立 server) → minio:9000  │
+             (S3 API)    └──────────────────────────────┘
+                                      │ 內部網路 shop-sys-net
+                    ┌─────────────────┼──────────────────┐
+                    ▼                 ▼                  ▼
+              frontend:3000     backend:8088         minio:9000
+              (Nuxt SSR)        (Spring Boot)        (物件儲存)
+                    │                 │
+                    │  SSR 期間       ├──▶ mariadb:3306
+                    └────────────────▶│    redis:6379
+                       /api/**        │
 ```
+
+對外只發佈 nginx 的埠,MariaDB / Redis / MinIO 都留在內部網路
+(開發環境另外開出除錯用埠號,見上方"服務位址") .
 
 **Package 結構**:
 
@@ -95,7 +268,7 @@ com.zzowo.shop_sys/
 
 ### 認證與安全
 
-- JWT Stateless 認證 (HS512, 有效 24 小時) 
+- JWT Stateless 認證 (HS512;access token 30 分鐘,refresh token 7 天,支援 Token Rotation) 
 - Argon2 密碼雜湊,不可逆儲存
 - 帳號鎖定:連續失敗 5 次,鎖定 15 分鐘 (自動解鎖) 
 - RBAC 角色權限控制 (7 種角色) 
@@ -124,7 +297,7 @@ com.zzowo.shop_sys/
 
 ## API 總覽
 
-Base URL: `http://localhost:8088/api/v1`  
+Base URL: `https://tu-zhu.soay-fish.ts.net:8443/api/v1` (Docker) 或 `http://localhost:8088/api/v1` (直接執行)  
 認證方式: `Authorization: Bearer {token}`
 
 ### 認證
