@@ -1,0 +1,8 @@
+# pnpm 10 起,設定不再放在 package.json 的 "pnpm" 欄位,改由這個檔案提供.
+#
+# pnpm 預設封鎖相依套件的 build script,遇到需要 build 的套件會直接以
+# ERR_PNPM_IGNORED_BUILDS 中止安裝.在互動式終端可以用 pnpm approve-builds 核可,
+# 但容器內是非互動安裝,必須在這裡明確列出允許的套件.
+onlyBuiltDependencies:
+  - '@parcel/watcher'
+  - esbuild

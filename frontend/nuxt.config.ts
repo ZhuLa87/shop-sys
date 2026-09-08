@@ -17,6 +17,14 @@ function loadHttps() {
   }
 }
 
+// 在 docker 中執行時,TLS 由 nginx 終結,dev server 只需跑純 HTTP;
+// 直接在主機上 pnpm dev 時維持原本的 HTTPS + 8087 行為
+const devPort = Number(process.env.NUXT_DEV_PORT ?? 8087)
+const devHttps = process.env.NUXT_DEV_HTTPS === 'false' ? undefined : loadHttps()
+
+// 經由 nginx 轉發進來時 Host 是對外網域,Vite 預設會擋掉
+const allowedHost = process.env.NUXT_DEV_ALLOWED_HOST ?? 'tu-zhu.soay-fish.ts.net'
+
 export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
 
@@ -28,8 +36,8 @@ export default defineNuxtConfig({
 
   devServer: {
     host: '0.0.0.0',
-    port: 8087,
-    https: loadHttps(),
+    port: devPort,
+    https: devHttps,
   },
 
   modules: [
@@ -42,7 +50,7 @@ export default defineNuxtConfig({
   vite: {
     plugins: [tailwindcss()],
     server: {
-      allowedHosts: ['tu-zhu.soay-fish.ts.net']
+      allowedHosts: [allowedHost]
     },
     optimizeDeps: {
       include: [
@@ -54,14 +62,8 @@ export default defineNuxtConfig({
     },
   },
 
-  nitro: {
-    devProxy: {
-      '/api': {
-        target: 'http://localhost:8088/api',
-        changeOrigin: true,
-      },
-    },
-  },
+  // SSR 期間對後端的轉發改由 server/routes/api/[...].ts 處理
+  // (在執行時讀 NUXT_API_TARGET,build 產出才不會綁死某個環境)
 
   runtimeConfig: {
     public: {
