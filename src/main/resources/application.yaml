@@ -1,52 +1,83 @@
 server:
-    port: 8088
+    port: ${SERVER_PORT:8088}
     address: 0.0.0.0
     servlet:
         context-path: /api
+    # 位於 nginx 之後,需信任反向代理帶入的 X-Forwarded-* 標頭
+    forward-headers-strategy: framework
 
 spring:
     application:
         name: shop-sys
     profiles:
-        active: dev
+        active: ${SPRING_PROFILES_ACTIVE:dev}
 
     datasource:
-        url: jdbc:mariadb://tu-zhu.soay-fish.ts.net:3306/shop-sys
-        username: dev-shop-sys
-        password: devlagan
+        url: ${DB_URL:jdbc:mariadb://localhost:3306/shop-sys}
+        username: ${DB_USERNAME:shop-sys}
+        # 無預設值,未提供時啟動即失敗 (刻意設計,避免預設密碼被帶進任何環境)
+        password: ${DB_PASSWORD}
         driver-class-name: org.mariadb.jdbc.Driver
 
+    # Schema 由 Flyway 管理,多個副本同時啟動時會競爭 flyway_schema_history 的鎖,
+    # 只有一個能實際套用 migration,其餘等待後直接通過,不會發生 DDL 競爭
+    flyway:
+        enabled: true
+        locations: classpath:db/migration
+        # 既有資料庫 (已有表但無 flyway_schema_history) 首次接手時,標記為已套用 V1 而不重跑
+        baseline-on-migrate: true
+        baseline-version: 1
+
     jpa:
-        show-sql: true
+        show-sql: ${JPA_SHOW_SQL:false}
         open-in-view: false
         hibernate:
-            ddl-auto: update
+            # 固定為 validate:entity 與 schema 不一致時啟動即失敗,強制走 migration
+            ddl-auto: validate
         properties:
             hibernate:
                 dialect: org.hibernate.dialect.MariaDBDialect
 
     data:
         redis:
-            host: tu-zhu.soay-fish.ts.net
-            port: 6379
-            password: zhuladev
+            host: ${REDIS_HOST:localhost}
+            port: ${REDIS_PORT:6379}
+            password: ${REDIS_PASSWORD}
 
 # 管理端點配置
+# 實際路徑 = context-path + base-path,例如 health 為 /api/health
 management:
     endpoints:
         web:
             base-path: /
+            exposure:
+                include: health,info
+    endpoint:
+        health:
+            # 細節僅對已驗證的請求顯示,對 docker healthcheck 只回傳 UP/DOWN
+            show-details: when-authorized
+            # 額外開出 /api/health/liveness 與 /api/health/readiness
+            probes:
+                enabled: true
+            group:
+                # liveness 只看行程還活著,不含外部相依:掛掉才該重啟容器
+                liveness:
+                    include: livenessState
+                # readiness 決定"能不能接流量",預設群組不含 db/redis,必須明確加入,
+                # 否則 DB 斷線時 readiness 仍會回 UP
+                readiness:
+                    include: readinessState, db, redis
 
 # JWT 配置
 jwt:
-    secret: mySecretKeyForShopSYSThatIsLongEnoughForHS512Algorithm
-    expiration: 1800000        # Access Token:30 分鐘 (毫秒)
-    refresh-expiration: 604800000 # Refresh Token:7 天 (毫秒)
+    secret: ${JWT_SECRET}
+    expiration: ${JWT_EXPIRATION:1800000}        # Access Token:30 分鐘 (毫秒)
+    refresh-expiration: ${JWT_REFRESH_EXPIRATION:604800000} # Refresh Token:7 天 (毫秒)
 
 # 日誌配置
 logging:
     level:
-        com.zzowo.shop_sys: INFO
+        com.zzowo.shop_sys: ${LOG_LEVEL_APP:INFO}
         com.zzowo.shop_sys.config.GlobalExceptionHandler: WARN
         org.springframework.security: WARN
         org.springframework.web.bind.MethodArgumentNotValidException: WARN
@@ -54,19 +85,22 @@ logging:
 # MinIO 物件儲存設定
 # 注意: port 9000 是 MinIO S3 API,port 9001 是 Console 管理介面
 minio:
-  endpoint: https://tu-zhu.soay-fish.ts.net:9000
-  access-key: RuLuG2be2Bqz1GqiPxJk
-  secret-key: cVOP2fD774xN7oeMJ7Bgq3o9IRCrJTMDseSgD5DX
-  bucket-name: shop-sys-public
-  # 產生給前端使用的公開 URL base,可替換為 CDN 域名
-  public-url: https://tu-zhu.soay-fish.ts.net:9000
+    # 後端容器對內連線用的位址
+    endpoint: ${MINIO_ENDPOINT:http://localhost:9000}
+    access-key: ${MINIO_ACCESS_KEY}
+    secret-key: ${MINIO_SECRET_KEY}
+    bucket-name: ${MINIO_BUCKET:shop-sys-public}
+    region: ${MINIO_REGION:us-east-1}
+    # 產生給前端 (瀏覽器) 使用的公開 URL base,可替換為 CDN 域名
+    # 與 endpoint 不同:瀏覽器連不到 docker 內部主機名,必須是對外可達的位址
+    public-url: ${MINIO_PUBLIC_URL:http://localhost:9000}
 
 # 帳戶鎖定配置
 app:
     security:
         account-locking:
             # 啟用帳戶鎖定功能
-            enabled: true
+            enabled: ${ACCOUNT_LOCKING_ENABLED:true}
             # 允許的最大登入失敗次數
             max-failed-attempts: 5
             # 帳戶鎖定持續時間 (分鐘)

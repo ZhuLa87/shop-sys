@@ -1,0 +1,16 @@
+# 開發環境:資料可拋棄,重視除錯資訊
+# DataInitializer (@Profile("dev")) 只在這個 profile 下建立測試資料
+spring:
+    jpa:
+        show-sql: true
+
+logging:
+    level:
+        com.zzowo.shop_sys: DEBUG
+        org.flywaydb: INFO
+
+springdoc:
+    api-docs:
+        enabled: true
+    swagger-ui:
+        enabled: true
