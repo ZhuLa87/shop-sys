@@ -70,6 +70,7 @@ public class AuthController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Token 刷新成功")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "請求參數錯誤")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Refresh Token 無效或已過期")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "423", description = "帳號已被停用或鎖定")
     @SecurityRequirements
     @PostMapping("/refresh")
     public ResponseEntity<ApiResponse<TokenRefreshResponse>> refresh(@Valid @RequestBody TokenRefreshRequest request) {
@@ -77,6 +78,8 @@ public class AuthController {
 
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("使用者不存在"));
+
+        userService.assertAccountActive(user);
 
         String newAccessToken = jwtUtil.generateToken(user);
         String newRefreshToken = refreshTokenService.create(userId);

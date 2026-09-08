@@ -135,10 +135,16 @@ public class User implements UserDetails {
         return accountNonLocked;
     }
 
-    // 密碼是否未過期 (true = 沒過期) 
+    // 密碼是否未過期 (true = 沒過期)
     @Override
     public boolean isCredentialsNonExpired() {
         return credentialsNonExpired;
+    }
+
+    // 帳號是否啟用 (true = 啟用) . UserDetails 預設 (default method) 恆回傳 true,必須覆寫才會讀到 enabled 欄位
+    @Override
+    public boolean isEnabled() {
+        return enabled;
     }
 
 }

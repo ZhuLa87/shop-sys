@@ -6,6 +6,13 @@ import java.util.stream.Collectors;
 
 import com.zzowo.shop_sys.mapper.UserMapper; // Import Mapper
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.DisabledException;
+import org.springframework.security.authentication.LockedException;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional; // Import Transactional
@@ -36,6 +43,9 @@ public class UserService {
 
     @Autowired
     private JwtUtil jwtUtil;
+
+    @Autowired
+    private AuthenticationManager authenticationManager;
 
     @Autowired
     private RefreshTokenService refreshTokenService;
@@ -75,13 +85,17 @@ public class UserService {
 
     @Transactional
     public LoginResponse login(UserLoginRequest request) {
-        User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new BusinessException("帳號或密碼錯誤"));
-
-        if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
-            throw new BusinessException("帳號或密碼錯誤");
+        Authentication authentication;
+        try {
+            authentication = authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword()));
+        } catch (BadCredentialsException e) {
+            throw new BusinessException("帳號或密碼錯誤", HttpStatus.UNAUTHORIZED);
+        } catch (DisabledException | LockedException e) {
+            throw new BusinessException("帳號已被停用或鎖定,請聯繫客服", HttpStatus.LOCKED);
         }
 
+        User user = (User) authentication.getPrincipal();
         user.setLastLoginAt(LocalDateTime.now());
         userRepository.save(user);
 
@@ -89,6 +103,13 @@ public class UserService {
         String refreshToken = refreshTokenService.create(user.getId());
 
         return new LoginResponse(accessToken, refreshToken, "Bearer", jwtUtil.getAccessExpirationSeconds());
+    }
+
+    // 供 /auth/refresh 換發 token 前檢查帳號狀態,避免帳號被停用/鎖定後仍能無限期換發 access token
+    public void assertAccountActive(User user) {
+        if (!user.isEnabled() || !user.isAccountNonLocked()) {
+            throw new BusinessException("帳號已被停用或鎖定,請聯繫客服", HttpStatus.LOCKED);
+        }
     }
 
     @Transactional // 加入事務管理
