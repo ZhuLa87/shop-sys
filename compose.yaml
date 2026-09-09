@@ -174,7 +174,9 @@ services:
             TLS_CERT_FILE: ${TLS_CERT_FILE}
             TLS_KEY_FILE: ${TLS_KEY_FILE}
         volumes:
-            - ./docker/nginx/templates:/etc/nginx/templates:ro
+            # 逐檔掛載而非整個目錄:dev 需要額外掛一份 MinIO Console 的設定進來,
+            # 而唯讀的目錄掛載裡無法再建立巢狀掛載點.掛到映像本身的目錄則沒有這個限制.
+            - ./docker/nginx/templates/default.conf.template:/etc/nginx/templates/default.conf.template:ro
             - ${TLS_CERT_DIR}:/etc/nginx/certs:ro
         healthcheck:
             test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:${NGINX_HTTP_PORT}/nginx-health || exit 1"]
