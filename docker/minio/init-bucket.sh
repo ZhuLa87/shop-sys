@@ -28,9 +28,45 @@ echo "[minio-init] 建立 bucket: $MINIO_BUCKET"
 mc mb --ignore-existing "local/$MINIO_BUCKET"
 
 # 商品圖片與頭像由瀏覽器直接以 public-url 讀取 (不帶簽章) ,因此需要匿名下載權限.
-# 只開放 download,不開放 list/upload.
-echo "[minio-init] 設定匿名讀取權限"
-mc anonymous set download "local/$MINIO_BUCKET"
+#
+# 這裡不用 `mc anonymous set download` —— 那個內建的 download 政策除了 s3:GetObject,
+# 還會一併授予 bucket 層級的 s3:ListBucket 與 s3:GetBucketLocation,
+# 等於任何人打 GET <public-url>/<bucket>/ 就能列出所有物件的 key.
+# 圖片本身本來就公開,但"有哪些檔案"不必一起公開,所以改用自訂政策只留 GetObject.
+echo "[minio-init] 設定匿名讀取權限 (只允許讀取物件,不允許列出 bucket) "
+cat > /tmp/anonymous-policy.json <<POLICY
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Principal": { "AWS": ["*"] },
+            "Action": ["s3:GetObject"],
+            "Resource": ["arn:aws:s3:::${MINIO_BUCKET}/*"]
+        }
+    ]
+}
+POLICY
+mc anonymous set-json /tmp/anonymous-policy.json "local/$MINIO_BUCKET"
+
+# 確認實際套用的內容:政策設錯的話商品圖片會全部變成 403,
+# 而那要等到前端載入頁面才會發現.同樣用 shell 內建的 case 比對,mc 映像沒有 grep.
+ANON_POLICY=$(mc anonymous get-json "local/$MINIO_BUCKET" 2>/dev/null || true)
+case "$ANON_POLICY" in
+    *ListBucket*)
+        echo "[minio-init] 匿名政策仍包含 ListBucket,不符預期" >&2
+        echo "$ANON_POLICY" >&2
+        exit 1
+        ;;
+    *s3:GetObject*)
+        echo "[minio-init] 匿名政策已套用: 僅 s3:GetObject"
+        ;;
+    *)
+        echo "[minio-init] 匿名政策套用失敗" >&2
+        echo "$ANON_POLICY" >&2
+        exit 1
+        ;;
+esac
 
 # 後端使用專屬帳號而非 root 金鑰
 if mc admin user info local "$MINIO_ACCESS_KEY" >/dev/null 2>&1; then
