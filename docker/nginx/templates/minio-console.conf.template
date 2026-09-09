@@ -1,0 +1,52 @@
+# MinIO Console 管理介面.這個檔案只在 compose.dev.yaml 裡被掛進 nginx 容器,
+# staging / prod 的 nginx 只掛 default.conf.template,因此不會對外開放 Console.
+#
+# 為什麼收在 nginx 後面而不是直接 publish 容器的 9001:
+# 埠綁在 0.0.0.0,同網段的裝置連得到,登入時的 root 帳密會以明文送出.
+# 也不能改用 MinIO 自己的 TLS —— 它的憑證是 server 層級,一開就連 S3 API (9000)
+# 一起變成 HTTPS,會弄壞下面 default.conf 那條 http 上游.
+#
+# 註:$connection_upgrade 這個 map 定義在 default.conf,map 屬於 http 層級,
+# conf.d 依檔名排序載入 (default 在 minio-console 之前) ,所以這裡拿得到.
+
+upstream shop_minio_console {
+    server minio:9001;
+}
+
+server {
+    listen ${NGINX_MINIO_CONSOLE_PORT} ssl;
+    http2 on;
+    server_name ${PUBLIC_HOST};
+
+    ssl_certificate     /etc/nginx/certs/${TLS_CERT_FILE};
+    ssl_certificate_key /etc/nginx/certs/${TLS_KEY_FILE};
+    ssl_protocols       TLSv1.2 TLSv1.3;
+    ssl_session_cache   shared:SSL:10m;
+    ssl_session_timeout 10m;
+
+    # Console 可以直接上傳物件,大小上限比照 S3 端點
+    client_max_body_size ${MAX_UPLOAD_SIZE};
+    proxy_request_buffering off;
+    proxy_buffering off;
+
+    location / {
+        proxy_pass http://shop_minio_console;
+        proxy_http_version 1.1;
+
+        # 與 S3 端點同理:Console 的部分請求會轉呼叫 S3 API,
+        # 保留原始的 host:port 才不會讓簽章或重導向對不上
+        proxy_set_header Host              $http_host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # Console 用 websocket 推送即時的物件清單與 trace/log 畫面
+        proxy_set_header Upgrade    $http_upgrade;
+        proxy_set_header Connection $connection_upgrade;
+
+        chunked_transfer_encoding off;
+        proxy_connect_timeout 10s;
+        proxy_read_timeout    300s;
+        proxy_send_timeout    300s;
+    }
+}

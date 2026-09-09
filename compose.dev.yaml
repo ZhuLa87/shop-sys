@@ -5,7 +5,8 @@
 #          (IDE 自動編譯,或 ./mvnw compile) 就會觸發容器內自動重啟.
 # frontend 容器內跑 nuxt dev,Vite HMR 走 websocket 經由 nginx 轉發.
 #
-# 另外開出除錯用埠號,方便用 DBeaver / RedisInsight / MinIO Console 直接連進去.
+# 另外開出除錯用埠號,方便用 DBeaver 直接連資料庫;
+# RedisInsight 與 MinIO Console 這兩個管理網頁則一律走 TLS,不以明文對外.
 
 services:
     mariadb:
@@ -17,13 +18,30 @@ services:
             - "${DEBUG_REDIS_PORT:-16379}:6379"
 
     minio:
+        environment:
+            # Console 掛在 nginx 後面,登入後的重導向必須指回對外網址,
+            # 否則會被導到容器內部的 http://minio:9001
+            MINIO_BROWSER_REDIRECT_URL: https://${PUBLIC_HOST}:${NGINX_MINIO_CONSOLE_PORT:-8445}
+
+    # Console 管理介面走 nginx 終結 TLS (見 docker/nginx/templates/minio-console.conf.template) .
+    # 這個 override 只在 dev 掛載,staging / prod 不會對外開放 Console.
+    nginx:
         ports:
-            # MinIO Console 管理介面 (S3 API 走 nginx 的 NGINX_S3_PORT)
-            - "${DEBUG_MINIO_CONSOLE_PORT:-19001}:9001"
+            - "${NGINX_MINIO_CONSOLE_PORT:-8445}:${NGINX_MINIO_CONSOLE_PORT:-8445}"
+        environment:
+            NGINX_MINIO_CONSOLE_PORT: ${NGINX_MINIO_CONSOLE_PORT:-8445}
+        volumes:
+            # 只有 dev 掛這份設定,所以 staging / prod 不會對外開放 Console
+            - ./docker/nginx/templates/minio-console.conf.template:/etc/nginx/templates/minio-console.conf.template:ro
+        depends_on:
+            minio:
+                condition: service_healthy
 
     # Redis 的網頁管理介面.dev 專用,staging / prod 不會有這個服務.
-    # 與 MariaDB / MinIO Console 一樣綁在 0.0.0.0,方便從其他電腦經由 tailscale 連進來,
-    # 因此掛上憑證走 HTTPS,不讓 Redis 內容以明文在網路上傳輸.
+    # 綁在 0.0.0.0 方便從其他電腦經由 tailscale 連進來,因此掛上憑證自行終結 TLS,
+    # 不讓 Redis 內容以明文在網路上傳輸.
+    # (MinIO Console 目的相同但做法不同:它的 TLS 是 server 層級,一開會連 S3 API
+    #  一起變成 HTTPS,所以改為收在 nginx 後面,見上面的 nginx override) 
     redisinsight:
         image: redis/redisinsight:latest
         restart: unless-stopped
