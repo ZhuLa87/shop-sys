@@ -35,7 +35,12 @@ build/
 ### Claude Code ###
 # Gemini CLI 讀根目錄的 skills/; Claude Code 的同名 skill 放在 .claude/skills/ 且有進版控.
 # 前導斜線是必要的: 沒有它會連 .claude/skills/ 一起忽略
-/skills/
+.claude
+
+### CodeGraph ###
+# 本機索引 (codegraph.db 約 7 MB 加上 daemon 的 pid/socket/log) , 是否建索引由各人自行決定.
+# CodeGraph 自己會在 .codegraph/ 裡放一份 .gitignore, 這裡整個忽略掉連那份也不進版控
+/.codegraph/
 
 ### Docker ###
 # 實際使用的 env 檔含機密,只保留 *.example 範本進版控
