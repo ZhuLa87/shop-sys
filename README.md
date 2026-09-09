@@ -54,7 +54,7 @@ openssl rand -base64 48                        # 給 JWT_SECRET
 ```
 
 > 範本不附任何可用憑證,連開發環境也一樣.
-> 因為除錯用埠 (13306 / 16379 / 19001) 綁在 `0.0.0.0`,同網段或 tailnet 上的其他裝置
+> 因為除錯用埠 (13306 / 16379) 綁在 `0.0.0.0`,同網段或 tailnet 上的其他裝置
 > 連得到你的 dev 資料庫,擋在前面的就只有這組密碼 —— 這種東西不該進版控.
 >
 > 若 `CHANGE_ME` 沒換完,`./stack.sh up` 會直接擋下並列出漏掉哪幾個變數.
@@ -110,13 +110,20 @@ TLS 由 nginx 終結,用的是主機上既有的 tailscale 憑證,不會跳憑�
 | `https://tu-zhu.soay-fish.ts.net:8443/api/swagger-ui/index.html` | Swagger |
 | `https://tu-zhu.soay-fish.ts.net:8443/api/health` | 健康檢查 |
 | `https://tu-zhu.soay-fish.ts.net:8444/` | MinIO S3 端點 |
-| `http://tu-zhu.soay-fish.ts.net:19001/` | MinIO Console (帳密見 `env/.env.dev` 的 `MINIO_ROOT_*`) |
+| `https://tu-zhu.soay-fish.ts.net:8445/` | MinIO Console (帳密見 `env/.env.dev` 的 `MINIO_ROOT_*`) |
 | `https://tu-zhu.soay-fish.ts.net:15540/` | RedisInsight (Redis 網頁管理介面) |
 | `tu-zhu.soay-fish.ts.net:13306` | MariaDB (給 DBeaver 等資料庫工具) |
 | `tu-zhu.soay-fish.ts.net:16379` | Redis (給 CLI 或其他工具) |
 
-除錯用的四個埠都綁在 `0.0.0.0`,所以**從 tailnet 上的其他電腦也連得進來**,
-不必待在這台機器前面.RedisInsight 因此掛了憑證走 HTTPS,不讓 Redis 內容明文傳輸.
+上面這些埠都綁在 `0.0.0.0`,所以**從 tailnet 上的其他電腦也連得進來**,不必待在這台機器前面.
+也因為如此,**兩個管理網頁一律走 HTTPS**,不讓帳密與資料明文經過網路:
+
+- RedisInsight 把憑證掛進容器,由它自己終結 TLS.
+- MinIO Console 做不到這件事 (MinIO 的憑證是 server 層級,一開會連 S3 API 一起變 HTTPS,
+  會弄壞 nginx 的上游) ,因此改為收在 nginx 後面,走 `NGINX_MINIO_CONSOLE_PORT` (8445) .
+  對應的 nginx 設定只在 dev 掛載,staging / prod 不會對外開放 Console.
+
+MariaDB 與 Redis 這兩個埠是原生協定,沒有 TLS,擋在前面的只有密碼.
 
 > RedisInsight 首次開啟要手動新增一次連線:host `redis`,port `6379`,
 > 密碼見 `env/.env.dev` 的 `REDIS_PASSWORD`.設定存在 volume 裡,之後不會再問.

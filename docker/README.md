@@ -52,14 +52,16 @@ chmod 600 env/.env.dev
 | `https://tu-zhu.soay-fish.ts.net:8443/api/swagger-ui/index.html` | Swagger |
 | `https://tu-zhu.soay-fish.ts.net:8443/api/health` | 健康檢查 |
 | `https://tu-zhu.soay-fish.ts.net:8444/` | MinIO S3 端點 |
-| `http://<PUBLIC_HOST>:19001/` | MinIO Console |
+| `https://<PUBLIC_HOST>:8445/` | MinIO Console |
 | `https://<PUBLIC_HOST>:15540/` | RedisInsight (Redis 網頁管理介面) |
 | `<PUBLIC_HOST>:13306` | MariaDB (給 DBeaver 等資料庫工具) |
 | `<PUBLIC_HOST>:16379` | Redis (給 CLI 或其他工具) |
 
-除錯用的四個埠綁在 `0.0.0.0`,可從 tailnet 上的其他電腦直接連入,
-所以那組密碼是真的在擋人.RedisInsight 因此掛憑證走 HTTPS.
-這些服務只在 dev override 裡,staging 與 prod 不會有.
+這些埠綁在 `0.0.0.0`,可從 tailnet 上的其他電腦直接連入,所以那組密碼是真的在擋人.
+兩個管理網頁因此都走 HTTPS,但做法不同:RedisInsight 把憑證掛進容器自行終結 TLS;
+MinIO Console 則收在 nginx 後面 (`NGINX_MINIO_CONSOLE_PORT`) ,因為 MinIO 的 TLS 是
+server 層級,一開會連 S3 API (9000) 一起變成 HTTPS,弄壞 nginx 的 http 上游.
+以上都只在 dev override 裡,staging 與 prod 不會有.
 
 dev profile 會由 `DataInitializer` 建立測試帳號 (`admin@test.com` / `admin123` 等,詳見啟動日誌) .
 
@@ -195,6 +197,13 @@ services:
 
 **MinIO 必須用獨立埠,不能用路徑前綴**
 presigned URL 的 SigV4 簽章涵蓋 Host 與完整路徑.如果讓 nginx 把 `/s3/xxx` 改寫成 `/xxx` 轉給 MinIO,簽章就對不上.因此 S3 走獨立的 `NGINX_S3_PORT`,nginx 原樣轉發並用 `$http_host` (保留埠號) 而非 `$host`.
+
+**bucket 的匿名政策是自訂 JSON,不是 `mc anonymous set download`**
+`set download` 這個內建捷徑除了 `s3:GetObject`,還會授予 bucket 層級的 `s3:ListBucket` 與
+`s3:GetBucketLocation` — 任何人打 `GET <S3 端點>/<bucket>/` 就能列出所有物件的 key.
+商品圖片本來就公開,但"有哪些檔案"沒必要一起公開,因此 `docker/minio/init-bucket.sh` 改成
+`mc anonymous set-json`,只保留 `s3:GetObject` on `<bucket>/*`,套用後再回頭讀一次確認.
+後端不受影響:它用 `shop-sys-backend` 這組憑證 (policy `readwrite`) ,走的是簽章請求.
 
 **nginx 容器內外用同一個埠號**
 `ports` 寫成 `"${NGINX_S3_PORT}:${NGINX_S3_PORT}"`,而不是固定的容器埠.
