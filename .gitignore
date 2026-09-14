@@ -32,10 +32,13 @@ build/
 ### VS Code ###
 .vscode/
 
-### Claude Code ###
+### Claude Code / Gemini CLI ###
+# AI 工具設定與說明文件只留在本機, 不進版控 (歷史紀錄已用 git filter-repo 清除過)
 # Gemini CLI 讀根目錄的 skills/; Claude Code 的同名 skill 放在 .claude/skills/ 且有進版控.
 # 前導斜線是必要的: 沒有它會連 .claude/skills/ 一起忽略
 .claude
+/CLAUDE.md
+/GEMINI.md
 
 ### CodeGraph ###
 # 本機索引 (codegraph.db 約 7 MB 加上 daemon 的 pid/socket/log) , 是否建索引由各人自行決定.
