@@ -5,6 +5,7 @@ import com.zzowo.shop_sys.dto.response.cart.CartItemResponse;
 import com.zzowo.shop_sys.entity.Cart;
 import com.zzowo.shop_sys.entity.Product;
 import com.zzowo.shop_sys.entity.User;
+import com.zzowo.shop_sys.enums.ProductStatus;
 import com.zzowo.shop_sys.exception.BusinessException;
 import org.springframework.http.HttpStatus;
 import com.zzowo.shop_sys.exception.ResourceNotFoundException;
@@ -62,6 +63,11 @@ public class CartService {
         User user = getUserByEmail(email);
         Product product = productRepository.findById(request.getProductId())
                 .orElseThrow(() -> new ResourceNotFoundException("商品不存在"));
+
+        // 只有上架中的商品可購買 (缺貨中/已下架即使仍有庫存也不行)
+        if (product.getStatus() != ProductStatus.ON_SHELF) {
+            throw new BusinessException("商品 [" + product.getName() + "] 目前" + product.getStatus().getDescription() + ",無法加入購物車");
+        }
 
         // 檢查購物車是否已經有該商品,若有則增加數量,若無則新增
         Cart cart = cartRepository.findByUserIdAndProductId(user.getId(), product.getId())

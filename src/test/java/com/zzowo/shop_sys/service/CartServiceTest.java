@@ -14,6 +14,8 @@ import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -163,6 +165,22 @@ class CartServiceTest {
         assertThatThrownBy(() -> cartService.addToCart(EMAIL, addRequest(10L, 5)))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("庫存不足");
+
+        verify(cartRepository, never()).save(any());
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = ProductStatus.class, names = {"OUT_OF_STOCK", "OFF_SHELF"})
+    void addToCart_productNotOnShelf_throwsEvenWithStock(ProductStatus status) {
+        stubUser(buildUser(1L));
+        Product product = buildProduct(10L, 10); // 仍有庫存,但狀態不可購買
+        product.setStatus(status);
+        when(productRepository.findById(10L)).thenReturn(Optional.of(product));
+
+        assertThatThrownBy(() -> cartService.addToCart(EMAIL, addRequest(10L, 1)))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining(status.getDescription())
+                .hasMessageContaining("無法加入購物車");
 
         verify(cartRepository, never()).save(any());
     }
