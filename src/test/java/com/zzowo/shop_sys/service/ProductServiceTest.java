@@ -3,6 +3,7 @@ package com.zzowo.shop_sys.service;
 import com.zzowo.shop_sys.dto.response.product.ProductResponse;
 import com.zzowo.shop_sys.entity.Product;
 import com.zzowo.shop_sys.enums.ProductStatus;
+import com.zzowo.shop_sys.exception.BusinessException;
 import com.zzowo.shop_sys.exception.ResourceNotFoundException;
 import com.zzowo.shop_sys.mapper.InventoryLogMapper;
 import com.zzowo.shop_sys.mapper.ProductMapper;
@@ -14,6 +15,10 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -113,6 +118,45 @@ class ProductServiceTest {
                 .isInstanceOf(ResourceNotFoundException.class)
                 .hasMessageContaining("99");
         verify(productRepository, never()).save(any());
+    }
+
+    // ── getStorefrontProducts ────────────────────────────────────────────────
+
+    @Test
+    void getStorefrontProducts_noKeyword_queriesOnShelfAndOutOfStock() {
+        Pageable pageable = PageRequest.of(0, 20, Sort.by(Sort.Direction.DESC, "createdAt"));
+        when(productRepository.findByStatusInSoldOutLast(any(), any()))
+                .thenReturn(new PageImpl<>(List.of(buildProduct()), pageable, 1));
+        when(productMapper.toSummaryResponse(any())).thenReturn(new ProductResponse());
+
+        productService.getStorefrontProducts(pageable, null);
+
+        verify(productRepository).findByStatusInSoldOutLast(
+                List.of(ProductStatus.ON_SHELF, ProductStatus.OUT_OF_STOCK), pageable);
+        verify(productRepository, never()).findByStatusInAndNameContainingSoldOutLast(any(), any(), any());
+    }
+
+    @Test
+    void getStorefrontProducts_withKeyword_trimsKeyword_andQueriesOnShelfAndOutOfStock() {
+        Pageable pageable = PageRequest.of(0, 20);
+        when(productRepository.findByStatusInAndNameContainingSoldOutLast(any(), any(), any()))
+                .thenReturn(new PageImpl<>(List.of(), pageable, 0));
+
+        productService.getStorefrontProducts(pageable, "  滑鼠  ");
+
+        verify(productRepository).findByStatusInAndNameContainingSoldOutLast(
+                List.of(ProductStatus.ON_SHELF, ProductStatus.OUT_OF_STOCK), "滑鼠", pageable);
+        verify(productRepository, never()).findByStatusInSoldOutLast(any(), any());
+    }
+
+    @Test
+    void getStorefrontProducts_unsupportedSortField_throwsBusinessException() {
+        Pageable pageable = PageRequest.of(0, 20, Sort.by("stockQuantity"));
+
+        assertThatThrownBy(() -> productService.getStorefrontProducts(pageable, null))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("stockQuantity");
+        verify(productRepository, never()).findByStatusInSoldOutLast(any(), any());
     }
 
     // ── helpers ──────────────────────────────────────────────────────────────

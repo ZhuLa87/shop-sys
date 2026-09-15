@@ -30,9 +30,9 @@ public class ProductController {
     private ProductService productService;
 
     @Operation(
-        summary = "取得上架商品列表",
-        description = "取得所有狀態為 ON_SHELF 的商品,支援分頁,關鍵字搜尋 (商品名稱) 與排序." +
-                      "排序欄位:name,price,createdAt (預設 createdAt,desc) "
+        summary = "取得前台商品列表",
+        description = "取得所有狀態為 ON_SHELF 或 OUT_OF_STOCK 的商品 (不含 OFF_SHELF),缺貨商品固定排在最後," +
+                      "支援分頁,關鍵字搜尋 (商品名稱) 與排序.排序欄位:name,price,createdAt (預設 createdAt,desc) "
     )
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "未登入")
@@ -40,7 +40,7 @@ public class ProductController {
     public ResponseEntity<ApiResponse<PageResponse<ProductResponse>>> getProducts(
             @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable,
             @Parameter(description = "商品名稱關鍵字 (選填) ") @RequestParam(required = false) String keyword) {
-        PageResponse<ProductResponse> products = productService.getOnShelfProducts(pageable, keyword);
+        PageResponse<ProductResponse> products = productService.getStorefrontProducts(pageable, keyword);
         return ResponseEntity.ok(ApiResponse.success("取得商品列表成功", products));
     }
 

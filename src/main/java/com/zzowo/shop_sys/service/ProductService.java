@@ -30,6 +30,8 @@ public class ProductService {
 
     private static final Set<String> ALLOWED_SORT_FIELDS = Set.of("name", "price", "createdAt");
     private static final int MAX_PAGE_SIZE = 100;
+    // 前台列表可見的商品狀態 (已下架不顯示,缺貨中仍顯示)
+    static final List<ProductStatus> STOREFRONT_STATUSES = List.of(ProductStatus.ON_SHELF, ProductStatus.OUT_OF_STOCK);
 
     @Autowired
     private ProductRepository productRepository;
@@ -75,8 +77,8 @@ public class ProductService {
         productRepository.save(product);
     }
 
-    // 取得上架商品 (分頁 + 關鍵字搜尋) 
-    public PageResponse<ProductResponse> getOnShelfProducts(Pageable pageable, String keyword) {
+    // 取得前台商品列表 (上架中 + 缺貨中,分頁 + 關鍵字搜尋)
+    public PageResponse<ProductResponse> getStorefrontProducts(Pageable pageable, String keyword) {
         pageable.getSort().forEach(order -> {
             if (!ALLOWED_SORT_FIELDS.contains(order.getProperty())) {
                 throw new BusinessException("不支援的排序欄位: " + order.getProperty() + ",允許欄位: name, price, createdAt");
@@ -89,10 +91,10 @@ public class ProductService {
 
         Page<Product> productPage;
         if (keyword != null && !keyword.isBlank()) {
-            productPage = productRepository.findByStatusAndNameContainingSoldOutLast(
-                    ProductStatus.ON_SHELF, keyword.trim(), pageable);
+            productPage = productRepository.findByStatusInAndNameContainingSoldOutLast(
+                    STOREFRONT_STATUSES, keyword.trim(), pageable);
         } else {
-            productPage = productRepository.findByStatusSoldOutLast(ProductStatus.ON_SHELF, pageable);
+            productPage = productRepository.findByStatusInSoldOutLast(STOREFRONT_STATUSES, pageable);
         }
 
         return new PageResponse<>(productPage.map(productMapper::toSummaryResponse));
