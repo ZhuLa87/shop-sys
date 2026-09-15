@@ -226,6 +226,34 @@ ElNotification({ title: '成功', message: '...' })
 
 > **規則**:任何頁面或 composable 一律使用 `notify()`,不直接呼叫 `ElNotification`.
 
+### `useEcpayCheckout`
+
+綠界付款導轉.向後端取得已簽章的付款表單,再以隱藏 form POST **整頁**導向綠界付款頁 (綠界禁止 iframe 嵌入).
+
+| 方法 | 說明 |
+|------|------|
+| `redirectToEcpay(orderId)` | 呼叫 `POST /payments/ecpay/checkout` 並送出表單;成功時頁面直接離開,失敗時丟出錯誤 (`error.message` 為後端訊息) |
+| `onRestoreFromEcpay(callback)` | 從綠界頁面按上一頁時,瀏覽器可能從 bfcache 還原頁面 (不會重跑 `onMounted`),用來重設送出中的 loading 狀態 |
+
+```ts
+const { redirectToEcpay, onRestoreFromEcpay } = useEcpayCheckout()
+const paying = ref(false)
+
+onRestoreFromEcpay(() => { paying.value = false })
+
+const handlePay = async (orderId: number) => {
+  paying.value = true
+  try {
+    await redirectToEcpay(orderId)   // 成功時不會回到這裡
+  } catch (error: any) {
+    paying.value = false
+    notify({ title: '無法前往付款', message: error.message, type: 'error' })
+  }
+}
+```
+
+> 後端回傳的 `params` 含 `CheckMacValue`,**不可修改任何值**,否則綠界會拒絕.整體流程見 [`docs/ecpay-payment.md`](../docs/ecpay-payment.md).
+
 ---
 
 ## 環境變數

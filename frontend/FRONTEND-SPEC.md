@@ -59,6 +59,7 @@ frontend/
 │   │       └── main.css         # Tailwind 入口 + 全域樣式 / 動畫
 │   ├── composables/
 │   │   ├── useApi.ts            # HTTP 客戶端封裝 (所有 API 呼叫都走這裡)
+│   │   ├── useEcpayCheckout.ts  # 綠界付款:取得付款表單並 form POST 整頁導向綠界
 │   │   └── useNotify.ts         # ElNotification 封裝 (統一通知入口)
 │   ├── layouts/
 │   │   └── default.vue          # 共用版面:Header (導覽列) + Footer
@@ -66,11 +67,11 @@ frontend/
 │   │   ├── index.vue            # 商品列表 (首頁)
 │   │   ├── login.vue            # 登入
 │   │   ├── register.vue         # 註冊
-│   │   ├── cart.vue             # 購物車
+│   │   ├── cart.vue             # 購物車 (結帳後導向綠界付款)
 │   │   ├── profile.vue          # 個人設定 (需登入)
 │   │   ├── orders/
 │   │   │   ├── index.vue        # 我的訂單列表 (需登入)
-│   │   │   └── [id].vue         # 訂單詳情 (需登入)
+│   │   │   └── [id].vue         # 訂單詳情 (需登入,待付款時可"前往付款")
 │   │   ├── products/
 │   │   │   └── [id].vue         # 商品詳情
 │   │   └── admin/

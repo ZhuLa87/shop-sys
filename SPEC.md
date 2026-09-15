@@ -1,7 +1,7 @@
 # Shop-Sys 系統規格書 (System Specification)
 
-> **版本**: 1.2.0  
-> **最後更新**: 2026-05-31  
+> **版本**: 1.3.0  
+> **最後更新**: 2026-09-15  
 > **狀態**: 開發中 (In Development)
 
 ---
@@ -91,18 +91,21 @@ com.zzowo.shop_sys/
 │   ├── SecurityConfig.java          # Spring Security 設定 + 端點權限規則
 │   ├── GlobalExceptionHandler.java  # 全域例外攔截器
 │   ├── SwaggerConfig.java           # Springdoc OpenAPI (Swagger UI) 設定
+│   ├── EcpayConfig.java             # 綠界 AIO 金流設定 (ecpay.*,啟動時 @NotBlank 檢查)
 │   └── DataInitializer.java         # dev profile 專用測試資料初始化 (首次啟動時自動執行) 
 ├── controller/
 │   ├── AuthController.java          # /v1/auth
 │   ├── ProductController.java       # /v1/products
 │   ├── CartController.java          # /v1/carts
 │   ├── OrderController.java         # /v1/orders
+│   ├── PaymentController.java       # /v1/payments/ecpay
 │   └── UserController.java          # /v1/users
 ├── dto/
 │   ├── request/                     # 接收前端輸入的 DTO
 │   │   ├── auth/TokenRefreshRequest.java
 │   │   ├── cart/AddToCartRequest.java
 │   │   ├── order/OrderCreateRequest.java
+│   │   ├── payment/EcpayCheckoutRequest.java
 │   │   ├── product/ProductRequest.java
 │   │   └── user/
 │   │       ├── UserRegisterRequest.java
@@ -119,6 +122,7 @@ com.zzowo.shop_sys/
 │       ├── order/
 │       │   ├── OrderResponse.java
 │       │   └── OrderItemResponse.java
+│       ├── payment/EcpayCheckoutResponse.java  # 綠界付款表單 (actionUrl + 已簽章 params)
 │       ├── product/
 │       │   ├── ProductResponse.java
 │       │   └── InventoryLogResponse.java
@@ -140,7 +144,8 @@ com.zzowo.shop_sys/
 ├── enums/
 │   ├── Role.java
 │   ├── ProductStatus.java
-│   └── OrderStatus.java
+│   ├── OrderStatus.java
+│   └── PaymentStatus.java
 ├── exception/
 │   ├── BusinessException.java
 │   └── ResourceNotFoundException.java
@@ -167,11 +172,13 @@ com.zzowo.shop_sys/
 │   ├── ProductService.java
 │   ├── CartService.java
 │   ├── OrderService.java
+│   ├── PaymentService.java          # 綠界付款表單產生 + 付款結果 (ReturnURL/OrderResultURL) 冪等處理
 │   ├── RefreshTokenService.java     # Refresh Token 建立 / 驗證 / 刪除
 │   ├── TokenBlacklistService.java   # Access Token 登出黑名單 (記憶體)
 │   └── CustomUserDetailsService.java
 ├── util/
-│   └── JwtUtil.java
+│   ├── JwtUtil.java
+│   └── EcpayCheckMacValue.java      # 綠界 CheckMacValue (SHA256) 產生與 timing-safe 驗證
 └── ShopSysApplication.java
 ```
 
@@ -326,17 +333,20 @@ orders (N) ─────────── (1) coupons        [預留]
 | `operator_id` | BIGINT | NULLABLE | 操作者 ID |
 | `created_at` | DATETIME | NOT NULL | 記錄時間 |
 
-#### **payments** (已建立 Entity,API 尚未完全整合)
+#### **payments**
 
-| 欄位 | 類型 | 說明 |
-| :--- | :--- | :--- |
-| `id` | BIGINT | 主鍵 |
-| `order_id` | BIGINT | FK → orders.id (1對1) |
-| `payment_method` | VARCHAR | 付款方式 |
-| `transaction_id` | VARCHAR | 金流交易 ID |
-| `amount` | DECIMAL(10,2) | 實際付款金額 |
-| `status` | VARCHAR | 付款狀態 |
-| `paid_at` | DATETIME | 付款時間 |
+每筆訂單最多一筆 (重新付款時沿用同一筆,更新 `merchant_trade_no`).詳見 [`docs/ecpay-payment.md`](docs/ecpay-payment.md).
+
+| 欄位 | 類型 | 限制 | 說明 |
+| :--- | :--- | :--- | :--- |
+| `id` | BIGINT | PK, AUTO_INCREMENT | 主鍵 |
+| `order_id` | BIGINT | FK → orders.id, UNIQUE | 所屬訂單 (1對1) |
+| `payment_method` | VARCHAR | NOT NULL | 建立付款時為 `ECPAY_CREDIT`,付款成功後改記綠界回傳的 `PaymentType` (如 `Credit_CreditCard`) |
+| `transaction_id` | VARCHAR | NULLABLE | 綠界交易編號 (`TradeNo`),付款成功時寫入 |
+| `merchant_trade_no` | VARCHAR(20) | UNIQUE, NULLABLE | 送給綠界的特店訂單編號,每次重新付款都換一組 (V2) |
+| `amount` | DECIMAL(10,2) | NOT NULL | 付款金額 (與訂單金額相同) |
+| `status` | ENUM | NULLABLE | 付款狀態,見 `PaymentStatus` (V3 由 VARCHAR 改為 ENUM) |
+| `paid_at` | DATETIME | NULLABLE | 付款時間 (綠界 `PaymentDate`,台灣時間) |
 
 #### **shipments** (已建立 Entity,API 尚未完全整合)
 
@@ -381,6 +391,14 @@ orders (N) ─────────── (1) coupons        [預留]
 | `SHIPPED` | 已出貨 |
 | `COMPLETED` | 已完成 |
 | `CANCELLED` | 已取消 |
+
+#### PaymentStatus (付款狀態)
+
+| 值 | 說明 |
+| :--- | :--- |
+| `UNPAID` | 已產生綠界付款表單,等待付款結果 |
+| `SUCCESS` | 付款成功 (訂單同時轉為 `PAID`) |
+| `FAILED` | 付款失敗,訂單維持 `PENDING`,可重新付款 |
 
 ---
 
@@ -431,7 +449,18 @@ orders (N) ─────────── (1) coupons        [預留]
 - 一般顧客只能查詢**自己的**訂單,查詢他人訂單時拋出 `BusinessException(403 FORBIDDEN)`.
 - 訂單列表依 `created_at` 降序排列 (最新的在最前) .
 
-### 4.6 庫存紀錄
+### 4.6 付款 (綠界 AIO 信用卡)
+
+目前只串接綠界全方位金流 (AIO) 的**信用卡一次付清**,僅支援新台幣整數金額.完整說明與測試步驟見 [`docs/ecpay-payment.md`](docs/ecpay-payment.md).
+
+- 只有下單者本人可以為自己的 `PENDING` 訂單產生付款表單;每次產生都會換一組新的 `MerchantTradeNo` (綠界規定永久唯一).
+- 訂單金額含小數時拒絕付款 (`BusinessException`).
+- 付款結果以綠界 server 的 **ReturnURL** 通知為準;消費者瀏覽器導回的 **OrderResultURL** 也走同一套處理,兩者到達順序不固定,處理邏輯為冪等,並以 `SELECT ... FOR UPDATE` 鎖定訂單.
+- 付款結果依序驗證:CheckMacValue (timing-safe) → MerchantID → 以 `CustomField1` 找回訂單 → `SimulatePaid` 不為 1 → `TradeAmt` 等於訂單金額 → `RtnCode` 為 `"1"`.
+- 付款成功:訂單 `PENDING` → `PAID`,`payments.status` → `SUCCESS`.付款失敗:`payments.status` → `FAILED`,訂單維持 `PENDING`.
+- 已付款訂單再收到不同 TradeNo 的付款,或已取消訂單收到付款,只記錄 warn log,需人工退款.
+
+### 4.7 庫存紀錄
 
 庫存異動原因 (`reason`) 說明:
 
@@ -884,7 +913,43 @@ GET /api/v1/products?keyword=耳機&sort=price,asc&size=10
 
 ---
 
-### 5.6 會員 (Users) - `/v1/users`
+### 5.6 付款 (Payments) - `/v1/payments/ecpay`
+
+> 詳細規格,回應範例與設計決策見 [`docs/ecpay-payment.md`](docs/ecpay-payment.md).
+
+#### POST `/v1/payments/ecpay/checkout` - 建立綠界付款表單
+
+需 JWT 驗證.只能為自己的 `PENDING` 訂單付款.
+
+**Request Body**:
+
+```json
+{ "orderId": 20 }
+```
+
+| 欄位 | 必填 | 驗證規則 |
+| :--- | :---: | :--- |
+| `orderId` | ✅ | 不可為 null |
+
+**Response** `200 OK`:`data` 為 `{ actionUrl, params }`,前端需將 `params` (已含 `CheckMacValue`) 原封不動以 form POST 送到 `actionUrl`.
+
+**錯誤**:`400` 訂單非 `PENDING` 或金額含小數;`403` 他人訂單;`404` 訂單不存在;`422` 未填 `orderId`.
+
+---
+
+#### POST `/v1/payments/ecpay/notify` - 付款結果通知 (ReturnURL)
+
+公開端點,僅供綠界 server 呼叫 (Form POST + CheckMacValue).驗證通過回應 `200` `text/plain` `1|OK`;驗證失敗回 `400` `0|CheckMacValue Error`;非預期錯誤回 `500`,由綠界重送.
+
+---
+
+#### POST `/v1/payments/ecpay/result` - 付款結果導回 (OrderResultURL)
+
+公開端點,消費者瀏覽器由綠界頁面 POST 過來.處理後 `302` 導向 `{前端}/orders/{id}?payment=success|failed`,無法驗證時導向 `{前端}/orders?payment=error`.
+
+---
+
+### 5.7 會員 (Users) - `/v1/users`
 
 #### GET `/v1/users/me` - 取得個人資料
 
@@ -1020,6 +1085,7 @@ Controller 執行業務邏輯
 | `GET /v1/products/*/inventory-logs` | PRODUCT_MANAGER, SUPER_ADMIN |
 | `GET /v1/products/inventory-logs` | PRODUCT_MANAGER, SUPER_ADMIN |
 | `GET /v1/users`, `GET/PUT /v1/users/{id}` | SUPER_ADMIN |
+| `POST /v1/payments/ecpay/notify`, `POST /v1/payments/ecpay/result` | 公開 (由綠界呼叫,改以 CheckMacValue 驗證) |
 | 其餘所有端點 | 已登入任何角色 |
 
 ---
@@ -1278,7 +1344,6 @@ public class ProductController {
 
 | 功能 | Entity | 狀態 |
 | :--- | :--- | :--- |
-| 金流/付款 | `Payment` | Entity 已建立,API 未實作 |
 | 物流/出貨 | `Shipment` | Entity 已建立,API 未實作 |
 | 優惠券 | `Coupon` | Entity 已建立,API 未實作 |
 | 商品評價 | `Review` | Entity 已建立,API 未實作 |
@@ -1293,8 +1358,8 @@ public class ProductController {
 
 ### 9.3 建議優先開發項目
 
-1. **訂單狀態流轉 API** - 讓 `ORDER_MANAGER` 可更新訂單狀態 (付款,出貨,完成,取消) 
-2. **金流整合** - 對接 ECPay 或其他金流,確認付款後更新 `Payment` 與 `Order.status`
+1. **訂單狀態流轉 API** - 讓 `ORDER_MANAGER` 可更新訂單狀態 (出貨,完成,取消) 
+2. **金流後續** - 綠界 AIO 信用卡已整合 (見 4.6);待補:未付款訂單逾時取消並回補庫存,信用卡退款 (`DoAction`),以 `QueryTradeInfo` 補查漏收的付款通知
 3. **物流整合** - 出貨後記錄物流追蹤號,更新 `Shipment`
 4. **優惠券系統** - 實作優惠券建立,核銷,結帳時套用折扣
 5. **商品評價** - 顧客完成訂單後可留下評價

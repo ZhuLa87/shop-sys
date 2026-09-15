@@ -306,6 +306,7 @@ com.zzowo.shop_sys/
 - 結帳:原子性事務保護
   - 驗證庫存 → 扣除庫存 → 建立庫存紀錄 → 建立訂單 → 清空購物車
 - 訂單明細快照:記錄下單當下的價格,不受後續調價影響
+- 付款:串接綠界 AIO 信用卡一次付清,送出訂單後導向綠界付款頁,付款結果由綠界 callback 更新訂單狀態;待付款訂單可重新付款.詳見 [docs/ecpay-payment.md](./docs/ecpay-payment.md)
 
 ---
 
@@ -351,6 +352,14 @@ Base URL: `https://tu-zhu.soay-fish.ts.net:8443/api/v1` (Docker) 或 `http://loc
 | GET | `/v1/orders` | 查詢我的訂單列表 | 已登入 |
 | GET | `/v1/orders/{id}` | 查詢特定訂單詳情 | 已登入 |
 
+### 付款
+
+| 方法 | 路徑 | 說明 | 權限 |
+| :--- | :--- | :--- | :--- |
+| POST | `/v1/payments/ecpay/checkout` | 為自己的待付款訂單產生綠界付款表單 | 已登入 |
+| POST | `/v1/payments/ecpay/notify` | 綠界付款結果通知 (ReturnURL),回應 `1\|OK` | 公開 (CheckMacValue 驗證) |
+| POST | `/v1/payments/ecpay/result` | 綠界付款後瀏覽器導回 (OrderResultURL),302 回訂單頁 | 公開 (CheckMacValue 驗證) |
+
 ### 會員
 
 | 方法 | 路徑 | 說明 | 權限 |
@@ -374,7 +383,7 @@ Base URL: `https://tu-zhu.soay-fish.ts.net:8443/api/v1` (Docker) 或 `http://loc
 | `orders` | 訂單主檔 | N→1 users, 1→N order_items |
 | `order_items` | 訂單明細 (含快照價格) | N→1 orders, N→1 products |
 | `inventory_logs` | 庫存異動稽核紀錄 | N→1 products |
-| `payments` | 付款紀錄 (待整合) | 1→1 orders |
+| `payments` | 付款紀錄 (綠界 MerchantTradeNo,TradeNo,付款狀態) | 1→1 orders |
 | `shipments` | 物流紀錄 (待整合) | 1→1 orders |
 | `coupons` | 優惠券 (預留) | - |
 | `reviews` | 商品評價 (預留) | - |
@@ -398,3 +407,9 @@ Base URL: `https://tu-zhu.soay-fish.ts.net:8443/api/v1` (Docker) 或 `http://loc
 ## 詳細規格
 
 完整的 API 請求/回應範例,業務規則,資料欄位定義,錯誤處理規格,請參閱 [SPEC.md](./SPEC.md).
+
+| 文件 | 內容 |
+| :--- | :--- |
+| [SPEC.md](./SPEC.md) | 系統規格書 |
+| [docs/ecpay-payment.md](./docs/ecpay-payment.md) | 綠界金流整合:修改說明,設計決策,測試步驟,疑難排解 |
+| [docker/README.md](./docker/README.md) | Docker 部署與環境設定 |
