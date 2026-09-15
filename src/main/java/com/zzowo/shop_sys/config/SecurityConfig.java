@@ -87,7 +87,11 @@ public class SecurityConfig {
                         // 4. 上傳授權端點 (登入即可,角色細分由 UploadController 內部處理)
                         .requestMatchers(HttpMethod.POST, "/v1/upload/**").authenticated()
 
-                        // 5. 其他所有請求都需要登入才能看
+                        // 5. 綠界付款回呼:由綠界 server 與消費者瀏覽器直接 POST,不帶 JWT,
+                        //    身分改由 CheckMacValue 驗證 (PaymentService.handlePaymentResult)
+                        .requestMatchers(HttpMethod.POST, "/v1/payments/ecpay/notify", "/v1/payments/ecpay/result").permitAll()
+
+                        // 6. 其他所有請求都需要登入才能看
                         .anyRequest().authenticated())
                 // 設定為無狀態 (Stateless), 因為我們用 JWT,伺服器不需要存 Session
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
