@@ -28,7 +28,7 @@
         <el-step title="確認購物車" />
         <el-step title="寄送資訊" />
         <el-step title="付款資訊" />
-        <el-step title="成功送出訂單" />
+        <el-step title="前往付款" />
       </el-steps>
 
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
@@ -190,22 +190,20 @@
                 @click="handleCheckout"
               >
                 <span v-if="submitting" class="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></span>
-                確認送出訂單
+                送出訂單並前往付款
               </button>
             </div>
           </div>
-          <!-- Step 4: Complete -->
+          <!-- Step 4: Order created, redirecting to ECPay -->
           <div v-else-if="step === 4" class="lg:col-span-2">
             <div class="bg-white border border-slate-200/80 rounded-2xl p-8 sm:p-12 text-center space-y-8 shadow-sm">
-              <div class="w-20 h-20 rounded-full bg-emerald-50 flex items-center justify-center mx-auto">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-10 h-10 text-emerald-500">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
-                </svg>
+              <div class="w-20 h-20 rounded-full bg-indigo-50 flex items-center justify-center mx-auto">
+                <span class="animate-spin h-10 w-10 border-4 border-indigo-500 border-t-transparent rounded-full"></span>
               </div>
 
               <div class="space-y-2">
-                <h2 class="text-2xl font-extrabold text-slate-900">訂單已成功送出!</h2>
-                <p class="text-slate-500 text-sm">感謝您的購買,我們將盡快為您處理.</p>
+                <h2 class="text-2xl font-extrabold text-slate-900">訂單已建立,正在前往付款頁...</h2>
+                <p class="text-slate-500 text-sm">即將導向綠界 ECPay 完成信用卡付款,請勿關閉此頁面.</p>
                 <p class="text-xs text-slate-400 font-mono mt-1">訂單編號:#{{ completedOrderId }}</p>
               </div>
 
@@ -329,34 +327,26 @@ const shippingForm = reactive({
   recipientAddress: ''
 })
 
-const paymentMethod = ref('cod')
+// 目前只串接綠界信用卡一次付清,送出訂單後導向綠界付款頁
+const paymentMethod = ref('credit_card')
 
 const paymentMethods = [
   {
-    value: 'cod',
-    label: '貨到付款',
-    description: '商品送達時以現金支付',
-    icon: h('svg', { xmlns: 'http://www.w3.org/2000/svg', fill: 'none', viewBox: '0 0 24 24', 'stroke-width': '1.5', stroke: 'currentColor' }, [
-      h('path', { 'stroke-linecap': 'round', 'stroke-linejoin': 'round', d: 'M2.25 18.75a60.07 60.07 0 0 1 15.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 0 1 3 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 0 0-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 0 1-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 0 0 3 15h-.75M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm3 0h.008v.008H18V10.5Zm-12 0h.008v.008H6V10.5Z' })
-    ])
-  },
-  {
     value: 'credit_card',
     label: '信用卡付款',
-    description: 'Visa,Mastercard,JCB',
+    description: 'Visa,Mastercard,JCB (由綠界 ECPay 安全付款)',
     icon: h('svg', { xmlns: 'http://www.w3.org/2000/svg', fill: 'none', viewBox: '0 0 24 24', 'stroke-width': '1.5', stroke: 'currentColor' }, [
       h('path', { 'stroke-linecap': 'round', 'stroke-linejoin': 'round', d: 'M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 0 0 2.25-2.25V6.75A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25v10.5A2.25 2.25 0 0 0 4.5 19.5Z' })
     ])
-  },
-  {
-    value: 'atm',
-    label: 'ATM 轉帳',
-    description: '取得虛擬帳號後於期限內完成轉帳',
-    icon: h('svg', { xmlns: 'http://www.w3.org/2000/svg', fill: 'none', viewBox: '0 0 24 24', 'stroke-width': '1.5', stroke: 'currentColor' }, [
-      h('path', { 'stroke-linecap': 'round', 'stroke-linejoin': 'round', d: 'M7.5 21 3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5' })
-    ])
   }
 ]
+
+const { redirectToEcpay, onRestoreFromEcpay } = useEcpayCheckout()
+
+// 從綠界付款頁按上一頁回來時,訂單已建立 (待付款),改到訂單頁讓使用者重新付款
+onRestoreFromEcpay(() => {
+  if (completedOrderId.value) navigateTo(`/orders/${completedOrderId.value}`)
+})
 
 const shippingRules = reactive<FormRules>({
   recipientName: [
@@ -445,8 +435,7 @@ const handleCheckout = async () => {
       body: {
         recipientName: shippingForm.recipientName,
         recipientPhone: shippingForm.recipientPhone,
-        recipientAddress: shippingForm.recipientAddress,
-        paymentMethod: paymentMethod.value
+        recipientAddress: shippingForm.recipientAddress
       }
     })
 
@@ -456,6 +445,7 @@ const handleCheckout = async () => {
       completedItemCount.value = cartStore.totalCount
       cartStore.clearCartState()
       step.value = 4
+      await goToPayment(res.data.id)
     }
   } catch (error: any) {
     notify({
@@ -467,6 +457,21 @@ const handleCheckout = async () => {
     await cartStore.fetchCart()
   } finally {
     submitting.value = false
+  }
+}
+
+// 訂單建立後導向綠界付款頁;失敗時訂單仍為待付款,改到訂單頁讓使用者重新付款
+const goToPayment = async (orderId: number) => {
+  try {
+    await redirectToEcpay(orderId)
+  } catch (error: any) {
+    notify({
+      title: '訂單已建立,但無法前往付款',
+      message: `${error?.message || '系統忙碌中.'} 您可以在訂單頁重新付款.`,
+      type: 'warning',
+      duration: 6000
+    })
+    await navigateTo(`/orders/${orderId}`)
   }
 }
 
