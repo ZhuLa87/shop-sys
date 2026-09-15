@@ -7,6 +7,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -42,6 +44,45 @@ class ProductRepositoryTest {
         assertThat(result).hasSize(2)
                 .extracting("name")
                 .containsExactlyInAnyOrder("上架A", "上架B");
+    }
+
+    // ── storefront listing ───────────────────────────────────────────────────
+
+    private static final List<ProductStatus> STOREFRONT = List.of(ProductStatus.ON_SHELF, ProductStatus.OUT_OF_STOCK);
+
+    @Test
+    void findByStatusInSoldOutLast_includesOutOfStock_excludesOffShelf_andPutsSoldOutLast() {
+        em.persist(buildProduct("上架售完", ProductStatus.ON_SHELF, 0));
+        em.persist(buildProduct("缺貨中", ProductStatus.OUT_OF_STOCK, 0));
+        em.persist(buildProduct("缺貨但有庫存", ProductStatus.OUT_OF_STOCK, 5));
+        em.persist(buildProduct("可購買", ProductStatus.ON_SHELF, 10));
+        em.persist(buildProduct("已下架", ProductStatus.OFF_SHELF, 10));
+        em.flush();
+
+        Page<Product> result = productRepository.findByStatusInSoldOutLast(STOREFRONT, PageRequest.of(0, 10));
+
+        assertThat(result.getTotalElements()).isEqualTo(4);
+        assertThat(result.getContent()).extracting("name").doesNotContain("已下架");
+        // 只有「上架且有庫存」排前面,OUT_OF_STOCK 即使庫存 > 0 也排在後面
+        assertThat(result.getContent().get(0).getName()).isEqualTo("可購買");
+        assertThat(result.getContent().subList(1, 4)).extracting("name")
+                .containsExactlyInAnyOrder("上架售完", "缺貨中", "缺貨但有庫存");
+    }
+
+    @Test
+    void findByStatusInAndNameContainingSoldOutLast_filtersByKeywordAndStatus() {
+        em.persist(buildProduct("限量版電競滑鼠", ProductStatus.OUT_OF_STOCK, 0));
+        em.persist(buildProduct("無線電競滑鼠", ProductStatus.ON_SHELF, 10));
+        em.persist(buildProduct("舊款電競滑鼠", ProductStatus.OFF_SHELF, 10));
+        em.persist(buildProduct("機械鍵盤", ProductStatus.ON_SHELF, 10));
+        em.flush();
+
+        Page<Product> result = productRepository.findByStatusInAndNameContainingSoldOutLast(
+                STOREFRONT, "電競滑鼠", PageRequest.of(0, 10));
+
+        assertThat(result.getTotalElements()).isEqualTo(2);
+        assertThat(result.getContent()).extracting("name")
+                .containsExactly("無線電競滑鼠", "限量版電競滑鼠");
     }
 
     @Test
@@ -157,10 +198,14 @@ class ProductRepositoryTest {
     // ── helpers ──────────────────────────────────────────────────────────────
 
     private Product buildProduct(String name, ProductStatus status) {
+        return buildProduct(name, status, 10);
+    }
+
+    private Product buildProduct(String name, ProductStatus status, int stock) {
         Product p = new Product();
         p.setName(name);
         p.setPrice(BigDecimal.valueOf(100));
-        p.setStockQuantity(10);
+        p.setStockQuantity(stock);
         p.setStatus(status);
         return p;
     }
