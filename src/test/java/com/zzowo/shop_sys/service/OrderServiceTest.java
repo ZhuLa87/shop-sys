@@ -16,6 +16,8 @@ import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -179,6 +181,26 @@ class OrderServiceTest {
         assertThat(product.getStockQuantity()).isEqualTo(2); // 庫存未被扣減
         verify(orderRepository, never()).save(any());
         verify(inventoryLogRepository, never()).save(any());
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = ProductStatus.class, names = {"OUT_OF_STOCK", "OFF_SHELF"})
+    void createOrder_productNotOnShelf_throwsWithProductName_andSavesNothing(ProductStatus status) {
+        User user = buildUser(1L, Role.CUSTOMER);
+        Product product = buildProduct(10L, "限量滑鼠", BigDecimal.valueOf(100), 10); // 仍有庫存,但狀態不可購買
+        product.setStatus(status);
+        stubUser(user);
+        when(cartRepository.findByUserId(1L)).thenReturn(List.of(buildCart(1L, user, product, 1)));
+
+        assertThatThrownBy(() -> orderService.createOrder(EMAIL, createRequest()))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("限量滑鼠")
+                .hasMessageContaining(status.getDescription());
+
+        assertThat(product.getStockQuantity()).isEqualTo(10); // 庫存未被扣減
+        verify(productRepository, never()).save(any());
+        verify(orderRepository, never()).save(any());
+        verify(cartRepository, never()).deleteByUserId(any());
     }
 
     @Test

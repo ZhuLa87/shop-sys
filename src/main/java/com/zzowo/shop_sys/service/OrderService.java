@@ -4,6 +4,7 @@ import com.zzowo.shop_sys.dto.request.order.OrderCreateRequest;
 import com.zzowo.shop_sys.dto.response.order.OrderResponse;
 import com.zzowo.shop_sys.entity.*;
 import com.zzowo.shop_sys.enums.OrderStatus;
+import com.zzowo.shop_sys.enums.ProductStatus;
 import com.zzowo.shop_sys.enums.Role;
 import com.zzowo.shop_sys.exception.BusinessException;
 import org.springframework.http.HttpStatus;
@@ -70,6 +71,11 @@ public class OrderService {
             // 商品已被軟刪除 (@NotFound 使關聯回傳 null 而非拋出例外)
             if (product == null) {
                 throw new BusinessException("購物車中有商品已下架或刪除,請重新確認購物車內容");
+            }
+
+            // 加入購物車後商品可能被改成缺貨中/已下架,結帳時再確認一次
+            if (product.getStatus() != ProductStatus.ON_SHELF) {
+                throw new BusinessException("商品 [" + product.getName() + "] 目前" + product.getStatus().getDescription() + ",結帳失敗");
             }
 
             // 檢查庫存 (JPA 的 @Version 會在並發下發揮作用)
