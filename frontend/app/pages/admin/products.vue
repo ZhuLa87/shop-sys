@@ -108,9 +108,10 @@
           </template>
         </el-table-column>
 
-        <el-table-column label="操作" width="160" align="right">
+        <el-table-column label="操作" width="230" align="right">
           <template #default="{ row }">
             <div class="flex justify-end gap-2">
+              <el-button tag="a" :href="`/products/${row.id}`" target="_blank" rel="noopener">檢視</el-button>
               <el-button @click="openEditDialog(row)">編輯</el-button>
               <el-button type="danger" plain @click="handleDelete(row)">刪除</el-button>
             </div>
