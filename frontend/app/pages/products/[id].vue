@@ -59,13 +59,13 @@
           >
             此商品沒有封面圖
           </div>
-          <!-- Status Overlay -->
+          <!-- Off-shelf Overlay -->
           <div
-            v-if="product.status !== 'ON_SHELF'"
+            v-if="product.status === 'OFF_SHELF'"
             class="absolute inset-0 bg-black/40 backdrop-blur-[1px] flex items-center justify-center"
           >
             <span class="px-4 py-2 rounded-lg bg-black/70 text-white font-semibold text-sm tracking-wider uppercase">
-              {{ product.status === 'OUT_OF_STOCK' ? '缺貨中' : '已下架' }}
+              已下架
             </span>
           </div>
         </div>
