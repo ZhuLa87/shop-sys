@@ -108,9 +108,11 @@
           </template>
         </el-table-column>
 
-        <el-table-column label="操作" width="160" align="right">
+        <el-table-column label="操作" width="240" align="right">
           <template #default="{ row }">
-            <div class="flex justify-end gap-2">
+            <!-- 按鈕間距交給 Element Plus 的 .el-button + .el-button (margin-left: 12px), 再加 gap 會重複計算而撐爆欄寬 -->
+            <div class="flex justify-end">
+              <el-button tag="a" :href="`/products/${row.id}`" target="_blank" rel="noopener">檢視</el-button>
               <el-button @click="openEditDialog(row)">編輯</el-button>
               <el-button type="danger" plain @click="handleDelete(row)">刪除</el-button>
             </div>
