@@ -154,6 +154,23 @@
               </div>
             </div>
           </div>
+
+          <!-- Pay Row (pending orders only) -->
+          <div
+            v-if="order.status === 'PENDING'"
+            class="px-6 py-4 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
+          >
+            <p class="text-sm text-amber-700">此訂單尚未付款,請透過綠界 ECPay 以信用卡完成付款.</p>
+            <button
+              type="button"
+              :disabled="paying"
+              class="shrink-0 rounded-lg bg-indigo-600 px-6 py-2.5 text-sm font-semibold text-white shadow-md shadow-indigo-100 hover:bg-indigo-700 transition-colors cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50"
+              @click="handlePay"
+            >
+              <span v-if="paying" class="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></span>
+              前往付款
+            </button>
+          </div>
         </div>
 
         <!-- Right: Shipping Info -->
@@ -187,11 +204,52 @@
 
 <script setup lang="ts">
 const route = useRoute()
+const router = useRouter()
 const api = useApi()
+const { redirectToEcpay, onRestoreFromEcpay } = useEcpayCheckout()
 
 const order = ref<any>(null)
 const loading = ref(true)
 const errorMessage = ref('')
+const paying = ref(false)
+
+// 導向綠界付款頁;成功時整頁離開,因此只在失敗時重設 paying
+const handlePay = async () => {
+  if (!order.value) return
+  paying.value = true
+  try {
+    await redirectToEcpay(order.value.id)
+  } catch (error: any) {
+    paying.value = false
+    notify({
+      title: '無法前往付款',
+      message: error?.message || '系統忙碌中,請稍後再試.',
+      type: 'error',
+      duration: 4000
+    })
+    await loadOrder()
+  }
+}
+
+// 從綠界付款頁按上一頁回來 (bfcache 還原):重設按鈕並重新讀取訂單狀態
+onRestoreFromEcpay(() => {
+  paying.value = false
+  loadOrder()
+})
+
+// 綠界付款完成後由後端 (OrderResultURL) 導回,帶 ?payment=success|failed
+const showPaymentResult = () => {
+  const result = route.query.payment
+  if (result === 'success') {
+    notify({ title: '付款成功', message: '已收到您的付款,我們將盡快為您出貨.', type: 'success', duration: 4000 })
+  } else if (result === 'failed') {
+    notify({ title: '付款未完成', message: '付款失敗或未完成,您可以點選"前往付款"重新付款.', type: 'warning', duration: 6000 })
+  } else {
+    return
+  }
+  // 清掉 query,避免重新整理時重複提示
+  router.replace({ query: {} })
+}
 
 // 訂單狀態進度條步驟 (CANCELLED 另外處理) 
 const statusSteps = [
@@ -277,6 +335,7 @@ const formatDate = (timestamp: number) => {
 }
 
 onMounted(() => {
+  showPaymentResult()
   loadOrder()
 })
 </script>
