@@ -101,6 +101,8 @@ dev profile 會由 `DataInitializer` 建立測試帳號 (`admin@test.com` / `adm
 所有機密都在 `env/.env.*`,已被 `.gitignore` 排除,版控裡只有 `*.example` 範本.
 
 **三份範本都不含任何可用憑證**,`CHANGE_ME` 必須全部換掉 —— dev 也一樣.
+唯一的例外是 dev/staging 範本裡的 `ECPAY_*`:那是綠界官方公開的 stage 測試帳號,本來就是所有人共用,
+prod 範本則是 `CHANGE_ME`,必須換成自己的特店帳號 (見"綠界金流本機測試").
 dev 的除錯用埠綁在 `0.0.0.0`,同網段或 tailnet 上的其他裝置連得到資料庫,
 那組密碼是真的在擋人,不能當成擺設.
 `./stack.sh up` 會在啟動前檢查,有漏填就擋下並列出是哪幾個變數.
@@ -241,6 +243,51 @@ MinIO 不能只掛 `/etc/localtime`:它是 Go 程式,`TZ` 有值時會去 zonein
 > `carts.product_id` / `order_items.product_id` / `inventory_logs.product_id` 刻意沒有外鍵,
 > 這是 entity 上 `@NotFound(action = IGNORE)` 造成的 (商品軟刪除後關聯需可為 null) ,
 > 請勿在 migration 中補上.
+
+---
+
+## 綠界金流本機測試
+
+> 完整的修改說明,瀏覽器端對端測試步驟與疑難排解見 [`docs/ecpay-payment.md`](../docs/ecpay-payment.md).
+
+綠界付款完成後,綠界 server 會 POST 到 `ReturnURL` (付款結果通知),消費者瀏覽器會 POST 到 `OrderResultURL`.
+綠界規定這兩個網址只能是公開的 80/443 埠,tailnet 內的 `:8443` 連不進來,
+所以 dev 用 Tailscale Funnel **只公開付款回呼這個路徑**,其他頁面 (前台/後台/Swagger) 仍然只有 tailnet 內看得到.
+
+```bash
+# 前置:tailnet 的 ACL policy 需允許這台機器使用 funnel (nodeAttrs 的 "funnel" 屬性)
+sudo tailscale funnel --bg --set-path=/api/v1/payments/ecpay \
+    https+insecure://localhost:8443/api/v1/payments/ecpay
+tailscale funnel status
+
+# 從 tailnet 外 (例如手機關掉 Tailscale) 確認打得到,預期回 400 "0|CheckMacValue Error"
+curl -X POST https://tu-zhu.soay-fish.ts.net/api/v1/payments/ecpay/notify -d 'a=b'
+
+# 測完關閉
+sudo tailscale funnel reset
+```
+
+對應的 `env/.env.dev` 設定:
+
+| 變數 | 值 | 說明 |
+| :--- | :--- | :--- |
+| `ECPAY_CALLBACK_BASE_URL` | `https://tu-zhu.soay-fish.ts.net/api` | Funnel 的 443,不帶埠號 |
+| `APP_FRONTEND_BASE_URL` | `https://tu-zhu.soay-fish.ts.net:8443` | 付款完成後導回的前端,瀏覽器在 tailnet 內 |
+| `ECPAY_MERCHANT_ID` / `ECPAY_HASH_KEY` / `ECPAY_HASH_IV` | `3002607` / `pwFHCqoQZGmho4w6` / `EkRm7iFT261dpevs` | 綠界官方公開的 stage 測試帳號 |
+
+改完 env 要重建 backend 容器才會生效:`./stack.sh dev up backend`.
+
+測試付款:
+
+| 項目 | 值 |
+| :--- | :--- |
+| 信用卡號 | `4311-9522-2222-2222` |
+| 有效期限 / 安全碼 | 任意未來月年 / 任意三碼 (如 `222`) |
+| 3D 驗證碼 | `1234` |
+
+> - stage 測試帳號是所有開發者共用的,在綠界測試後台看得到別人的交易,不影響使用.
+> - 綠界測試後台的"模擬付款"會送 `SimulatePaid=1`,後端刻意不把它當成已付款 (只記 log),要測完整流程請用上面的測試卡.
+> - dev 與 staging 共用同一個 Funnel 路徑,同一時間只有 Funnel 指向的那個環境收得到回呼.
 
 ---
 
