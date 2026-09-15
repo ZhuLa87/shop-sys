@@ -153,7 +153,22 @@ const formatDate = (timestamp: number) => {
   })
 }
 
+// 綠界付款結果無法驗證時,後端會導回 /orders?payment=error
+const route = useRoute()
+const router = useRouter()
+const showPaymentError = () => {
+  if (route.query.payment !== 'error') return
+  notify({
+    title: '無法確認付款結果',
+    message: '請稍後查看訂單狀態,若已扣款但訂單仍為待付款,請聯繫客服.',
+    type: 'warning',
+    duration: 6000
+  })
+  router.replace({ query: {} })
+}
+
 onMounted(() => {
+  showPaymentError()
   fetchOrders()
 })
 </script>
