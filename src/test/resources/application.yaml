@@ -48,6 +48,16 @@ minio:
   bucket-name: test-bucket
   public-url: http://localhost:9000
 
+# 綠界官方公開的 AIO 測試帳號 (所有開發者共用)
+ecpay:
+  merchant-id: "3002607"
+  hash-key: pwFHCqoQZGmho4w6
+  hash-iv: EkRm7iFT261dpevs
+  checkout-url: https://payment-stage.ecpay.com.tw/Cashier/AioCheckOut/V5
+  callback-base-url: https://shop.example.com/api
+  frontend-base-url: https://shop.example.com
+  trade-no-prefix: SS
+
 logging:
   level:
     root: WARN
