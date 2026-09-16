@@ -66,13 +66,16 @@
                 </div>
               </div>
               <div class="flex flex-col sm:flex-row items-end sm:items-center gap-2 sm:gap-6 shrink-0">
+                <!-- 不用 v-model: 會就地改掉 store 裡的 quantity,
+                     使 @change 算出的差值永遠是 0,數量根本送不到後端.
+                     改為受控輸入,等 API 回來由 fetchCart 更新顯示 -->
                 <el-input-number
-                  v-model="item.quantity"
+                  :model-value="item.quantity"
                   :min="1"
                   size="small"
                   class="w-24"
                   :disabled="updatingItems[item.id]"
-                  @change="(val) => handleQuantityChange(item, val)"
+                  @change="(val, oldVal) => handleQuantityChange(item, val, oldVal)"
                 />
                 <div class="hidden sm:block text-sm font-extrabold text-slate-900 w-24 text-right">
                   NT$ {{ formatPrice(item.subtotal) }}
@@ -376,11 +379,16 @@ const goToStep3 = async () => {
   })
 }
 
-const handleQuantityChange = async (item: any, targetVal: number | undefined) => {
+const handleQuantityChange = async (item: any, targetVal: number | undefined, previousVal: number | undefined) => {
   if (targetVal === undefined || targetVal < 1) return
+
+  // 以元件提供的舊值當基準,不依賴 store 內可能已被改動的 quantity
+  const currentVal = previousVal ?? item.quantity
+  if (targetVal === currentVal) return
+
   updatingItems.value[item.id] = true
   try {
-    await cartStore.updateCartItemQuantity(item.productId, targetVal, item.id)
+    await cartStore.updateCartItemQuantity(item.productId, targetVal, item.id, currentVal)
     notify({
       title: '購物車已更新',
       message: '商品數量已變更.',
