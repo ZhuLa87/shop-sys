@@ -472,6 +472,8 @@ orders (N) ─────────── (1) coupons        [預留]
 | `CANCEL` | 訂單取消,庫存歸還 |
 | `RETURN` | 退貨,庫存歸還 |
 
+扣庫存的併發處理,異動軌跡的寫入時機與逾時未付款訂單的自動取消,見 [`docs/inventory-integrity.md`](docs/inventory-integrity.md).
+
 ---
 
 ## 5. API 規格
