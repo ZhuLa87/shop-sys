@@ -15,6 +15,7 @@ import com.zzowo.shop_sys.repository.InventoryLogRepository;
 import com.zzowo.shop_sys.repository.OrderRepository;
 import com.zzowo.shop_sys.repository.ProductRepository;
 import com.zzowo.shop_sys.repository.UserRepository;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,6 +26,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 public class OrderService {
 
@@ -99,12 +101,7 @@ public class OrderService {
             }
 
             // 建立庫存異動紀錄
-            InventoryLog log = new InventoryLog();
-            log.setProduct(product);
-            log.setChangeAmount(-quantityToDeduct);
-            log.setReason("ORDER");
-            log.setOperatorId(user.getId());
-            inventoryLogRepository.save(log);
+            writeInventoryLog(product, -quantityToDeduct, "ORDER", user.getId());
 
             // 建立訂單明細 (name/coverImageUrl 為快照,確保商品日後改名或刪除仍可正確顯示)
             OrderItem item = new OrderItem();
@@ -134,6 +131,45 @@ public class OrderService {
         return orderMapper.toOrderResponse(savedOrder);
     }
 
+    // 取消逾時未付款的訂單並回補庫存 (由排程逐筆呼叫,一筆訂單一個交易)
+    // 回傳是否真的由本次呼叫完成取消
+    @Transactional
+    public boolean cancelExpiredOrder(Long orderId) {
+        // 先搶下狀態轉換,沒搶到代表訂單已付款或已被其他實例取消,直接放棄 (庫存絕不可重複回補)
+        if (orderRepository.cancelIfPending(orderId, OrderStatus.PENDING, OrderStatus.CANCELLED) == 0) {
+            return false;
+        }
+
+        // cancelIfPending 帶 clearAutomatically,這裡讀到的才是取消後的狀態
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new ResourceNotFoundException("訂單不存在"));
+
+        // 與扣庫存同樣以 product id 遞增順序回補,避免死鎖
+        List<OrderItem> items = order.getItems().stream()
+                .sorted(Comparator.comparing(i -> i.getProduct() == null ? Long.MIN_VALUE : i.getProduct().getId()))
+                .toList();
+
+        for (OrderItem item : items) {
+            // @NotFound(IGNORE): 商品已軟刪除時為 null,沒有庫存可回補
+            Product product = item.getProduct();
+            if (product == null) {
+                log.warn("訂單 {} 的商品已刪除,略過庫存回補,productName={}", orderId, item.getProductName());
+                continue;
+            }
+
+            if (productRepository.restoreStock(product.getId(), item.getQuantity()) == 0) {
+                log.warn("訂單 {} 回補庫存失敗 (商品可能已刪除) ,productId={}", orderId, product.getId());
+                continue;
+            }
+
+            // operatorId 為 null 代表系統自動作業
+            writeInventoryLog(product, item.getQuantity(), "CANCEL", null);
+        }
+
+        log.info("逾時未付款訂單已自動取消,orderId={}", orderId);
+        return true;
+    }
+
     // 查看我的訂單
     @Transactional(readOnly = true)
     public List<OrderResponse> getMyOrders(String email) {
@@ -160,5 +196,15 @@ public class OrderService {
         }
 
         return orderMapper.toOrderResponse(order);
+    }
+
+    // 寫入庫存異動紀錄 (operatorId 為 null 代表系統自動作業)
+    private void writeInventoryLog(Product product, int changeAmount, String reason, Long operatorId) {
+        InventoryLog inventoryLog = new InventoryLog();
+        inventoryLog.setProduct(product);
+        inventoryLog.setChangeAmount(changeAmount);
+        inventoryLog.setReason(reason);
+        inventoryLog.setOperatorId(operatorId);
+        inventoryLogRepository.save(inventoryLog);
     }
 }

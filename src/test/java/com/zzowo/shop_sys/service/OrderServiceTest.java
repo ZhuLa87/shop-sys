@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -326,6 +327,83 @@ class OrderServiceTest {
         assertThatNoException().isThrownBy(() -> orderService.getOrderById(EMAIL, 50L));
     }
 
+    // ── cancelExpiredOrder ───────────────────────────────────────────────────
+
+    @Test
+    void cancelExpiredOrder_restoresStockAndWritesCancelLog() {
+        Product product = buildProduct(10L, "手機", BigDecimal.valueOf(100), 0);
+        Order order = buildOrderWithItems(500L, buildOrderItem(product, 3));
+        stubCancelIfPending(500L, 1);
+        when(orderRepository.findById(500L)).thenReturn(Optional.of(order));
+        when(productRepository.restoreStock(10L, 3)).thenReturn(1);
+
+        boolean cancelled = orderService.cancelExpiredOrder(500L);
+
+        assertThat(cancelled).isTrue();
+        verify(productRepository).restoreStock(10L, 3);
+
+        ArgumentCaptor<InventoryLog> logCaptor = ArgumentCaptor.forClass(InventoryLog.class);
+        verify(inventoryLogRepository).save(logCaptor.capture());
+        InventoryLog log = logCaptor.getValue();
+        assertThat(log.getChangeAmount()).isEqualTo(3);
+        assertThat(log.getReason()).isEqualTo("CANCEL");
+        assertThat(log.getOperatorId()).isNull(); // 系統自動作業
+        assertThat(log.getProduct()).isSameAs(product);
+    }
+
+    @Test
+    void cancelExpiredOrder_notPending_returnsFalse_andRestoresNothing() {
+        // 訂單已付款或已被其他實例取消,絕不可重複回補庫存
+        stubCancelIfPending(500L, 0);
+
+        boolean cancelled = orderService.cancelExpiredOrder(500L);
+
+        assertThat(cancelled).isFalse();
+        verify(orderRepository, never()).findById(any());
+        verify(productRepository, never()).restoreStock(anyLong(), anyInt());
+        verify(inventoryLogRepository, never()).save(any());
+    }
+
+    @Test
+    void cancelExpiredOrder_softDeletedProduct_skipsThatItem_butStillCancels() {
+        Product alive = buildProduct(10L, "還在的商品", BigDecimal.valueOf(100), 0);
+        Order order = buildOrderWithItems(500L,
+                buildOrderItem(alive, 2),
+                buildOrderItem(null, 5)); // @NotFound(IGNORE) 使已刪除商品為 null
+        stubCancelIfPending(500L, 1);
+        when(orderRepository.findById(500L)).thenReturn(Optional.of(order));
+        when(productRepository.restoreStock(10L, 2)).thenReturn(1);
+
+        assertThat(orderService.cancelExpiredOrder(500L)).isTrue();
+
+        verify(productRepository).restoreStock(10L, 2);
+        verify(productRepository, never()).restoreStock(anyLong(), eq(5));
+        verify(inventoryLogRepository, times(1)).save(any());
+    }
+
+    @Test
+    void cancelExpiredOrder_restoreStockReturnsZero_writesNoLogForThatItem() {
+        Product product = buildProduct(10L, "已刪除商品", BigDecimal.valueOf(100), 0);
+        Order order = buildOrderWithItems(500L, buildOrderItem(product, 4));
+        stubCancelIfPending(500L, 1);
+        when(orderRepository.findById(500L)).thenReturn(Optional.of(order));
+        when(productRepository.restoreStock(10L, 4)).thenReturn(0);
+
+        assertThat(orderService.cancelExpiredOrder(500L)).isTrue();
+
+        verify(inventoryLogRepository, never()).save(any());
+    }
+
+    @Test
+    void cancelExpiredOrder_orderDisappeared_throwsResourceNotFoundException() {
+        stubCancelIfPending(500L, 1);
+        when(orderRepository.findById(500L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> orderService.cancelExpiredOrder(500L))
+                .isInstanceOf(ResourceNotFoundException.class)
+                .hasMessageContaining("訂單不存在");
+    }
+
     @Test
     void getOrderById_orderNotFound_throwsResourceNotFoundException() {
         stubUser(buildUser(1L, Role.CUSTOMER));
@@ -381,6 +459,29 @@ class OrderServiceTest {
         cart.setProduct(product);
         cart.setQuantity(quantity);
         return cart;
+    }
+
+    private void stubCancelIfPending(Long orderId, int affectedRows) {
+        when(orderRepository.cancelIfPending(orderId, OrderStatus.PENDING, OrderStatus.CANCELLED))
+                .thenReturn(affectedRows);
+    }
+
+    private Order buildOrderWithItems(Long id, OrderItem... items) {
+        Order order = buildOrder(id, buildUser(1L, Role.CUSTOMER));
+        for (OrderItem item : items) {
+            item.setOrder(order);
+            order.getItems().add(item);
+        }
+        return order;
+    }
+
+    private OrderItem buildOrderItem(Product product, int quantity) {
+        OrderItem item = new OrderItem();
+        item.setProduct(product);
+        item.setProductName(product == null ? "已刪除商品" : product.getName());
+        item.setPriceAtPurchase(BigDecimal.valueOf(100));
+        item.setQuantity(quantity);
+        return item;
     }
 
     private Order buildOrder(Long id, User owner) {
