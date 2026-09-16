@@ -412,4 +412,6 @@ Base URL: `https://tu-zhu.soay-fish.ts.net:8443/api/v1` (Docker) 或 `http://loc
 | :--- | :--- |
 | [SPEC.md](./SPEC.md) | 系統規格書 |
 | [docs/ecpay-payment.md](./docs/ecpay-payment.md) | 綠界金流整合:修改說明,設計決策,測試步驟,疑難排解 |
+| [docs/inventory-integrity.md](./docs/inventory-integrity.md) | 庫存正確性:防超賣,庫存異動軌跡,未付款訂單自動取消 |
+| [docs/admin-account-safeguards.md](./docs/admin-account-safeguards.md) | 管理員帳號防護:自我鎖定防護,啟用狀態顯示 |
 | [docker/README.md](./docker/README.md) | Docker 部署與環境設定 |
