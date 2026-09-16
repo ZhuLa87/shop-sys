@@ -6,6 +6,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import com.zzowo.shop_sys.dto.request.product.ProductRequest;
@@ -61,8 +62,10 @@ public class ProductController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "未登入")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "權限不足")
     @PostMapping
-    public ResponseEntity<ApiResponse<ProductResponse>> createProduct(@Valid @RequestBody ProductRequest request) {
-        ProductResponse response = productService.createProduct(request);
+    public ResponseEntity<ApiResponse<ProductResponse>> createProduct(
+            @Parameter(hidden = true) @AuthenticationPrincipal String email,
+            @Valid @RequestBody ProductRequest request) {
+        ProductResponse response = productService.createProduct(email, request);
         return ResponseEntity.ok(ApiResponse.success("商品新增成功", response));
     }
 
@@ -74,9 +77,10 @@ public class ProductController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "商品不存在")
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<ProductResponse>> updateProduct(
+            @Parameter(hidden = true) @AuthenticationPrincipal String email,
             @Parameter(description = "商品 ID") @PathVariable Long id,
             @Valid @RequestBody ProductRequest request) {
-        ProductResponse response = productService.updateProduct(id, request);
+        ProductResponse response = productService.updateProduct(email, id, request);
         return ResponseEntity.ok(ApiResponse.success("商品更新成功", response));
     }
 
