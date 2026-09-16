@@ -101,7 +101,7 @@ public class OrderService {
             }
 
             // 建立庫存異動紀錄
-            writeInventoryLog(product, -quantityToDeduct, "ORDER", user.getId());
+            writeInventoryLog(product, -quantityToDeduct, "ORDER", user);
 
             // 建立訂單明細 (name/coverImageUrl 為快照,確保商品日後改名或刪除仍可正確顯示)
             OrderItem item = new OrderItem();
@@ -162,7 +162,7 @@ public class OrderService {
                 continue;
             }
 
-            // operatorId 為 null 代表系統自動作業
+            // operator 為 null 代表系統自動作業
             writeInventoryLog(product, item.getQuantity(), "CANCEL", null);
         }
 
@@ -198,13 +198,13 @@ public class OrderService {
         return orderMapper.toOrderResponse(order);
     }
 
-    // 寫入庫存異動紀錄 (operatorId 為 null 代表系統自動作業)
-    private void writeInventoryLog(Product product, int changeAmount, String reason, Long operatorId) {
+    // 寫入庫存異動紀錄 (operator 為 null 代表系統自動作業)
+    private void writeInventoryLog(Product product, int changeAmount, String reason, User operator) {
         InventoryLog inventoryLog = new InventoryLog();
         inventoryLog.setProduct(product);
         inventoryLog.setChangeAmount(changeAmount);
         inventoryLog.setReason(reason);
-        inventoryLog.setOperatorId(operatorId);
+        inventoryLog.applyOperator(operator);
         inventoryLogRepository.save(inventoryLog);
     }
 }

@@ -1,5 +1,6 @@
 package com.zzowo.shop_sys.entity;
 
+import com.zzowo.shop_sys.enums.Role;
 import jakarta.persistence.*;
 import lombok.Data;
 import org.hibernate.annotations.NotFound;
@@ -45,6 +46,15 @@ public class InventoryLog {
     @Column(name = "operator_id")
     private Long operatorId;
 
+    // 操作人員名稱快照 (寫入當下的姓名,使用者改名或軟刪除後仍保留當時身分) 
+    @Column(name = "operator_name", length = 100)
+    private String operatorName;
+
+    // 操作人員角色快照 (寫入當下的角色,日後調整權限不影響歷史紀錄) 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "operator_role", length = 32)
+    private Role operatorRole;
+
     // 異動建立時間 (不可更改) 
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
@@ -53,5 +63,17 @@ public class InventoryLog {
     protected void onCreate() {
         // 紀錄建立時自動填入時間
         createdAt = LocalDateTime.now();
+    }
+
+    // 寫入當下的操作者身分快照;operator 為 null 代表系統自動作業,三個欄位都留 null
+    public void applyOperator(User operator) {
+        if (operator == null) {
+            return;
+        }
+        this.operatorId = operator.getId();
+        this.operatorName = (operator.getName() == null || operator.getName().isBlank())
+                ? operator.getEmail()
+                : operator.getName();
+        this.operatorRole = operator.getRole();
     }
 }

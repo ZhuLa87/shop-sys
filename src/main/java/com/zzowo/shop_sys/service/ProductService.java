@@ -62,7 +62,7 @@ public class ProductService {
         // 初始庫存視為一次進貨,讓 inventory_logs 的變動加總等於目前庫存
         Integer initialStock = savedProduct.getStockQuantity();
         if (initialStock != null && initialStock > 0) {
-            writeInventoryLog(savedProduct, initialStock, "RESTOCK", operatorId(email));
+            writeInventoryLog(savedProduct, initialStock, "RESTOCK", operator(email));
         }
 
         return productMapper.toDetailResponse(savedProduct);
@@ -84,7 +84,7 @@ public class ProductService {
         // 只改名稱/描述時不產生雜訊紀錄
         int delta = savedProduct.getStockQuantity() - oldStock;
         if (delta != 0) {
-            writeInventoryLog(savedProduct, delta, "ADJUSTMENT", operatorId(email));
+            writeInventoryLog(savedProduct, delta, "ADJUSTMENT", operator(email));
         }
 
         return productMapper.toDetailResponse(savedProduct);
@@ -196,21 +196,21 @@ public class ProductService {
                 .collect(Collectors.toList());
     }
 
-    // 取得操作者 ID 供庫存紀錄使用;找不到使用者時回 null (紀錄仍要留,只是沒有操作者)
-    private Long operatorId(String email) {
+    // 取得操作者供庫存紀錄快照使用;找不到使用者時回 null (紀錄仍要留,只是沒有操作者)
+    private User operator(String email) {
         if (email == null) {
             return null;
         }
-        return userRepository.findByEmail(email).map(User::getId).orElse(null);
+        return userRepository.findByEmail(email).orElse(null);
     }
 
     // 寫入庫存異動紀錄 (欄位與 OrderService 結帳扣庫存時一致)
-    private void writeInventoryLog(Product product, int changeAmount, String reason, Long operatorId) {
+    private void writeInventoryLog(Product product, int changeAmount, String reason, User operator) {
         InventoryLog log = new InventoryLog();
         log.setProduct(product);
         log.setChangeAmount(changeAmount);
         log.setReason(reason);
-        log.setOperatorId(operatorId);
+        log.applyOperator(operator);
         inventoryLogRepository.save(log);
     }
 }

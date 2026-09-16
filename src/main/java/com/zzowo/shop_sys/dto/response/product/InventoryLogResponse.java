@@ -1,5 +1,6 @@
 package com.zzowo.shop_sys.dto.response.product;
 
+import com.zzowo.shop_sys.enums.Role;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
@@ -18,8 +19,14 @@ public class InventoryLogResponse {
     @Schema(description = "變動原因:RESTOCK (進貨) ,ORDER (出貨) ,ADJUSTMENT (人工調整) ,CANCEL (訂單取消回庫) ,RETURN (退貨) ", example = "ORDER")
     private String reason;
 
-    @Schema(description = "操作人員使用者 ID", example = "3")
+    @Schema(description = "操作人員使用者 ID (系統自動作業時為 null) ", example = "3")
     private Long operatorId;
+
+    @Schema(description = "操作人員名稱 (異動當下的快照,系統自動作業時為 null) ", example = "王小明")
+    private String operatorName;
+
+    @Schema(description = "操作人員角色 (異動當下的快照,系統自動作業時為 null) ", example = "PRODUCT_MANAGER")
+    private Role operatorRole;
 
     @Schema(description = "紀錄建立時間", example = "2024-01-15T10:30:00")
     private LocalDateTime createdAt;
