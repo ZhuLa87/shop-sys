@@ -195,6 +195,65 @@ class ProductRepositoryTest {
         assertThat(productRepository.findAllDeleted()).isEmpty();
     }
 
+    // ── deductStock (原子扣庫存) ──────────────────────────────────────────────
+
+    @Test
+    void deductStock_enoughStock_returns1_andReducesStockAndBumpsVersion() {
+        Product p = buildProduct("有庫存", ProductStatus.ON_SHELF, 10);
+        em.persistAndFlush(p);
+        Long versionBefore = p.getVersion();
+        em.clear();
+
+        int updated = productRepository.deductStock(p.getId(), 3);
+
+        // bulk update 繞過 persistence context,必須清掉才讀得到真實值
+        em.clear();
+        assertThat(updated).isEqualTo(1);
+        Product reloaded = productRepository.findById(p.getId()).orElseThrow();
+        assertThat(reloaded.getStockQuantity()).isEqualTo(7);
+        assertThat(reloaded.getVersion()).isEqualTo(versionBefore + 1);
+    }
+
+    @Test
+    void deductStock_exactlyEqual_returns1_andLeavesZero() {
+        Product p = buildProduct("最後一批", ProductStatus.ON_SHELF, 4);
+        em.persistAndFlush(p);
+        em.clear();
+
+        int updated = productRepository.deductStock(p.getId(), 4);
+
+        em.clear();
+        assertThat(updated).isEqualTo(1);
+        assertThat(productRepository.findById(p.getId()).orElseThrow().getStockQuantity()).isZero();
+    }
+
+    @Test
+    void deductStock_insufficientStock_returns0_andLeavesStockUntouched() {
+        Product p = buildProduct("熱門商品", ProductStatus.ON_SHELF, 2);
+        em.persistAndFlush(p);
+        em.clear();
+
+        int updated = productRepository.deductStock(p.getId(), 3);
+
+        em.clear();
+        assertThat(updated).isZero();
+        assertThat(productRepository.findById(p.getId()).orElseThrow().getStockQuantity()).isEqualTo(2);
+    }
+
+    @Test
+    void deductStock_softDeletedProduct_returns0() {
+        Product p = buildProduct("已刪除商品", ProductStatus.ON_SHELF, 10);
+        p.setDeletedAt(LocalDateTime.now());
+        em.persistAndFlush(p);
+        em.clear();
+
+        int updated = productRepository.deductStock(p.getId(), 1);
+
+        em.clear();
+        assertThat(updated).isZero();
+        assertThat(productRepository.findDeletedById(p.getId()).orElseThrow().getStockQuantity()).isEqualTo(10);
+    }
+
     // ── helpers ──────────────────────────────────────────────────────────────
 
     private Product buildProduct(String name, ProductStatus status) {

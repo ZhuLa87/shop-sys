@@ -21,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -53,6 +54,12 @@ public class OrderService {
             throw new BusinessException("購物車為空,無法結帳");
         }
 
+        // 固定以 product id 遞增順序扣庫存,避免兩筆交易互等對方的行鎖造成死鎖
+        // 商品已軟刪除 (product 為 null) 的排最前面,讓下方的檢查第一個命中
+        cartItems = cartItems.stream()
+                .sorted(Comparator.comparing(c -> c.getProduct() == null ? Long.MIN_VALUE : c.getProduct().getId()))
+                .toList();
+
         // 準備建立訂單
         Order order = new Order();
         order.setUser(user);
@@ -78,15 +85,18 @@ public class OrderService {
                 throw new BusinessException("商品 [" + product.getName() + "] 目前" + product.getStatus().getDescription() + ",結帳失敗");
             }
 
-            // 檢查庫存 (JPA 的 @Version 會在並發下發揮作用)
+            // 快速失敗: 先用已載入的資料擋掉明顯不足的情況,省下一次沒必要的 DB 寫入
             if (product.getStockQuantity() < cart.getQuantity()) {
                 throw new BusinessException("商品 [" + product.getName() + "] 庫存不足,結帳失敗");
             }
 
-            // 扣除庫存
+            // 真正的防超賣: 單句條件更新,由 DB 保證原子性
+            // 注意扣庫存後 product 的 stockQuantity 與 version 在記憶體中已過期,不可再對它做任何修改
             Integer quantityToDeduct = cart.getQuantity();
-            product.setStockQuantity(product.getStockQuantity() - quantityToDeduct);
-            productRepository.save(product);
+            if (productRepository.deductStock(product.getId(), quantityToDeduct) == 0) {
+                // 預檢查到此刻之間被其他交易買走 (併發搶輸),整筆交易回滾
+                throw new BusinessException("商品 [" + product.getName() + "] 庫存不足,結帳失敗");
+            }
 
             // 建立庫存異動紀錄
             InventoryLog log = new InventoryLog();
