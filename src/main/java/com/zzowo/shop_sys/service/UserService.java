@@ -142,9 +142,13 @@ public class UserService {
 
     @Transactional // 加入事務管理
     // 超級管理員更新任何人的資料
-    public void updateUserByAdmin(Long userId, AdminUpdateUserRequest request) {
+    public void updateUserByAdmin(String operatorEmail, Long userId, AdminUpdateUserRequest request) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("找不到使用者 ID: " + userId));
+
+        // 停用或降級前先擋下會讓系統再也沒有管理員可用的操作
+        // 這個端點本身需要 SUPER_ADMIN,一旦最後一位被鎖在門外就只能進資料庫手動修
+        assertNotLockingOutAdmins(operatorEmail, user, request);
 
         // 管理員修改 Email 也要檢查重複
         if (StringUtils.hasText(request.getEmail()) && !request.getEmail().equals(user.getEmail())) {
@@ -168,6 +172,45 @@ public class UserService {
         if (request.getEnabled() != null) user.setEnabled(request.getEnabled());
 
         userRepository.save(user);
+    }
+
+    // 擋下會把管理員鎖在系統外的操作
+    private void assertNotLockingOutAdmins(String operatorEmail, User target, AdminUpdateUserRequest request) {
+        User operator = userRepository.findByEmail(operatorEmail)
+                .orElseThrow(() -> new ResourceNotFoundException("找不到操作者"));
+        boolean isSelf = operator.getId().equals(target.getId());
+
+        // 停用帳號
+        if (Boolean.FALSE.equals(request.getEnabled()) && target.isEnabled()) {
+            if (isSelf) {
+                throw new BusinessException("不可停用自己的帳號");
+            }
+            assertNotLastActiveSuperAdmin(target, "停用");
+        }
+
+        // 變更角色
+        if (request.getRole() != null) {
+            Role newRole = Role.valueOf(request.getRole());
+            if (newRole == target.getRole()) {
+                return;
+            }
+            if (isSelf && target.getRole() == Role.SUPER_ADMIN) {
+                throw new BusinessException("不可變更自己的角色,請由另一位最高管理員操作");
+            }
+            if (target.getRole() == Role.SUPER_ADMIN) {
+                assertNotLastActiveSuperAdmin(target, "變更角色");
+            }
+        }
+    }
+
+    // 系統必須永遠保留至少一位啟用中的最高管理員
+    private void assertNotLastActiveSuperAdmin(User target, String action) {
+        if (target.getRole() != Role.SUPER_ADMIN || !target.isEnabled()) {
+            return;
+        }
+        if (userRepository.countByRoleAndEnabledIsTrueAndIdNot(Role.SUPER_ADMIN, target.getId()) == 0) {
+            throw new BusinessException("無法" + action + ":系統必須保留至少一位啟用中的最高管理員");
+        }
     }
 
     // 超級管理員取得特定使用者資訊

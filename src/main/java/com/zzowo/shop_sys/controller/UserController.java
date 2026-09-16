@@ -77,17 +77,20 @@ public class UserController {
         return ResponseEntity.ok(ApiResponse.success("個人資料更新成功"));
     }
 
-    @Operation(summary = "管理員更新特定使用者資料", description = "以 SUPER_ADMIN 身份更新任意使用者資料,包含角色與帳號啟用狀態")
+    @Operation(summary = "管理員更新特定使用者資料",
+            description = "以 SUPER_ADMIN 身份更新任意使用者資料,包含角色與帳號啟用狀態." +
+                          "不可停用自己或變更自己的角色,也不可停用/降級系統中最後一位啟用中的最高管理員")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "更新成功")
-    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "請求參數錯誤")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "請求參數錯誤,或該操作會使系統失去可用的最高管理員")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "未登入")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "權限不足")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "使用者不存在")
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<Void>> updateUserByAdmin(
+            @Parameter(hidden = true) @AuthenticationPrincipal String email,
             @Parameter(description = "使用者 ID") @PathVariable Long id,
             @Valid @RequestBody AdminUpdateUserRequest request) {
-        userService.updateUserByAdmin(id, request);
+        userService.updateUserByAdmin(email, id, request);
         return ResponseEntity.ok(ApiResponse.success("使用者資料更新成功"));
     }
 }
