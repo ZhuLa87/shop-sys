@@ -17,6 +17,8 @@ public class InventoryLogMapper {
         response.setChangeAmount(log.getChangeAmount());
         response.setReason(log.getReason());
         response.setOperatorId(log.getOperatorId());
+        response.setOperatorName(log.getOperatorName());
+        response.setOperatorRole(log.getOperatorRole());
         response.setCreatedAt(log.getCreatedAt());
 
         // 商品資訊
