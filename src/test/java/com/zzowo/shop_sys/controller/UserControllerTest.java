@@ -188,7 +188,7 @@ class UserControllerTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk());
 
-        verify(userService).updateUserByAdmin(any(), any());
+        verify(userService).updateUserByAdmin(any(), any(), any());
     }
 
     @Test
@@ -199,14 +199,14 @@ class UserControllerTest {
                         .content(objectMapper.writeValueAsString(new AdminUpdateUserRequest())))
                 .andExpect(status().isForbidden());
 
-        verify(userService, never()).updateUserByAdmin(any(), any());
+        verify(userService, never()).updateUserByAdmin(any(), any(), any());
     }
 
     @Test
     @WithMockUser(roles = "SUPER_ADMIN")
     void updateUserByAdmin_userNotFound_returns404() throws Exception {
         doThrow(new ResourceNotFoundException("找不到使用者 ID: 99"))
-                .when(userService).updateUserByAdmin(any(), any());
+                .when(userService).updateUserByAdmin(any(), any(), any());
 
         mockMvc.perform(put("/v1/users/99")
                         .contentType(MediaType.APPLICATION_JSON)

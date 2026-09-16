@@ -223,11 +223,12 @@ class UserServiceTest {
     void updateUserByAdmin_updatesRoleAndEnabledFlag() {
         User user = buildUser(true, true);
         when(userRepository.findById(1L)).thenReturn(java.util.Optional.of(user));
+        stubOperator();
 
         AdminUpdateUserRequest request = new AdminUpdateUserRequest();
         request.setRole("PRODUCT_MANAGER");
         request.setEnabled(false);
-        userService.updateUserByAdmin(1L, request);
+        userService.updateUserByAdmin(OPERATOR_EMAIL, 1L, request);
 
         assertThat(user.getRole()).isEqualTo(Role.PRODUCT_MANAGER);
         assertThat(user.getEnabled()).isFalse();
@@ -239,11 +240,12 @@ class UserServiceTest {
         User user = buildUser(true, true);
         when(userRepository.findById(1L)).thenReturn(java.util.Optional.of(user));
         when(userRepository.existsByEmail("taken@test.com")).thenReturn(true);
+        stubOperator();
 
         AdminUpdateUserRequest request = new AdminUpdateUserRequest();
         request.setEmail("taken@test.com");
 
-        assertThatThrownBy(() -> userService.updateUserByAdmin(1L, request))
+        assertThatThrownBy(() -> userService.updateUserByAdmin(OPERATOR_EMAIL, 1L, request))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("已被註冊");
 
@@ -254,9 +256,136 @@ class UserServiceTest {
     void updateUserByAdmin_userNotFound_throwsResourceNotFoundException() {
         when(userRepository.findById(99L)).thenReturn(java.util.Optional.empty());
 
-        assertThatThrownBy(() -> userService.updateUserByAdmin(99L, new AdminUpdateUserRequest()))
+        assertThatThrownBy(() -> userService.updateUserByAdmin(OPERATOR_EMAIL, 99L, new AdminUpdateUserRequest()))
                 .isInstanceOf(ResourceNotFoundException.class)
                 .hasMessageContaining("99");
+    }
+
+    // ── updateUserByAdmin: 防止管理員把自己鎖在系統外 ──────────────────────────
+
+    @Test
+    void updateUserByAdmin_disableSelf_throws() {
+        User self = buildUser(true, true);
+        self.setRole(Role.SUPER_ADMIN);
+        when(userRepository.findById(1L)).thenReturn(java.util.Optional.of(self));
+        when(userRepository.findByEmail("user@test.com")).thenReturn(java.util.Optional.of(self));
+
+        AdminUpdateUserRequest request = new AdminUpdateUserRequest();
+        request.setEnabled(false);
+
+        assertThatThrownBy(() -> userService.updateUserByAdmin("user@test.com", 1L, request))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("不可停用自己的帳號");
+
+        assertThat(self.getEnabled()).isTrue();
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    void updateUserByAdmin_changeOwnRole_throws() {
+        User self = buildUser(true, true);
+        self.setRole(Role.SUPER_ADMIN);
+        when(userRepository.findById(1L)).thenReturn(java.util.Optional.of(self));
+        when(userRepository.findByEmail("user@test.com")).thenReturn(java.util.Optional.of(self));
+
+        AdminUpdateUserRequest request = new AdminUpdateUserRequest();
+        request.setRole("PRODUCT_MANAGER");
+
+        assertThatThrownBy(() -> userService.updateUserByAdmin("user@test.com", 1L, request))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("不可變更自己的角色");
+
+        assertThat(self.getRole()).isEqualTo(Role.SUPER_ADMIN);
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    void updateUserByAdmin_selfRoleUnchanged_isAllowed() {
+        // 送出表單時原樣帶著自己的角色不算變更,不該被擋
+        User self = buildUser(true, true);
+        self.setRole(Role.SUPER_ADMIN);
+        when(userRepository.findById(1L)).thenReturn(java.util.Optional.of(self));
+        when(userRepository.findByEmail("user@test.com")).thenReturn(java.util.Optional.of(self));
+
+        AdminUpdateUserRequest request = new AdminUpdateUserRequest();
+        request.setRole("SUPER_ADMIN");
+        request.setName("改個名字");
+
+        userService.updateUserByAdmin("user@test.com", 1L, request);
+
+        assertThat(self.getName()).isEqualTo("改個名字");
+        verify(userRepository).save(self);
+    }
+
+    @Test
+    void updateUserByAdmin_disableLastActiveSuperAdmin_throws() {
+        User target = buildUser(true, true);
+        target.setRole(Role.SUPER_ADMIN);
+        when(userRepository.findById(1L)).thenReturn(java.util.Optional.of(target));
+        stubOperator();
+        when(userRepository.countByRoleAndEnabledIsTrueAndIdNot(Role.SUPER_ADMIN, 1L)).thenReturn(0L);
+
+        AdminUpdateUserRequest request = new AdminUpdateUserRequest();
+        request.setEnabled(false);
+
+        assertThatThrownBy(() -> userService.updateUserByAdmin(OPERATOR_EMAIL, 1L, request))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("至少一位啟用中的最高管理員");
+
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    void updateUserByAdmin_demoteLastActiveSuperAdmin_throws() {
+        User target = buildUser(true, true);
+        target.setRole(Role.SUPER_ADMIN);
+        when(userRepository.findById(1L)).thenReturn(java.util.Optional.of(target));
+        stubOperator();
+        when(userRepository.countByRoleAndEnabledIsTrueAndIdNot(Role.SUPER_ADMIN, 1L)).thenReturn(0L);
+
+        AdminUpdateUserRequest request = new AdminUpdateUserRequest();
+        request.setRole("CUSTOMER");
+
+        assertThatThrownBy(() -> userService.updateUserByAdmin(OPERATOR_EMAIL, 1L, request))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("至少一位啟用中的最高管理員");
+
+        assertThat(target.getRole()).isEqualTo(Role.SUPER_ADMIN);
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    void updateUserByAdmin_disableSuperAdmin_whenAnotherActiveAdminExists_succeeds() {
+        User target = buildUser(true, true);
+        target.setRole(Role.SUPER_ADMIN);
+        when(userRepository.findById(1L)).thenReturn(java.util.Optional.of(target));
+        stubOperator();
+        when(userRepository.countByRoleAndEnabledIsTrueAndIdNot(Role.SUPER_ADMIN, 1L)).thenReturn(1L);
+
+        AdminUpdateUserRequest request = new AdminUpdateUserRequest();
+        request.setEnabled(false);
+
+        userService.updateUserByAdmin(OPERATOR_EMAIL, 1L, request);
+
+        assertThat(target.getEnabled()).isFalse();
+        verify(userRepository).save(target);
+    }
+
+    @Test
+    void updateUserByAdmin_disableAlreadyDisabledSuperAdmin_doesNotCountAdmins() {
+        // 已經停用的帳號再送一次停用不會改變可用管理員數量,不需要檢查
+        User target = buildUser(false, true);
+        target.setRole(Role.SUPER_ADMIN);
+        when(userRepository.findById(1L)).thenReturn(java.util.Optional.of(target));
+        stubOperator();
+
+        AdminUpdateUserRequest request = new AdminUpdateUserRequest();
+        request.setEnabled(false);
+
+        userService.updateUserByAdmin(OPERATOR_EMAIL, 1L, request);
+
+        verify(userRepository, never()).countByRoleAndEnabledIsTrueAndIdNot(any(), any());
+        verify(userRepository).save(target);
     }
 
     // ── helpers ──────────────────────────────────────────────────────────────
@@ -267,6 +396,18 @@ class UserServiceTest {
         request.setPassword("password123");
         request.setName("王小明");
         return request;
+    }
+
+    // 另一位最高管理員, 用來扮演「不是被操作對象」的操作者
+    private static final String OPERATOR_EMAIL = "operator@test.com";
+
+    private void stubOperator() {
+        User operator = new User();
+        operator.setId(99L);
+        operator.setEmail(OPERATOR_EMAIL);
+        operator.setRole(Role.SUPER_ADMIN);
+        operator.setEnabled(true);
+        when(userRepository.findByEmail(OPERATOR_EMAIL)).thenReturn(java.util.Optional.of(operator));
     }
 
     private User buildUser(boolean enabled, boolean accountNonLocked) {
