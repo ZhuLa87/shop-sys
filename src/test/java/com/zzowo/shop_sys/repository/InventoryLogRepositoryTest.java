@@ -2,7 +2,9 @@ package com.zzowo.shop_sys.repository;
 
 import com.zzowo.shop_sys.entity.InventoryLog;
 import com.zzowo.shop_sys.entity.Product;
+import com.zzowo.shop_sys.entity.User;
 import com.zzowo.shop_sys.enums.ProductStatus;
+import com.zzowo.shop_sys.enums.Role;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -71,6 +73,35 @@ class InventoryLogRepositoryTest {
         assertThat(result.get(0).getProduct()).isNotNull();
     }
 
+    @Test
+    void operatorSnapshot_isPersistedAndReadBack() {
+        // 名稱與角色是寫入當下的快照,之後使用者改名或軟刪除都不影響這筆紀錄
+        InventoryLog log = buildLog(productA, 10, "RESTOCK");
+        log.applyOperator(buildOperator());
+        Long id = em.persistAndFlush(log).getId();
+        em.clear();
+
+        InventoryLog found = inventoryLogRepository.findById(id).orElseThrow();
+
+        assertThat(found.getOperatorId()).isEqualTo(7L);
+        assertThat(found.getOperatorName()).isEqualTo("庫存管理員");
+        assertThat(found.getOperatorRole()).isEqualTo(Role.PRODUCT_MANAGER);
+    }
+
+    @Test
+    void operatorSnapshot_systemOperation_leavesAllOperatorFieldsNull() {
+        InventoryLog log = buildLog(productA, 3, "CANCEL");
+        log.applyOperator(null);
+        Long id = em.persistAndFlush(log).getId();
+        em.clear();
+
+        InventoryLog found = inventoryLogRepository.findById(id).orElseThrow();
+
+        assertThat(found.getOperatorId()).isNull();
+        assertThat(found.getOperatorName()).isNull();
+        assertThat(found.getOperatorRole()).isNull();
+    }
+
     // ── helpers ──────────────────────────────────────────────────────────────
 
     private void setCreatedAt(Long logId, LocalDateTime time) {
@@ -96,5 +127,14 @@ class InventoryLogRepositoryTest {
         log.setChangeAmount(changeAmount);
         log.setReason(reason);
         return log;
+    }
+
+    private User buildOperator() {
+        User user = new User();
+        user.setId(7L);
+        user.setEmail("manager@test.com");
+        user.setName("庫存管理員");
+        user.setRole(Role.PRODUCT_MANAGER);
+        return user;
     }
 }

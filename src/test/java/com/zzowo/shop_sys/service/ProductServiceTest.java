@@ -6,6 +6,7 @@ import com.zzowo.shop_sys.entity.InventoryLog;
 import com.zzowo.shop_sys.entity.Product;
 import com.zzowo.shop_sys.entity.User;
 import com.zzowo.shop_sys.enums.ProductStatus;
+import com.zzowo.shop_sys.enums.Role;
 import com.zzowo.shop_sys.exception.BusinessException;
 import com.zzowo.shop_sys.exception.ResourceNotFoundException;
 import com.zzowo.shop_sys.mapper.InventoryLogMapper;
@@ -38,6 +39,7 @@ import static org.mockito.Mockito.*;
 class ProductServiceTest {
 
     private static final String EMAIL = "admin@test.com";
+    private static final String OPERATOR_NAME = "王小明";
 
     @Mock ProductRepository productRepository;
     @Mock ProductMapper productMapper;
@@ -60,6 +62,8 @@ class ProductServiceTest {
         assertThat(log.getChangeAmount()).isEqualTo(50);
         assertThat(log.getReason()).isEqualTo("RESTOCK");
         assertThat(log.getOperatorId()).isEqualTo(3L);
+        assertThat(log.getOperatorName()).isEqualTo(OPERATOR_NAME);
+        assertThat(log.getOperatorRole()).isEqualTo(Role.PRODUCT_MANAGER);
     }
 
     @Test
@@ -87,6 +91,8 @@ class ProductServiceTest {
         assertThat(log.getChangeAmount()).isEqualTo(15);
         assertThat(log.getReason()).isEqualTo("ADJUSTMENT");
         assertThat(log.getOperatorId()).isEqualTo(3L);
+        assertThat(log.getOperatorName()).isEqualTo(OPERATOR_NAME);
+        assertThat(log.getOperatorRole()).isEqualTo(Role.PRODUCT_MANAGER);
     }
 
     @Test
@@ -125,6 +131,23 @@ class ProductServiceTest {
         InventoryLog log = captureSavedLog();
         assertThat(log.getChangeAmount()).isEqualTo(2);
         assertThat(log.getOperatorId()).isNull();
+        assertThat(log.getOperatorName()).isNull();
+        assertThat(log.getOperatorRole()).isNull();
+    }
+
+    @Test
+    void updateProduct_operatorWithoutName_snapshotsEmailInstead() {
+        // 使用者沒填姓名時退而記 email,稽核日誌至少認得出是誰
+        stubExistingProduct(10);
+        stubMapperSetsStock(12);
+        stubSaveReturnsArgument();
+        User user = buildOperator(3L);
+        user.setName("  ");
+        when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(user));
+
+        productService.updateProduct(EMAIL, 1L, buildRequest(12));
+
+        assertThat(captureSavedLog().getOperatorName()).isEqualTo(EMAIL);
     }
 
     // ── deleteProduct ────────────────────────────────────────────────────────
@@ -269,10 +292,16 @@ class ProductServiceTest {
     }
 
     private void stubOperator(Long userId) {
+        when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(buildOperator(userId)));
+    }
+
+    private User buildOperator(Long userId) {
         User user = new User();
         user.setId(userId);
         user.setEmail(EMAIL);
-        when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(user));
+        user.setName(OPERATOR_NAME);
+        user.setRole(Role.PRODUCT_MANAGER);
+        return user;
     }
 
     private InventoryLog captureSavedLog() {

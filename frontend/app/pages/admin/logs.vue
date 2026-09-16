@@ -43,10 +43,26 @@
           </template>
         </el-table-column>
 
-        <!-- Operator ID -->
-        <el-table-column label="操作者 ID" width="120">
+        <!-- Operator (寫入當下的名稱快照) -->
+        <el-table-column label="操作者" width="150" show-overflow-tooltip>
           <template #default="{ row }">
-            <span class="text-slate-500 font-mono text-xs">{{ row.operatorId || '系統自動' }}</span>
+            <span :class="row.operatorName ? 'text-slate-700 font-medium' : 'text-slate-400'" class="text-sm">
+              {{ getOperatorName(row) }}
+            </span>
+          </template>
+        </el-table-column>
+
+        <!-- Operator Role (寫入當下的角色快照) -->
+        <el-table-column label="角色" width="130">
+          <template #default="{ row }">
+            <span
+              v-if="row.operatorRole"
+              :class="getRoleClass(row.operatorRole)"
+              class="inline-flex items-center rounded px-2 py-0.5 text-xs font-medium border"
+            >
+              {{ getRoleLabel(row.operatorRole) }}
+            </span>
+            <span v-else class="text-slate-400 text-xs">-</span>
           </template>
         </el-table-column>
 
@@ -98,6 +114,13 @@ const fetchInventoryLogs = async () => {
   } finally {
     loading.value = false
   }
+}
+
+// 操作者顯示名稱: 快照為主,舊資料只剩 ID 時退回顯示 ID,系統作業則無操作者
+const getOperatorName = (row: { operatorName?: string | null; operatorId?: number | null }) => {
+  if (row.operatorName) return row.operatorName
+  if (row.operatorId) return `使用者 #${row.operatorId}`
+  return '系統自動'
 }
 
 // 變動原因翻譯
