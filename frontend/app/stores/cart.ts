@@ -80,11 +80,12 @@ export const useCartStore = defineStore('cart', () => {
   }
 
   // 更新購物車商品數量 (解決後端 @Min(1) 限制)
-  const updateCartItemQuantity = async (productId: number, targetQuantity: number, currentCartItemId: number) => {
+  // currentQuantity 由呼叫端傳入異動前的數量,避免輸入元件已就地改掉 item.quantity 而算出 0 差值
+  const updateCartItemQuantity = async (productId: number, targetQuantity: number, currentCartItemId: number, currentQuantity?: number) => {
     const item = items.value.find(i => i.id === currentCartItemId)
     if (!item) return
 
-    const diff = targetQuantity - item.quantity
+    const diff = targetQuantity - (currentQuantity ?? item.quantity)
     if (diff > 0) {
       // 增加:直接呼叫 addToCart 增加差值
       await addToCart(productId, diff)
