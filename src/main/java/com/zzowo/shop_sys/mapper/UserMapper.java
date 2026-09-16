@@ -22,6 +22,8 @@ public class UserMapper {
         response.setRole(user.getRole().name());
         response.setPhone(user.getPhone());
         response.setAvatarUrl(user.getAvatarUrl());
+        // 後台會員管理的啟用狀態開關要靠這個欄位,漏掉會讓所有帳號一律顯示成停用
+        response.setEnabled(user.getEnabled());
 
         if (user.getCreatedAt() != null) {
             response.setCreatedAt(user.getCreatedAt().atZone(ZoneId.systemDefault()).toInstant().toEpochMilli());

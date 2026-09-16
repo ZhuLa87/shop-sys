@@ -22,6 +22,9 @@ public class UserResponse {
     @Schema(description = "電話", example = "0912345678")
     private String phone;
 
+    @Schema(description = "帳號是否啟用 (false 表示已被停用,無法登入) ", example = "true")
+    private Boolean enabled;
+
     @Schema(description = "帳號建立時間 (Unix 毫秒時間戳) ", example = "1715000000000")
     private Long createdAt;
 
