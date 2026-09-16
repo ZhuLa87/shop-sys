@@ -33,6 +33,12 @@ jwt:
   refresh-expiration: 604800000
 
 app:
+  order:
+    expiration:
+      # 測試期間關閉排程,避免自動取消訂單干擾其他測試
+      enabled: false
+      timeout-minutes: 30
+      check-interval-ms: 60000
   security:
     account-locking:
       enabled: false
