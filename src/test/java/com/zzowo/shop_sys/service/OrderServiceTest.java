@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -65,13 +67,13 @@ class OrderServiceTest {
         Product product = buildProduct(10L, "手機", BigDecimal.valueOf(100), 10);
         stubUser(user);
         when(cartRepository.findByUserId(1L)).thenReturn(List.of(buildCart(1L, user, product, 3)));
+        stubDeductStock(10L, 3);
         stubOrderSave();
 
         orderService.createOrder(EMAIL, createRequest());
 
-        // 庫存扣減
-        assertThat(product.getStockQuantity()).isEqualTo(7);
-        verify(productRepository).save(product);
+        // 庫存以單句條件更新扣減 (mock 下記憶體中的 stockQuantity 不會變動)
+        verify(productRepository).deductStock(10L, 3);
 
         // 庫存異動紀錄
         ArgumentCaptor<InventoryLog> logCaptor = ArgumentCaptor.forClass(InventoryLog.class);
@@ -95,6 +97,8 @@ class OrderServiceTest {
         when(cartRepository.findByUserId(1L)).thenReturn(List.of(
                 buildCart(1L, user, cheap, 2),
                 buildCart(2L, user, pricey, 3)));
+        stubDeductStock(10L, 2);
+        stubDeductStock(11L, 3);
         stubOrderSave();
 
         orderService.createOrder(EMAIL, createRequest());
@@ -113,6 +117,7 @@ class OrderServiceTest {
         product.setCoverImageUrl("https://minio/cover.jpg");
         stubUser(user);
         when(cartRepository.findByUserId(1L)).thenReturn(List.of(buildCart(1L, user, product, 2)));
+        stubDeductStock(10L, 2);
         stubOrderSave();
 
         orderService.createOrder(EMAIL, createRequest());
@@ -130,11 +135,13 @@ class OrderServiceTest {
         Product product = buildProduct(10L, "最後一批", BigDecimal.valueOf(100), 4);
         stubUser(user);
         when(cartRepository.findByUserId(1L)).thenReturn(List.of(buildCart(1L, user, product, 4)));
+        stubDeductStock(10L, 4);
         stubOrderSave();
 
         assertThatNoException().isThrownBy(() -> orderService.createOrder(EMAIL, createRequest()));
 
-        assertThat(product.getStockQuantity()).isZero();
+        // 庫存剛好等於訂購量時邊界條件成立,仍會扣減
+        verify(productRepository).deductStock(10L, 4);
     }
 
     @Test
@@ -161,7 +168,7 @@ class OrderServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("已下架或刪除");
 
-        verify(productRepository, never()).save(any());
+        verify(productRepository, never()).deductStock(anyLong(), anyInt());
         verify(orderRepository, never()).save(any());
         verify(cartRepository, never()).deleteByUserId(any());
     }
@@ -178,9 +185,28 @@ class OrderServiceTest {
                 .hasMessageContaining("熱門商品")
                 .hasMessageContaining("庫存不足");
 
-        assertThat(product.getStockQuantity()).isEqualTo(2); // 庫存未被扣減
+        verify(productRepository, never()).deductStock(anyLong(), anyInt()); // 預檢查就擋下,不必打 DB
         verify(orderRepository, never()).save(any());
         verify(inventoryLogRepository, never()).save(any());
+    }
+
+    @Test
+    void createOrder_lostRaceAfterPrecheck_throwsInsufficientStock() {
+        // 預檢查時庫存還夠,但扣庫存的瞬間被其他交易買走 (deductStock 回 0 筆)
+        User user = buildUser(1L, Role.CUSTOMER);
+        Product product = buildProduct(10L, "秒殺商品", BigDecimal.valueOf(100), 1);
+        stubUser(user);
+        when(cartRepository.findByUserId(1L)).thenReturn(List.of(buildCart(1L, user, product, 1)));
+        when(productRepository.deductStock(10L, 1)).thenReturn(0);
+
+        // 應得到明確的「庫存不足」,而非樂觀鎖衝突的 409
+        assertThatThrownBy(() -> orderService.createOrder(EMAIL, createRequest()))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("秒殺商品")
+                .hasMessageContaining("庫存不足");
+
+        verify(orderRepository, never()).save(any());
+        verify(cartRepository, never()).deleteByUserId(any());
     }
 
     @ParameterizedTest
@@ -198,7 +224,7 @@ class OrderServiceTest {
                 .hasMessageContaining(status.getDescription());
 
         assertThat(product.getStockQuantity()).isEqualTo(10); // 庫存未被扣減
-        verify(productRepository, never()).save(any());
+        verify(productRepository, never()).deductStock(anyLong(), anyInt());
         verify(orderRepository, never()).save(any());
         verify(cartRepository, never()).deleteByUserId(any());
     }
@@ -212,6 +238,7 @@ class OrderServiceTest {
         when(cartRepository.findByUserId(1L)).thenReturn(List.of(
                 buildCart(1L, user, ok, 1),
                 buildCart(2L, user, outOfStock, 5)));
+        stubDeductStock(10L, 1); // 第一項扣減成功, 第二項才失敗
 
         assertThatThrownBy(() -> orderService.createOrder(EMAIL, createRequest()))
                 .isInstanceOf(BusinessException.class)
@@ -313,6 +340,10 @@ class OrderServiceTest {
 
     private void stubUser(User user) {
         when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(user));
+    }
+
+    private void stubDeductStock(Long productId, int quantity) {
+        when(productRepository.deductStock(productId, quantity)).thenReturn(1);
     }
 
     private void stubOrderSave() {
