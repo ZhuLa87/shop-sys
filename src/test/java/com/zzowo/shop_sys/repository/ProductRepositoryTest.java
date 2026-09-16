@@ -254,6 +254,38 @@ class ProductRepositoryTest {
         assertThat(productRepository.findDeletedById(p.getId()).orElseThrow().getStockQuantity()).isEqualTo(10);
     }
 
+    // ── restoreStock (訂單取消回補庫存) ───────────────────────────────────────
+
+    @Test
+    void restoreStock_returns1_andAddsStockAndBumpsVersion() {
+        Product p = buildProduct("被取消的商品", ProductStatus.ON_SHELF, 7);
+        em.persistAndFlush(p);
+        Long versionBefore = p.getVersion();
+        em.clear();
+
+        int updated = productRepository.restoreStock(p.getId(), 3);
+
+        em.clear();
+        assertThat(updated).isEqualTo(1);
+        Product reloaded = productRepository.findById(p.getId()).orElseThrow();
+        assertThat(reloaded.getStockQuantity()).isEqualTo(10);
+        assertThat(reloaded.getVersion()).isEqualTo(versionBefore + 1);
+    }
+
+    @Test
+    void restoreStock_softDeletedProduct_returns0() {
+        Product p = buildProduct("已刪除商品", ProductStatus.ON_SHELF, 0);
+        p.setDeletedAt(LocalDateTime.now());
+        em.persistAndFlush(p);
+        em.clear();
+
+        int updated = productRepository.restoreStock(p.getId(), 5);
+
+        em.clear();
+        assertThat(updated).isZero();
+        assertThat(productRepository.findDeletedById(p.getId()).orElseThrow().getStockQuantity()).isZero();
+    }
+
     // ── helpers ──────────────────────────────────────────────────────────────
 
     private Product buildProduct(String name, ProductStatus status) {

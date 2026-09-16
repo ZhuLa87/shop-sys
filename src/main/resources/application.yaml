@@ -109,8 +109,16 @@ ecpay:
     frontend-base-url: ${APP_FRONTEND_BASE_URL:http://localhost:3000}
     trade-no-prefix: ${ECPAY_TRADE_NO_PREFIX:SS}
 
-# 帳戶鎖定配置
 app:
+    order:
+        expiration:
+            # 逾時未付款訂單的自動取消 (取消時回補庫存)
+            enabled: ${ORDER_EXPIRATION_ENABLED:true}
+            # 訂單建立後多久仍未付款就取消 (分鐘)
+            timeout-minutes: ${ORDER_EXPIRATION_MINUTES:30}
+            # 排程檢查間隔 (毫秒)
+            check-interval-ms: ${ORDER_EXPIRATION_CHECK_INTERVAL_MS:60000}
+    # 帳戶鎖定配置
     security:
         account-locking:
             # 啟用帳戶鎖定功能

@@ -53,6 +53,13 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
            nativeQuery = true)
     int deductStock(@Param("id") Long id, @Param("qty") int qty);
 
+    // 原子回補庫存 (訂單取消) ; 商品已軟刪除時回傳 0,由呼叫端記錄 log
+    @Modifying(flushAutomatically = true)
+    @Query(value = "UPDATE products SET stock_quantity = stock_quantity + :qty, version = version + 1 " +
+                   "WHERE id = :id AND deleted_at IS NULL",
+           nativeQuery = true)
+    int restoreStock(@Param("id") Long id, @Param("qty") int qty);
+
     // 以下兩個 native query 刻意繞過 @SQLRestriction,專供軟刪除回收桶使用
     @Query(value = "SELECT * FROM products WHERE deleted_at IS NOT NULL ORDER BY deleted_at DESC",
            nativeQuery = true)

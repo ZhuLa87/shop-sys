@@ -137,6 +137,9 @@ services:
             LOG_LEVEL_APP: ${LOG_LEVEL_APP:-INFO}
             JPA_SHOW_SQL: ${JPA_SHOW_SQL:-false}
             ACCOUNT_LOCKING_ENABLED: ${ACCOUNT_LOCKING_ENABLED:-true}
+            ORDER_EXPIRATION_ENABLED: ${ORDER_EXPIRATION_ENABLED:-true}
+            ORDER_EXPIRATION_MINUTES: ${ORDER_EXPIRATION_MINUTES:-30}
+            ORDER_EXPIRATION_CHECK_INTERVAL_MS: ${ORDER_EXPIRATION_CHECK_INTERVAL_MS:-60000}
         healthcheck:
             # readiness 群組含 db + redis,DB 或 Redis 斷線時才會 DOWN
             test: ["CMD-SHELL", "curl -fsS http://localhost:8088/api/health/readiness | grep -q '\"status\":\"UP\"'"]

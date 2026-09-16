@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
+import org.springframework.data.domain.PageRequest;
 
 import java.math.BigDecimal;
 import java.sql.Timestamp;
@@ -59,6 +60,56 @@ class OrderRepositoryTest {
         assertThat(result).hasSize(3);
         assertThat(result.get(0).getId()).isEqualTo(o3.getId()); // 最新在前
         assertThat(result.get(2).getId()).isEqualTo(o1.getId()); // 最舊在後
+    }
+
+    // ── 逾時未付款訂單的自動取消 ──────────────────────────────────────────────
+
+    @Test
+    void findIdsByStatusAndCreatedAtBefore_returnsOnlyExpiredPendingOrders() {
+        Order expired = em.persistAndFlush(buildOrder(user));
+        Order fresh = em.persistAndFlush(buildOrder(user));
+        Order expiredButPaid = em.persistAndFlush(buildOrder(user));
+        expiredButPaid.setStatus(OrderStatus.PAID);
+
+        setCreatedAt(expired.getId(), LocalDateTime.now().minusHours(2));
+        setCreatedAt(expiredButPaid.getId(), LocalDateTime.now().minusHours(2));
+        em.flush();
+        em.clear();
+
+        List<Long> result = orderRepository.findIdsByStatusAndCreatedAtBefore(
+                OrderStatus.PENDING, LocalDateTime.now().minusMinutes(30), PageRequest.of(0, 200));
+
+        assertThat(result).containsExactly(expired.getId());
+        assertThat(result).doesNotContain(fresh.getId(), expiredButPaid.getId());
+    }
+
+    @Test
+    void cancelIfPending_pendingOrder_returns1_andStatusBecomesCancelled() {
+        Order order = em.persistAndFlush(buildOrder(user));
+        em.clear();
+
+        int updated = orderRepository.cancelIfPending(order.getId(), OrderStatus.PENDING, OrderStatus.CANCELLED);
+
+        em.clear();
+        assertThat(updated).isEqualTo(1);
+        assertThat(orderRepository.findById(order.getId()).orElseThrow().getStatus())
+                .isEqualTo(OrderStatus.CANCELLED);
+    }
+
+    @Test
+    void cancelIfPending_paidOrder_returns0_andStatusUnchanged() {
+        // 已付款的訂單不可被排程取消,庫存也就不會被誤補
+        Order order = buildOrder(user);
+        order.setStatus(OrderStatus.PAID);
+        em.persistAndFlush(order);
+        em.clear();
+
+        int updated = orderRepository.cancelIfPending(order.getId(), OrderStatus.PENDING, OrderStatus.CANCELLED);
+
+        em.clear();
+        assertThat(updated).isZero();
+        assertThat(orderRepository.findById(order.getId()).orElseThrow().getStatus())
+                .isEqualTo(OrderStatus.PAID);
     }
 
     // ── helpers ──────────────────────────────────────────────────────────────
