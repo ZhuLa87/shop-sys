@@ -83,6 +83,8 @@ class OrderServiceTest {
         assertThat(log.getChangeAmount()).isEqualTo(-3);
         assertThat(log.getReason()).isEqualTo("ORDER");
         assertThat(log.getOperatorId()).isEqualTo(1L);
+        assertThat(log.getOperatorName()).isEqualTo("下單顧客");
+        assertThat(log.getOperatorRole()).isEqualTo(Role.CUSTOMER);
         assertThat(log.getProduct()).isSameAs(product);
 
         // 結帳後清空購物車
@@ -348,6 +350,8 @@ class OrderServiceTest {
         assertThat(log.getChangeAmount()).isEqualTo(3);
         assertThat(log.getReason()).isEqualTo("CANCEL");
         assertThat(log.getOperatorId()).isNull(); // 系統自動作業
+        assertThat(log.getOperatorName()).isNull();
+        assertThat(log.getOperatorRole()).isNull();
         assertThat(log.getProduct()).isSameAs(product);
     }
 
@@ -438,6 +442,7 @@ class OrderServiceTest {
         User user = new User();
         user.setId(id);
         user.setEmail(EMAIL);
+        user.setName("下單顧客");
         user.setRole(role);
         return user;
     }

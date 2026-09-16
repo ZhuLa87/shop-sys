@@ -303,22 +303,5 @@ const maskPhone = (phone?: string) => {
   return trimmed.slice(0, 4) + '***' + trimmed.slice(-3)
 }
 
-// 角色標籤與翻譯
-const getRoleLabel = (role: string) => {
-  const map: Record<string, string> = {
-    'CUSTOMER': '一般顧客',
-    'PRODUCT_MANAGER': '商品管理員',
-    'SUPER_ADMIN': '超級管理員',
-  }
-  return map[role] || role
-}
-
-const getRoleClass = (role: string) => {
-  const map: Record<string, string> = {
-    'CUSTOMER': 'bg-slate-50 text-slate-700 border-slate-200',
-    'PRODUCT_MANAGER': 'bg-indigo-50 text-indigo-700 border-indigo-200',
-    'SUPER_ADMIN': 'bg-rose-50 text-rose-700 border-rose-200',
-  }
-  return map[role] || 'bg-slate-50 text-slate-700 border-slate-200'
-}
+// 角色標籤與配色共用 ~/utils/role.ts (Nuxt 自動匯入) ,與庫存稽核日誌一致
 </script>
