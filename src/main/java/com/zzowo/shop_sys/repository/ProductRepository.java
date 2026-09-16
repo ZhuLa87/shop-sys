@@ -6,6 +6,7 @@ import com.zzowo.shop_sys.enums.ProductStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -42,6 +43,15 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     // LEFT JOIN: 就算商品沒有圖片,商品本身也要查出來 (避免因沒圖片導致商品消失)
     @Query("SELECT p FROM Product p LEFT JOIN FETCH p.images WHERE p.id = :id")
     Optional<Product> findByIdWithImages(@Param("id") Long id);
+
+    // 原子扣庫存: 庫存不足時條件不成立,回傳 0 筆,由呼叫端判定為庫存不足
+    // version + 1 讓後台整包覆寫商品時仍會觸發樂觀鎖衝突,避免庫存被舊表單值還原
+    // deleted_at IS NULL 明確寫出,不倚賴 @SQLRestriction 是否作用於 bulk update
+    @Modifying(flushAutomatically = true)
+    @Query(value = "UPDATE products SET stock_quantity = stock_quantity - :qty, version = version + 1 " +
+                   "WHERE id = :id AND stock_quantity >= :qty AND deleted_at IS NULL",
+           nativeQuery = true)
+    int deductStock(@Param("id") Long id, @Param("qty") int qty);
 
     // 以下兩個 native query 刻意繞過 @SQLRestriction,專供軟刪除回收桶使用
     @Query(value = "SELECT * FROM products WHERE deleted_at IS NOT NULL ORDER BY deleted_at DESC",
