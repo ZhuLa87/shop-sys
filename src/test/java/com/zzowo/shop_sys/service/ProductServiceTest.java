@@ -1,7 +1,10 @@
 package com.zzowo.shop_sys.service;
 
+import com.zzowo.shop_sys.dto.request.product.ProductRequest;
 import com.zzowo.shop_sys.dto.response.product.ProductResponse;
+import com.zzowo.shop_sys.entity.InventoryLog;
 import com.zzowo.shop_sys.entity.Product;
+import com.zzowo.shop_sys.entity.User;
 import com.zzowo.shop_sys.enums.ProductStatus;
 import com.zzowo.shop_sys.exception.BusinessException;
 import com.zzowo.shop_sys.exception.ResourceNotFoundException;
@@ -9,6 +12,7 @@ import com.zzowo.shop_sys.mapper.InventoryLogMapper;
 import com.zzowo.shop_sys.mapper.ProductMapper;
 import com.zzowo.shop_sys.repository.InventoryLogRepository;
 import com.zzowo.shop_sys.repository.ProductRepository;
+import com.zzowo.shop_sys.repository.UserRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -33,11 +37,95 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class ProductServiceTest {
 
+    private static final String EMAIL = "admin@test.com";
+
     @Mock ProductRepository productRepository;
     @Mock ProductMapper productMapper;
     @Mock InventoryLogRepository inventoryLogRepository;
     @Mock InventoryLogMapper inventoryLogMapper;
+    @Mock UserRepository userRepository;
     @InjectMocks ProductService productService;
+
+    // ── createProduct (庫存紀錄) ──────────────────────────────────────────────
+
+    @Test
+    void createProduct_withInitialStock_writesRestockLog() {
+        stubMapperSetsStock(50);
+        stubSaveReturnsArgument();
+        stubOperator(3L);
+
+        productService.createProduct(EMAIL, buildRequest(50));
+
+        InventoryLog log = captureSavedLog();
+        assertThat(log.getChangeAmount()).isEqualTo(50);
+        assertThat(log.getReason()).isEqualTo("RESTOCK");
+        assertThat(log.getOperatorId()).isEqualTo(3L);
+    }
+
+    @Test
+    void createProduct_zeroStock_writesNoLog() {
+        stubMapperSetsStock(0);
+        stubSaveReturnsArgument();
+
+        productService.createProduct(EMAIL, buildRequest(0));
+
+        verify(inventoryLogRepository, never()).save(any());
+    }
+
+    // ── updateProduct (庫存紀錄) ──────────────────────────────────────────────
+
+    @Test
+    void updateProduct_stockIncreased_writesPositiveAdjustmentLog() {
+        stubExistingProduct(10);
+        stubMapperSetsStock(25);
+        stubSaveReturnsArgument();
+        stubOperator(3L);
+
+        productService.updateProduct(EMAIL, 1L, buildRequest(25));
+
+        InventoryLog log = captureSavedLog();
+        assertThat(log.getChangeAmount()).isEqualTo(15);
+        assertThat(log.getReason()).isEqualTo("ADJUSTMENT");
+        assertThat(log.getOperatorId()).isEqualTo(3L);
+    }
+
+    @Test
+    void updateProduct_stockDecreased_writesNegativeAdjustmentLog() {
+        stubExistingProduct(10);
+        stubMapperSetsStock(4);
+        stubSaveReturnsArgument();
+        stubOperator(3L);
+
+        productService.updateProduct(EMAIL, 1L, buildRequest(4));
+
+        assertThat(captureSavedLog().getChangeAmount()).isEqualTo(-6);
+    }
+
+    @Test
+    void updateProduct_stockUnchanged_writesNoLog() {
+        // 只改名稱/描述時不該產生雜訊紀錄
+        stubExistingProduct(10);
+        stubMapperSetsStock(10);
+        stubSaveReturnsArgument();
+
+        productService.updateProduct(EMAIL, 1L, buildRequest(10));
+
+        verify(inventoryLogRepository, never()).save(any());
+    }
+
+    @Test
+    void updateProduct_unknownOperator_stillWritesLogWithNullOperator() {
+        stubExistingProduct(10);
+        stubMapperSetsStock(12);
+        stubSaveReturnsArgument();
+        when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.empty());
+
+        productService.updateProduct(EMAIL, 1L, buildRequest(12));
+
+        InventoryLog log = captureSavedLog();
+        assertThat(log.getChangeAmount()).isEqualTo(2);
+        assertThat(log.getOperatorId()).isNull();
+    }
 
     // ── deleteProduct ────────────────────────────────────────────────────────
 
@@ -160,6 +248,47 @@ class ProductServiceTest {
     }
 
     // ── helpers ──────────────────────────────────────────────────────────────
+
+    // mapper 是 mock,自行模擬它把請求裡的庫存寫進 entity
+    private void stubMapperSetsStock(int newStock) {
+        doAnswer(inv -> {
+            Product target = inv.getArgument(0);
+            target.setStockQuantity(newStock);
+            return null;
+        }).when(productMapper).updateEntityFromRequest(any(), any());
+    }
+
+    private void stubSaveReturnsArgument() {
+        when(productRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+    }
+
+    private void stubExistingProduct(int currentStock) {
+        Product existing = buildProduct();
+        existing.setStockQuantity(currentStock);
+        when(productRepository.findById(1L)).thenReturn(Optional.of(existing));
+    }
+
+    private void stubOperator(Long userId) {
+        User user = new User();
+        user.setId(userId);
+        user.setEmail(EMAIL);
+        when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(user));
+    }
+
+    private InventoryLog captureSavedLog() {
+        ArgumentCaptor<InventoryLog> captor = ArgumentCaptor.forClass(InventoryLog.class);
+        verify(inventoryLogRepository).save(captor.capture());
+        return captor.getValue();
+    }
+
+    private ProductRequest buildRequest(int stockQuantity) {
+        ProductRequest request = new ProductRequest();
+        request.setName("測試商品");
+        request.setPrice(BigDecimal.valueOf(100));
+        request.setStockQuantity(stockQuantity);
+        request.setStatus(ProductStatus.ON_SHELF);
+        return request;
+    }
 
     private Product buildProduct() {
         Product p = new Product();

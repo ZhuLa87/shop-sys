@@ -6,6 +6,7 @@ import com.zzowo.shop_sys.dto.response.product.InventoryLogResponse;
 import com.zzowo.shop_sys.dto.response.product.ProductResponse;
 import com.zzowo.shop_sys.entity.InventoryLog;
 import com.zzowo.shop_sys.entity.Product;
+import com.zzowo.shop_sys.entity.User;
 import com.zzowo.shop_sys.enums.ProductStatus;
 import com.zzowo.shop_sys.exception.BusinessException;
 import com.zzowo.shop_sys.exception.ResourceNotFoundException;
@@ -13,6 +14,7 @@ import com.zzowo.shop_sys.mapper.InventoryLogMapper;
 import com.zzowo.shop_sys.mapper.ProductMapper;
 import com.zzowo.shop_sys.repository.InventoryLogRepository;
 import com.zzowo.shop_sys.repository.ProductRepository;
+import com.zzowo.shop_sys.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -45,26 +47,46 @@ public class ProductService {
     @Autowired
     private InventoryLogMapper inventoryLogMapper;
 
+    @Autowired
+    private UserRepository userRepository;
+
     // 新增商品
     @Transactional
-    public ProductResponse createProduct(ProductRequest request) {
+    public ProductResponse createProduct(String email, ProductRequest request) {
         Product product = new Product();
         productMapper.updateEntityFromRequest(product, request);
 
         // 儲存
         Product savedProduct = productRepository.save(product);
+
+        // 初始庫存視為一次進貨,讓 inventory_logs 的變動加總等於目前庫存
+        Integer initialStock = savedProduct.getStockQuantity();
+        if (initialStock != null && initialStock > 0) {
+            writeInventoryLog(savedProduct, initialStock, "RESTOCK", operatorId(email));
+        }
+
         return productMapper.toDetailResponse(savedProduct);
     }
 
     // 修改商品
     @Transactional
-    public ProductResponse updateProduct(Long id, ProductRequest request) {
+    public ProductResponse updateProduct(String email, Long id, ProductRequest request) {
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("找不到商品 ID: " + id));
+
+        // 表單會整包覆寫庫存,先記下舊值才算得出差額
+        int oldStock = product.getStockQuantity() == null ? 0 : product.getStockQuantity();
 
         productMapper.updateEntityFromRequest(product, request);
 
         Product savedProduct = productRepository.save(product);
+
+        // 只改名稱/描述時不產生雜訊紀錄
+        int delta = savedProduct.getStockQuantity() - oldStock;
+        if (delta != 0) {
+            writeInventoryLog(savedProduct, delta, "ADJUSTMENT", operatorId(email));
+        }
+
         return productMapper.toDetailResponse(savedProduct);
     }
 
@@ -172,5 +194,23 @@ public class ProductService {
         return inventoryLogRepository.findAllByOrderByCreatedAtDesc().stream()
                 .map(inventoryLogMapper::toResponse)
                 .collect(Collectors.toList());
+    }
+
+    // 取得操作者 ID 供庫存紀錄使用;找不到使用者時回 null (紀錄仍要留,只是沒有操作者)
+    private Long operatorId(String email) {
+        if (email == null) {
+            return null;
+        }
+        return userRepository.findByEmail(email).map(User::getId).orElse(null);
+    }
+
+    // 寫入庫存異動紀錄 (欄位與 OrderService 結帳扣庫存時一致)
+    private void writeInventoryLog(Product product, int changeAmount, String reason, Long operatorId) {
+        InventoryLog log = new InventoryLog();
+        log.setProduct(product);
+        log.setChangeAmount(changeAmount);
+        log.setReason(reason);
+        log.setOperatorId(operatorId);
+        inventoryLogRepository.save(log);
     }
 }
