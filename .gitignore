@@ -39,6 +39,9 @@ build/
 .claude
 /CLAUDE.md
 /GEMINI.md
+# npx skills 安裝的第三方 skill 本體與鎖定檔
+/.agents/
+/skills-lock.json
 
 ### CodeGraph ###
 # 本機索引 (codegraph.db 約 7 MB 加上 daemon 的 pid/socket/log) , 是否建索引由各人自行決定.
