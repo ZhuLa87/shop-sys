@@ -24,6 +24,204 @@
 
 ---
 
+## 系統架構
+
+```
+                         ┌──────────────────────────────┐
+   瀏覽器 ──── :8443 ────▶│ nginx (TLS 終結)             │
+             (HTTPS)     │  /      → frontend:3000      │
+                         │  /api/  → backend:8088       │
+   瀏覽器 ──── :8444 ────▶│  (獨立 server) → minio:9000  │
+             (S3 API)    └──────────────────────────────┘
+                                      │ 內部網路 shop-sys-net
+                    ┌─────────────────┼──────────────────┐
+                    ▼                 ▼                  ▼
+              frontend:3000     backend:8088         minio:9000
+              (Nuxt SSR)        (Spring Boot)        (物件儲存)
+                    │                 │
+                    │  SSR 期間       ├──▶ mariadb:3306
+                    └────────────────▶│    redis:6379
+                       /api/**        │
+```
+
+對外只發佈 nginx 的埠,MariaDB / Redis / MinIO 都留在內部網路
+(開發環境另外開出除錯用埠號,見下方[服務位址](#服務位址)) .
+
+**Package 結構**:
+
+```
+com.zzowo.shop_sys/
+├── config/        # Security 設定,全域例外處理,DataInitializer (dev 測試資料) 
+├── controller/    # REST 控制層 (7 個 Controller) 
+├── dto/           # Request / Response DTO
+├── entity/        # JPA 實體 (11 個 Table) 
+├── enums/         # Role, ProductStatus, OrderStatus, PaymentStatus
+├── exception/     # 自定義例外
+├── filter/        # JWT 認證過濾器
+├── mapper/        # Entity ↔ DTO 轉換
+├── repository/    # Spring Data JPA (9 個 Repository) 
+├── scheduler/     # 排程作業 (逾時未付款訂單自動取消) 
+├── service/       # 核心業務邏輯 (9 個 Service) 
+└── util/          # JWT 工具類,綠界 CheckMacValue
+```
+
+---
+
+## 功能模組
+
+### 認證與安全
+
+- JWT Stateless 認證 (HS512;access token 30 分鐘,refresh token 7 天,支援 Token Rotation) 
+- Argon2 密碼雜湊,不可逆儲存
+- 帳號鎖定:連續失敗 5 次,鎖定 15 分鐘 (自動解鎖) 
+- RBAC 角色權限控制 (7 種角色) 
+
+### 會員系統
+
+- Email 註冊 / 登入
+- 個人資料自助更新 (姓名,電話,Email,密碼) 
+- 超級管理員可管理所有會員 (含停權,角色調整) 
+
+### 商品系統
+
+- 商品 CRUD (含多圖管理) 
+- 商品狀態:上架 / 下架 / 缺貨
+- 軟刪除:刪除只標記 `deleted_at`,查詢自動過濾 (`@SQLRestriction`) ,管理員可列出已刪除商品並還原
+  - 因此 `carts` / `order_items` / `inventory_logs` 不對 `products` 建外鍵,改以 `@NotFound(action = IGNORE)` 容許商品已被軟刪除
+- 樂觀鎖 (`@Version`) 防止並發超賣
+- 庫存異動稽核紀錄 (InventoryLog):記錄異動前後數量,並快照當下操作者的名稱與角色
+- 商品圖片上傳:後端簽發 MinIO 預簽網址 (presigned URL) ,瀏覽器直傳物件儲存,檔案不經過後端
+
+### 購物與訂單
+
+- 購物車:加入,查詢,移除 (即時庫存檢查) 
+- 結帳:原子性事務保護
+  - 驗證庫存 → 扣除庫存 → 建立庫存紀錄 → 建立訂單 → 清空購物車
+- 訂單明細快照:記錄下單當下的價格,不受後續調價影響
+- 付款:串接綠界 AIO 信用卡一次付清,送出訂單後導向綠界付款頁,付款結果由綠界 callback 更新訂單狀態;待付款訂單可重新付款.詳見 [docs/ecpay-payment.md](./docs/ecpay-payment.md)
+- 逾時未付款訂單自動取消:排程 (`OrderExpirationScheduler`) 定期掃描逾時的 `PENDING` 訂單,取消並把庫存還回去
+  - 逾時門檻與掃描間隔由 `app.order.expiration.timeout-minutes` / `check-interval-ms` 設定,單輪最多處理 200 筆,可用 `app.order.expiration.enabled=false` 關閉
+  - 詳見 [docs/inventory-integrity.md](./docs/inventory-integrity.md)
+
+---
+
+## API 總覽
+
+Base URL: `https://tu-zhu.soay-fish.ts.net:8443/api/v1` (Docker) 或 `http://localhost:8088/api/v1` (直接執行)  
+認證方式: `Authorization: Bearer {token}`
+
+### 認證
+
+| 方法 | 路徑 | 說明 | 權限 |
+| :--- | :--- | :--- | :--- |
+| POST | `/v1/auth/register` | 會員註冊 | 公開 |
+| POST | `/v1/auth/login` | 登入,回傳 Access + Refresh Token | 公開 |
+| POST | `/v1/auth/refresh` | 換發新 Token (Token Rotation) | 公開 |
+| POST | `/v1/auth/logout` | 登出 (黑名單 Access Token + 刪除 Refresh Token) | 已登入 |
+
+### 商品
+
+| 方法 | 路徑 | 說明 | 權限 |
+| :--- | :--- | :--- | :--- |
+| GET | `/v1/products` | 取得上架商品列表 (分頁 + 搜尋 + 排序)  | 公開 |
+| GET | `/v1/products/{id}` | 取得商品詳情 | 公開 |
+| POST | `/v1/products` | 新增商品 | PRODUCT_MANAGER, SUPER_ADMIN |
+| PUT | `/v1/products/{id}` | 修改商品 | PRODUCT_MANAGER, SUPER_ADMIN |
+| DELETE | `/v1/products/{id}` | 刪除商品 (軟刪除)  | PRODUCT_MANAGER, SUPER_ADMIN |
+| GET | `/v1/products/admin` | 管理端商品列表 (含下架 / 缺貨)  | PRODUCT_MANAGER, SUPER_ADMIN |
+| GET | `/v1/products/deleted` | 查詢已刪除商品 | PRODUCT_MANAGER, SUPER_ADMIN |
+| PUT | `/v1/products/{id}/restore` | 還原已刪除商品 | PRODUCT_MANAGER, SUPER_ADMIN |
+| GET | `/v1/products/inventory-logs` | 查詢所有庫存紀錄 | PRODUCT_MANAGER, SUPER_ADMIN |
+| GET | `/v1/products/{id}/inventory-logs` | 查詢單一商品庫存紀錄 | PRODUCT_MANAGER, SUPER_ADMIN |
+
+### 購物車
+
+| 方法 | 路徑 | 說明 | 權限 |
+| :--- | :--- | :--- | :--- |
+| GET | `/v1/carts` | 查詢我的購物車 | 已登入 |
+| POST | `/v1/carts` | 加入商品至購物車 | 已登入 |
+| DELETE | `/v1/carts/{id}` | 移除購物車項目 | 已登入 |
+
+### 訂單
+
+| 方法 | 路徑 | 說明 | 權限 |
+| :--- | :--- | :--- | :--- |
+| POST | `/v1/orders` | 結帳 (建立訂單)  | 已登入 |
+| GET | `/v1/orders` | 查詢我的訂單列表 | 已登入 |
+| GET | `/v1/orders/{id}` | 查詢特定訂單詳情 | 已登入 |
+
+### 付款
+
+| 方法 | 路徑 | 說明 | 權限 |
+| :--- | :--- | :--- | :--- |
+| POST | `/v1/payments/ecpay/checkout` | 為自己的待付款訂單產生綠界付款表單 | 已登入 |
+| POST | `/v1/payments/ecpay/notify` | 綠界付款結果通知 (ReturnURL),回應 `1\|OK` | 公開 (CheckMacValue 驗證) |
+| POST | `/v1/payments/ecpay/result` | 綠界付款後瀏覽器導回 (OrderResultURL),302 回訂單頁 | 公開 (CheckMacValue 驗證) |
+
+### 檔案上傳
+
+| 方法 | 路徑 | 說明 | 權限 |
+| :--- | :--- | :--- | :--- |
+| POST | `/v1/upload/presign` | 取得 MinIO 預簽上傳網址,前端拿到後直傳 S3 | 已登入 |
+
+### 會員
+
+| 方法 | 路徑 | 說明 | 權限 |
+| :--- | :--- | :--- | :--- |
+| GET | `/v1/users/me` | 取得個人資料 | 已登入 |
+| PUT | `/v1/users/me` | 更新個人資料 | 已登入 |
+| GET | `/v1/users` | 取得所有會員列表 | SUPER_ADMIN |
+| GET | `/v1/users/{id}` | 取得指定會員資料 | SUPER_ADMIN |
+| PUT | `/v1/users/{id}` | 管理員更新指定會員 | SUPER_ADMIN |
+
+---
+
+## 資料庫設計
+
+| 資料表 | 說明 | 關聯 |
+| :--- | :--- | :--- |
+| `users` | 會員帳號,角色,狀態 | 1→N orders, 1→N carts |
+| `products` | 商品資訊,庫存,狀態 (軟刪除:`deleted_at`) | 1→N product_images, 1→N inventory_logs |
+| `product_images` | 商品多圖 | N→1 products |
+| `carts` | 購物車暫存 | N→1 users, N→1 products |
+| `orders` | 訂單主檔 | N→1 users, 1→N order_items |
+| `order_items` | 訂單明細 (含快照價格) | N→1 orders, N→1 products |
+| `inventory_logs` | 庫存異動稽核紀錄 (含操作者名稱與角色快照) | N→1 products |
+| `payments` | 付款紀錄 (綠界 MerchantTradeNo,TradeNo,付款狀態) | 1→1 orders |
+| `shipments` | 物流紀錄 (待整合) | 1→1 orders |
+| `coupons` | 優惠券 (預留) | - |
+| `reviews` | 商品評價 (預留) | - |
+
+---
+
+## 角色說明
+
+| 角色 | 代碼 | 說明 |
+| :--- | :--- | :--- |
+| 一般消費者 | `CUSTOMER` | 預設角色,可購物下訂單 |
+| 商品管理員 | `PRODUCT_MANAGER` | 管理商品上下架與庫存 |
+| 訂單管理員 | `ORDER_MANAGER` | 預留 |
+| 客服人員 | `CUSTOMER_SERVICE` | 預留 |
+| 行銷人員 | `MARKETING` | 預留 |
+| 財務人員 | `FINANCE` | 預留 |
+| 超級管理員 | `SUPER_ADMIN` | 擁有全部權限,管理會員 |
+
+---
+
+## 詳細規格
+
+完整的 API 請求/回應範例,業務規則,資料欄位定義,錯誤處理規格,請參閱 [SPEC.md](./SPEC.md).
+
+| 文件 | 內容 |
+| :--- | :--- |
+| [SPEC.md](./SPEC.md) | 系統規格書 |
+| [docs/ecpay-payment.md](./docs/ecpay-payment.md) | 綠界金流整合:修改說明,設計決策,測試步驟,疑難排解 |
+| [docs/inventory-integrity.md](./docs/inventory-integrity.md) | 庫存正確性:防超賣,庫存異動軌跡,未付款訂單自動取消 |
+| [docs/admin-account-safeguards.md](./docs/admin-account-safeguards.md) | 管理員帳號防護:自我鎖定防護,啟用狀態顯示 |
+| [docker/README.md](./docker/README.md) | Docker 部署與環境設定 |
+
+---
+
 ## 開發環境
 
 整套環境以 docker compose 啟動:nginx 作為統一入口,後方是 Spring Boot,Nuxt SSR,MariaDB,Redis 與 MinIO,前後端都支援 hot reload.
@@ -86,7 +284,7 @@ docker compose --env-file env/.env.dev -f compose.yaml -f compose.dev.yaml up -d
 ### 確認啟動成功
 
 ```bash
-./stack.sh ps          # 六個服務,除 frontend 外應皆為 (healthy)
+./stack.sh ps          # 七個常駐服務,除 frontend 外應皆為 (healthy)
 ```
 
 ```bash
@@ -233,185 +431,3 @@ export MINIO_ACCESS_KEY={key} MINIO_SECRET_KEY={secret}
 ```
 
 資料表由 **Flyway** 建立 (`src/main/resources/db/migration/`) ,`ddl-auto` 固定為 `validate`.
-
----
-
-## 系統架構
-
-```
-                         ┌──────────────────────────────┐
-   瀏覽器 ──── :8443 ────▶│ nginx (TLS 終結)             │
-             (HTTPS)     │  /      → frontend:3000      │
-                         │  /api/  → backend:8088       │
-   瀏覽器 ──── :8444 ────▶│  (獨立 server) → minio:9000  │
-             (S3 API)    └──────────────────────────────┘
-                                      │ 內部網路 shop-sys-net
-                    ┌─────────────────┼──────────────────┐
-                    ▼                 ▼                  ▼
-              frontend:3000     backend:8088         minio:9000
-              (Nuxt SSR)        (Spring Boot)        (物件儲存)
-                    │                 │
-                    │  SSR 期間       ├──▶ mariadb:3306
-                    └────────────────▶│    redis:6379
-                       /api/**        │
-```
-
-對外只發佈 nginx 的埠,MariaDB / Redis / MinIO 都留在內部網路
-(開發環境另外開出除錯用埠號,見上方"服務位址") .
-
-**Package 結構**:
-
-```
-com.zzowo.shop_sys/
-├── config/        # Security 設定,全域例外處理,DataInitializer (dev 測試資料) 
-├── controller/    # REST 控制層 (5 個 Controller) 
-├── dto/           # Request / Response DTO
-├── entity/        # JPA 實體 (11 個 Table) 
-├── enums/         # Role, ProductStatus, OrderStatus
-├── exception/     # 自定義例外
-├── filter/        # JWT 認證過濾器
-├── mapper/        # Entity ↔ DTO 轉換
-├── repository/    # Spring Data JPA (9 個 Repository) 
-├── service/       # 核心業務邏輯 (5 個 Service) 
-└── util/          # JWT 工具類
-```
-
----
-
-## 功能模組
-
-### 認證與安全
-
-- JWT Stateless 認證 (HS512;access token 30 分鐘,refresh token 7 天,支援 Token Rotation) 
-- Argon2 密碼雜湊,不可逆儲存
-- 帳號鎖定:連續失敗 5 次,鎖定 15 分鐘 (自動解鎖) 
-- RBAC 角色權限控制 (7 種角色) 
-
-### 會員系統
-
-- Email 註冊 / 登入
-- 個人資料自助更新 (姓名,電話,Email,密碼) 
-- 超級管理員可管理所有會員 (含停權,角色調整) 
-
-### 商品系統
-
-- 商品 CRUD (含多圖管理) 
-- 商品狀態:上架 / 下架 / 缺貨
-- 樂觀鎖 (`@Version`) 防止並發超賣
-- 庫存異動稽核紀錄 (InventoryLog) 
-
-### 購物與訂單
-
-- 購物車:加入,查詢,移除 (即時庫存檢查) 
-- 結帳:原子性事務保護
-  - 驗證庫存 → 扣除庫存 → 建立庫存紀錄 → 建立訂單 → 清空購物車
-- 訂單明細快照:記錄下單當下的價格,不受後續調價影響
-- 付款:串接綠界 AIO 信用卡一次付清,送出訂單後導向綠界付款頁,付款結果由綠界 callback 更新訂單狀態;待付款訂單可重新付款.詳見 [docs/ecpay-payment.md](./docs/ecpay-payment.md)
-
----
-
-## API 總覽
-
-Base URL: `https://tu-zhu.soay-fish.ts.net:8443/api/v1` (Docker) 或 `http://localhost:8088/api/v1` (直接執行)  
-認證方式: `Authorization: Bearer {token}`
-
-### 認證
-
-| 方法 | 路徑 | 說明 | 權限 |
-| :--- | :--- | :--- | :--- |
-| POST | `/v1/auth/register` | 會員註冊 | 公開 |
-| POST | `/v1/auth/login` | 登入,回傳 Access + Refresh Token | 公開 |
-| POST | `/v1/auth/refresh` | 換發新 Token (Token Rotation) | 公開 |
-| POST | `/v1/auth/logout` | 登出 (黑名單 Access Token + 刪除 Refresh Token) | 已登入 |
-
-### 商品
-
-| 方法 | 路徑 | 說明 | 權限 |
-| :--- | :--- | :--- | :--- |
-| GET | `/v1/products` | 取得上架商品列表 (分頁 + 搜尋 + 排序)  | 公開 |
-| GET | `/v1/products/{id}` | 取得商品詳情 | 公開 |
-| POST | `/v1/products` | 新增商品 | PRODUCT_MANAGER, SUPER_ADMIN |
-| PUT | `/v1/products/{id}` | 修改商品 | PRODUCT_MANAGER, SUPER_ADMIN |
-| DELETE | `/v1/products/{id}` | 刪除商品 | PRODUCT_MANAGER, SUPER_ADMIN |
-| GET | `/v1/products/inventory-logs` | 查詢所有庫存紀錄 | PRODUCT_MANAGER, SUPER_ADMIN |
-| GET | `/v1/products/{id}/inventory-logs` | 查詢單一商品庫存紀錄 | PRODUCT_MANAGER, SUPER_ADMIN |
-
-### 購物車
-
-| 方法 | 路徑 | 說明 | 權限 |
-| :--- | :--- | :--- | :--- |
-| GET | `/v1/carts` | 查詢我的購物車 | 已登入 |
-| POST | `/v1/carts` | 加入商品至購物車 | 已登入 |
-| DELETE | `/v1/carts/{id}` | 移除購物車項目 | 已登入 |
-
-### 訂單
-
-| 方法 | 路徑 | 說明 | 權限 |
-| :--- | :--- | :--- | :--- |
-| POST | `/v1/orders` | 結帳 (建立訂單)  | 已登入 |
-| GET | `/v1/orders` | 查詢我的訂單列表 | 已登入 |
-| GET | `/v1/orders/{id}` | 查詢特定訂單詳情 | 已登入 |
-
-### 付款
-
-| 方法 | 路徑 | 說明 | 權限 |
-| :--- | :--- | :--- | :--- |
-| POST | `/v1/payments/ecpay/checkout` | 為自己的待付款訂單產生綠界付款表單 | 已登入 |
-| POST | `/v1/payments/ecpay/notify` | 綠界付款結果通知 (ReturnURL),回應 `1\|OK` | 公開 (CheckMacValue 驗證) |
-| POST | `/v1/payments/ecpay/result` | 綠界付款後瀏覽器導回 (OrderResultURL),302 回訂單頁 | 公開 (CheckMacValue 驗證) |
-
-### 會員
-
-| 方法 | 路徑 | 說明 | 權限 |
-| :--- | :--- | :--- | :--- |
-| GET | `/v1/users/me` | 取得個人資料 | 已登入 |
-| PUT | `/v1/users/me` | 更新個人資料 | 已登入 |
-| GET | `/v1/users` | 取得所有會員列表 | SUPER_ADMIN |
-| GET | `/v1/users/{id}` | 取得指定會員資料 | SUPER_ADMIN |
-| PUT | `/v1/users/{id}` | 管理員更新指定會員 | SUPER_ADMIN |
-
----
-
-## 資料庫設計
-
-| 資料表 | 說明 | 關聯 |
-| :--- | :--- | :--- |
-| `users` | 會員帳號,角色,狀態 | 1→N orders, 1→N carts |
-| `products` | 商品資訊,庫存,狀態 | 1→N product_images, 1→N inventory_logs |
-| `product_images` | 商品多圖 | N→1 products |
-| `carts` | 購物車暫存 | N→1 users, N→1 products |
-| `orders` | 訂單主檔 | N→1 users, 1→N order_items |
-| `order_items` | 訂單明細 (含快照價格) | N→1 orders, N→1 products |
-| `inventory_logs` | 庫存異動稽核紀錄 | N→1 products |
-| `payments` | 付款紀錄 (綠界 MerchantTradeNo,TradeNo,付款狀態) | 1→1 orders |
-| `shipments` | 物流紀錄 (待整合) | 1→1 orders |
-| `coupons` | 優惠券 (預留) | - |
-| `reviews` | 商品評價 (預留) | - |
-
----
-
-## 角色說明
-
-| 角色 | 代碼 | 說明 |
-| :--- | :--- | :--- |
-| 一般消費者 | `CUSTOMER` | 預設角色,可購物下訂單 |
-| 商品管理員 | `PRODUCT_MANAGER` | 管理商品上下架與庫存 |
-| 訂單管理員 | `ORDER_MANAGER` | 預留 |
-| 客服人員 | `CUSTOMER_SERVICE` | 預留 |
-| 行銷人員 | `MARKETING` | 預留 |
-| 財務人員 | `FINANCE` | 預留 |
-| 超級管理員 | `SUPER_ADMIN` | 擁有全部權限,管理會員 |
-
----
-
-## 詳細規格
-
-完整的 API 請求/回應範例,業務規則,資料欄位定義,錯誤處理規格,請參閱 [SPEC.md](./SPEC.md).
-
-| 文件 | 內容 |
-| :--- | :--- |
-| [SPEC.md](./SPEC.md) | 系統規格書 |
-| [docs/ecpay-payment.md](./docs/ecpay-payment.md) | 綠界金流整合:修改說明,設計決策,測試步驟,疑難排解 |
-| [docs/inventory-integrity.md](./docs/inventory-integrity.md) | 庫存正確性:防超賣,庫存異動軌跡,未付款訂單自動取消 |
-| [docs/admin-account-safeguards.md](./docs/admin-account-safeguards.md) | 管理員帳號防護:自我鎖定防護,啟用狀態顯示 |
-| [docker/README.md](./docker/README.md) | Docker 部署與環境設定 |
