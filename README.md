@@ -98,10 +98,9 @@ com.zzowo.shop_sys/
 - 結帳:原子性事務保護
   - 驗證庫存 → 扣除庫存 → 建立庫存紀錄 → 建立訂單 → 清空購物車
 - 訂單明細快照:記錄下單當下的價格,不受後續調價影響
-- 付款:串接綠界 AIO 信用卡一次付清,送出訂單後導向綠界付款頁,付款結果由綠界 callback 更新訂單狀態;待付款訂單可重新付款.詳見 [docs/ecpay-payment.md](./docs/ecpay-payment.md)
+- 付款:串接綠界 AIO 信用卡一次付清,送出訂單後導向綠界付款頁,付款結果由綠界 callback 更新訂單狀態;待付款訂單可重新付款.
 - 逾時未付款訂單自動取消:排程 (`OrderExpirationScheduler`) 定期掃描逾時的 `PENDING` 訂單,取消並把庫存還回去
   - 逾時門檻與掃描間隔由 `app.order.expiration.timeout-minutes` / `check-interval-ms` 設定,單輪最多處理 200 筆,可用 `app.order.expiration.enabled=false` 關閉
-  - 詳見 [docs/inventory-integrity.md](./docs/inventory-integrity.md)
 
 ---
 
@@ -215,9 +214,6 @@ Base URL: `https://tu-zhu.soay-fish.ts.net:8443/api/v1` (Docker) 或 `http://loc
 | 文件 | 內容 |
 | :--- | :--- |
 | [SPEC.md](./SPEC.md) | 系統規格書 |
-| [docs/ecpay-payment.md](./docs/ecpay-payment.md) | 綠界金流整合:修改說明,設計決策,測試步驟,疑難排解 |
-| [docs/inventory-integrity.md](./docs/inventory-integrity.md) | 庫存正確性:防超賣,庫存異動軌跡,未付款訂單自動取消 |
-| [docs/admin-account-safeguards.md](./docs/admin-account-safeguards.md) | 管理員帳號防護:自我鎖定防護,啟用狀態顯示 |
 | [docker/README.md](./docker/README.md) | Docker 部署與環境設定 |
 
 ---

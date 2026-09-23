@@ -335,7 +335,7 @@ orders (N) ─────────── (1) coupons        [預留]
 
 #### **payments**
 
-每筆訂單最多一筆 (重新付款時沿用同一筆,更新 `merchant_trade_no`).詳見 [`docs/ecpay-payment.md`](docs/ecpay-payment.md).
+每筆訂單最多一筆 (重新付款時沿用同一筆,更新 `merchant_trade_no`).
 
 | 欄位 | 類型 | 限制 | 說明 |
 | :--- | :--- | :--- | :--- |
@@ -451,7 +451,7 @@ orders (N) ─────────── (1) coupons        [預留]
 
 ### 4.6 付款 (綠界 AIO 信用卡)
 
-目前只串接綠界全方位金流 (AIO) 的**信用卡一次付清**,僅支援新台幣整數金額.完整說明與測試步驟見 [`docs/ecpay-payment.md`](docs/ecpay-payment.md).
+目前只串接綠界全方位金流 (AIO) 的**信用卡一次付清**,僅支援新台幣整數金額.
 
 - 只有下單者本人可以為自己的 `PENDING` 訂單產生付款表單;每次產生都會換一組新的 `MerchantTradeNo` (綠界規定永久唯一).
 - 訂單金額含小數時拒絕付款 (`BusinessException`).
@@ -471,8 +471,6 @@ orders (N) ─────────── (1) coupons        [預留]
 | `ADJUSTMENT` | 手動庫存盤點調整 |
 | `CANCEL` | 訂單取消,庫存歸還 |
 | `RETURN` | 退貨,庫存歸還 |
-
-扣庫存的併發處理,異動軌跡的寫入時機與逾時未付款訂單的自動取消,見 [`docs/inventory-integrity.md`](docs/inventory-integrity.md).
 
 ---
 
@@ -916,8 +914,6 @@ GET /api/v1/products?keyword=耳機&sort=price,asc&size=10
 ---
 
 ### 5.6 付款 (Payments) - `/v1/payments/ecpay`
-
-> 詳細規格,回應範例與設計決策見 [`docs/ecpay-payment.md`](docs/ecpay-payment.md).
 
 #### POST `/v1/payments/ecpay/checkout` - 建立綠界付款表單
 

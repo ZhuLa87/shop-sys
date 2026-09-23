@@ -248,8 +248,6 @@ MinIO 不能只掛 `/etc/localtime`:它是 Go 程式,`TZ` 有值時會去 zonein
 
 ## 綠界金流本機測試
 
-> 完整的修改說明,瀏覽器端對端測試步驟與疑難排解見 [`docs/ecpay-payment.md`](../docs/ecpay-payment.md).
-
 綠界付款完成後,綠界 server 會 POST 到 `ReturnURL` (付款結果通知),消費者瀏覽器會 POST 到 `OrderResultURL`.
 綠界規定這兩個網址只能是公開的 80/443 埠,tailnet 內的 `:8443` 連不進來,
 所以 dev 用 Tailscale Funnel **只公開付款回呼這個路徑**,其他頁面 (前台/後台/Swagger) 仍然只有 tailnet 內看得到.
