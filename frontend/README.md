@@ -252,7 +252,7 @@ const handlePay = async (orderId: number) => {
 }
 ```
 
-> 後端回傳的 `params` 含 `CheckMacValue`,**不可修改任何值**,否則綠界會拒絕.整體流程見 [`docs/ecpay-payment.md`](../docs/ecpay-payment.md).
+> 後端回傳的 `params` 含 `CheckMacValue`,**不可修改任何值**,否則綠界會拒絕.
 
 ---
 
