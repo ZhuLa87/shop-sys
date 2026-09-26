@@ -422,6 +422,7 @@ export DB_PASSWORD={password}
 export REDIS_HOST={host} REDIS_PASSWORD={password}
 export JWT_SECRET=$(openssl rand -base64 48)
 export MINIO_ACCESS_KEY={key} MINIO_SECRET_KEY={secret}
+export SPRING_PROFILES_ACTIVE=dev   # 沒設時不會建立測試資料, Swagger 也不會開啟
 
 ./mvnw spring-boot:run      # http://localhost:8088/api
 ```
