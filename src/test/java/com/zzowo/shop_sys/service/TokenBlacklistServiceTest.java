@@ -91,6 +91,14 @@ class TokenBlacklistServiceTest {
     }
 
     @Test
+    void isBlacklisted_redisUnavailable_failsClosed() {
+        when(jwtUtil.getJtiFromToken("some-token")).thenReturn("jti-1");
+        when(redisTemplate.hasKey("blacklist:jti-1")).thenThrow(new RuntimeException("connection refused"));
+
+        assertThat(tokenBlacklistService.isBlacklisted("some-token")).isTrue();
+    }
+
+    @Test
     void isBlacklisted_jtiIsNull_returnsFalse() {
         when(jwtUtil.getJtiFromToken("weird-token")).thenReturn(null);
 

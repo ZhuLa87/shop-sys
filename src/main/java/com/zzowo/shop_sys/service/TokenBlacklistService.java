@@ -42,6 +42,8 @@ public class TokenBlacklistService {
 
     /**
      * 檢查 Access Token 是否在黑名單中.
+     * Redis 無法查詢時視為已列入黑名單 (fail-closed): 登出是安全功能, Redis 故障期間
+     * 不能讓已登出的 token 重新變成有效. Refresh 本來就依賴 Redis, 故障時系統也無法正常運作.
      */
     public boolean isBlacklisted(String token) {
         try {
@@ -49,7 +51,8 @@ public class TokenBlacklistService {
             if (jti == null) return false;
             return Boolean.TRUE.equals(redisTemplate.hasKey(BL_PREFIX + jti));
         } catch (Exception e) {
-            return false;
+            log.warn("無法查詢 token 黑名單,視為已失效: {}", e.getMessage());
+            return true;
         }
     }
 }
