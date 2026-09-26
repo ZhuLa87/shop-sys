@@ -5,11 +5,10 @@ import com.zzowo.shop_sys.config.SecurityConfig;
 import com.zzowo.shop_sys.dto.request.auth.TokenRefreshRequest;
 import com.zzowo.shop_sys.dto.request.user.UserLoginRequest;
 import com.zzowo.shop_sys.dto.response.auth.LoginResponse;
-import com.zzowo.shop_sys.entity.User;
-import com.zzowo.shop_sys.enums.Role;
+import com.zzowo.shop_sys.dto.response.auth.TokenRefreshResponse;
 import com.zzowo.shop_sys.exception.BusinessException;
 import com.zzowo.shop_sys.repository.UserRepository;
-import com.zzowo.shop_sys.service.RefreshTokenService;
+import com.zzowo.shop_sys.service.AuthService;
 import com.zzowo.shop_sys.service.TokenBlacklistService;
 import com.zzowo.shop_sys.service.UserService;
 import com.zzowo.shop_sys.util.JwtUtil;
@@ -22,7 +21,6 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
-import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
@@ -43,7 +41,7 @@ class AuthControllerTest {
     UserService userService;
 
     @MockitoBean
-    RefreshTokenService refreshTokenService;
+    AuthService authService;
 
     @MockitoBean
     TokenBlacklistService tokenBlacklistService;
@@ -61,7 +59,7 @@ class AuthControllerTest {
     void login_validCredentials_returns200WithBothTokens() throws Exception {
         LoginResponse loginResponse = new LoginResponse(
                 "access-token", "refresh-token", "Bearer", 1800L);
-        when(userService.login(any())).thenReturn(loginResponse);
+        when(authService.login(any())).thenReturn(loginResponse);
 
         mockMvc.perform(post("/v1/auth/login")
 .contentType(MediaType.APPLICATION_JSON)
@@ -75,7 +73,7 @@ class AuthControllerTest {
 
     @Test
     void login_serviceThrowsException_returns500() throws Exception {
-        when(userService.login(any())).thenThrow(new RuntimeException("帳號不存在"));
+        when(authService.login(any())).thenThrow(new RuntimeException("帳號不存在"));
 
         mockMvc.perform(post("/v1/auth/login")
 .contentType(MediaType.APPLICATION_JSON)
@@ -87,12 +85,8 @@ class AuthControllerTest {
 
     @Test
     void refresh_validRefreshToken_returns200WithNewTokens() throws Exception {
-        User user = mockUser();
-        when(refreshTokenService.validateAndDelete("valid-rt")).thenReturn(1L);
-        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
-        when(jwtUtil.generateToken(user)).thenReturn("new-access-token");
-        when(refreshTokenService.create(1L)).thenReturn("new-refresh-token");
-        when(jwtUtil.getAccessExpirationSeconds()).thenReturn(1800L);
+        when(authService.refresh("valid-rt")).thenReturn(
+                new TokenRefreshResponse("new-access-token", "new-refresh-token", "Bearer", 1800L));
 
         mockMvc.perform(post("/v1/auth/refresh")
 .contentType(MediaType.APPLICATION_JSON)
@@ -105,7 +99,7 @@ class AuthControllerTest {
 
     @Test
     void refresh_invalidRefreshToken_returns4xx() throws Exception {
-        when(refreshTokenService.validateAndDelete("expired-rt"))
+        when(authService.refresh("expired-rt"))
                 .thenThrow(new BusinessException("無效或已過期的 Refresh Token,請重新登入"));
 
         mockMvc.perform(post("/v1/auth/refresh")
@@ -130,9 +124,6 @@ class AuthControllerTest {
 
     @Test
     void logout_withRefreshToken_blacklistsAccessTokenAndDeletesRefreshToken() throws Exception {
-        doNothing().when(tokenBlacklistService).blacklist(anyString());
-        doNothing().when(refreshTokenService).deleteIfExists(anyString());
-
         mockMvc.perform(post("/v1/auth/logout")
 .header(HttpHeaders.AUTHORIZATION, "Bearer some-access-token")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -140,8 +131,7 @@ class AuthControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").value("已成功登出"));
 
-        verify(tokenBlacklistService).blacklist("some-access-token");
-        verify(refreshTokenService).deleteIfExists("some-rt");
+        verify(authService).logout("some-access-token", "some-rt");
     }
 
     @Test
@@ -151,8 +141,7 @@ class AuthControllerTest {
                         .content(objectMapper.writeValueAsString(refreshRequest("some-rt"))))
                 .andExpect(status().isOk());
 
-        verify(tokenBlacklistService, never()).blacklist(anyString());
-        verify(refreshTokenService).deleteIfExists("some-rt");
+        verify(authService).logout(null, "some-rt");
     }
 
     // ── helpers ──────────────────────────────────────────────────────────────
@@ -168,14 +157,5 @@ class AuthControllerTest {
         TokenRefreshRequest req = new TokenRefreshRequest();
         req.setRefreshToken(token);
         return req;
-    }
-
-    private User mockUser() {
-        User user = new User();
-        user.setId(1L);
-        user.setEmail("user@test.com");
-        user.setPasswordHash("hash");
-        user.setRole(Role.CUSTOMER);
-        return user;
     }
 }

@@ -19,6 +19,8 @@ import javax.crypto.SecretKey;
 @Component
 public class JwtUtil {
 
+    public static final String TOKEN_TYPE = "Bearer";
+
     // 從 application.yaml 讀取設定
     @Value("${jwt.secret}")
     private String secret;

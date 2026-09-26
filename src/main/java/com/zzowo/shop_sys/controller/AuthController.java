@@ -8,11 +8,7 @@ import com.zzowo.shop_sys.dto.response.ApiResponse;
 import com.zzowo.shop_sys.dto.response.auth.LoginResponse;
 import com.zzowo.shop_sys.dto.response.auth.TokenRefreshResponse;
 import com.zzowo.shop_sys.dto.response.user.RegisterResponse;
-import com.zzowo.shop_sys.entity.User;
-import com.zzowo.shop_sys.exception.ResourceNotFoundException;
-import com.zzowo.shop_sys.repository.UserRepository;
-import com.zzowo.shop_sys.service.RefreshTokenService;
-import com.zzowo.shop_sys.service.TokenBlacklistService;
+import com.zzowo.shop_sys.service.AuthService;
 import com.zzowo.shop_sys.service.UserService;
 import com.zzowo.shop_sys.util.JwtUtil;
 import io.swagger.v3.oas.annotations.Operation;
@@ -20,6 +16,7 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirements;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -29,15 +26,11 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 public class AuthController {
 
+    private static final String BEARER_PREFIX = JwtUtil.TOKEN_TYPE + " ";
+
     private final UserService userService;
 
-    private final RefreshTokenService refreshTokenService;
-
-    private final TokenBlacklistService tokenBlacklistService;
-
-    private final JwtUtil jwtUtil;
-
-    private final UserRepository userRepository;
+    private final AuthService authService;
 
     @Operation(summary = "註冊新帳號", description = "建立新使用者帳號,預設角色為 CUSTOMER")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "註冊成功")
@@ -58,7 +51,7 @@ public class AuthController {
     @SecurityRequirements
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<LoginResponse>> login(@RequestBody UserLoginRequest request) {
-        LoginResponse loginResponse = userService.login(request);
+        LoginResponse loginResponse = authService.login(request);
         return ResponseEntity.ok(ApiResponse.success("登入成功", loginResponse));
     }
 
@@ -70,22 +63,7 @@ public class AuthController {
     @SecurityRequirements
     @PostMapping("/refresh")
     public ResponseEntity<ApiResponse<TokenRefreshResponse>> refresh(@Valid @RequestBody TokenRefreshRequest request) {
-        Long userId = refreshTokenService.validateAndDelete(request.getRefreshToken());
-
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("使用者不存在"));
-
-        userService.assertAccountActive(user);
-
-        String newAccessToken = jwtUtil.generateToken(user);
-        String newRefreshToken = refreshTokenService.create(userId);
-
-        TokenRefreshResponse body = new TokenRefreshResponse(
-                newAccessToken,
-                newRefreshToken,
-                "Bearer",
-                jwtUtil.getAccessExpirationSeconds()
-        );
+        TokenRefreshResponse body = authService.refresh(request.getRefreshToken());
         return ResponseEntity.ok(ApiResponse.success("Token 已刷新", body));
     }
 
@@ -97,12 +75,11 @@ public class AuthController {
             @Valid @RequestBody TokenRefreshRequest request,
             HttpServletRequest httpRequest) {
 
-        String authHeader = httpRequest.getHeader("Authorization");
-        if (authHeader != null && authHeader.startsWith("Bearer ")) {
-            tokenBlacklistService.blacklist(authHeader.substring(7));
-        }
-
-        refreshTokenService.deleteIfExists(request.getRefreshToken());
+        String authHeader = httpRequest.getHeader(HttpHeaders.AUTHORIZATION);
+        String accessToken = authHeader != null && authHeader.startsWith(BEARER_PREFIX)
+                ? authHeader.substring(BEARER_PREFIX.length())
+                : null;
+        authService.logout(accessToken, request.getRefreshToken());
 
         return ResponseEntity.ok(ApiResponse.success("已成功登出", null));
     }
