@@ -28,7 +28,7 @@ public class InventoryLog {
     @NotFound(action = NotFoundAction.IGNORE)
     private Product product;
 
-    // 庫存變動數量:正數＝補貨,負數＝出貨或退貨扣除
+    // 庫存變動數量: 正數為增加 (進貨, 取消回補), 負數為減少 (出貨)
     @Column(name = "change_amount", nullable = false)
     private Integer changeAmount;
 

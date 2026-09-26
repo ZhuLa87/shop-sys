@@ -82,14 +82,14 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                 .body(ApiResponse.error("資料衝突,可能已存在相同的資料,請重新整理後再試"));
     }
 
-    // 認證失敗 (401) - 通常由 AuthenticationEntryPoint 處理, 此處為備援 (如 @PreAuthorize 拋出)
+    // 認證失敗 (401) - 一般由 SecurityConfig 的 AuthenticationEntryPoint 處理, 此處為 controller 內拋出時的備援
     @ExceptionHandler(AuthenticationException.class)
     public ResponseEntity<ApiResponse<Void>> handleAuthenticationException(AuthenticationException e) {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                 .body(ApiResponse.error("認證失敗,請重新登入"));
     }
 
-    // 權限不足 (403) - 由 @PreAuthorize 拋出時走此路徑
+    // 權限不足 (403) - 一般由 SecurityConfig 的 AccessDeniedHandler 處理, 此處為 controller 內拋出時的備援
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<ApiResponse<Void>> handleAccessDeniedException(AccessDeniedException e) {
         return ResponseEntity.status(HttpStatus.FORBIDDEN)

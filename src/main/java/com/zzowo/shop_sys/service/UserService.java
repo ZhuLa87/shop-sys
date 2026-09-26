@@ -5,10 +5,10 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import com.zzowo.shop_sys.mapper.UserMapper; // Import Mapper
+import com.zzowo.shop_sys.mapper.UserMapper;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional; // Import Transactional
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import com.zzowo.shop_sys.dto.request.user.AdminUpdateUserRequest;
@@ -34,17 +34,13 @@ public class UserService {
 
     private final MinioService minioService;
 
-    /**
-     * 取得特定 email 的使用者詳細資料
-     * @param email
-     * @return
-     */
+    // 取得目前登入者的個人資料
     public UserResponse getUserProfile(String email) {
         User user = userRepository.getByEmailOrThrow(email);
         return userMapper.toUserResponse(user);
     }
 
-    @Transactional // 加入事務管理
+    @Transactional
     public RegisterResponse register(UserRegisterRequest request) {
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new BusinessException("帳號已被註冊");
@@ -63,10 +59,9 @@ public class UserService {
         return userMapper.toRegisterResponse(savedUser);
     }
 
-    @Transactional // 加入事務管理
     // 一般使用者更新自己的資料
+    @Transactional
     public void updateMyInfo(String currentEmail, UserSelfUpdateRequest request) {
-        // 找出是誰在操作
         User user = userRepository.getByEmailOrThrow(currentEmail);
 
         // 如果要改 Email,需檢查新 Email 是否已被其他人使用
@@ -96,8 +91,8 @@ public class UserService {
         userRepository.save(user);
     }
 
-    @Transactional // 加入事務管理
     // 超級管理員更新任何人的資料
+    @Transactional
     public void updateUserByAdmin(String operatorEmail, Long userId, AdminUpdateUserRequest request) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("找不到使用者 ID: " + userId));
