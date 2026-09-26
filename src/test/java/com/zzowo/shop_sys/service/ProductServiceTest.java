@@ -5,6 +5,7 @@ import com.zzowo.shop_sys.dto.response.product.ProductResponse;
 import com.zzowo.shop_sys.entity.InventoryLog;
 import com.zzowo.shop_sys.entity.Product;
 import com.zzowo.shop_sys.entity.User;
+import com.zzowo.shop_sys.enums.InventoryChangeReason;
 import com.zzowo.shop_sys.enums.ProductStatus;
 import com.zzowo.shop_sys.enums.Role;
 import com.zzowo.shop_sys.exception.BusinessException;
@@ -60,7 +61,7 @@ class ProductServiceTest {
 
         InventoryLog log = captureSavedLog();
         assertThat(log.getChangeAmount()).isEqualTo(50);
-        assertThat(log.getReason()).isEqualTo("RESTOCK");
+        assertThat(log.getReason()).isEqualTo(InventoryChangeReason.RESTOCK);
         assertThat(log.getOperatorId()).isEqualTo(3L);
         assertThat(log.getOperatorName()).isEqualTo(OPERATOR_NAME);
         assertThat(log.getOperatorRole()).isEqualTo(Role.PRODUCT_MANAGER);
@@ -89,7 +90,7 @@ class ProductServiceTest {
 
         InventoryLog log = captureSavedLog();
         assertThat(log.getChangeAmount()).isEqualTo(15);
-        assertThat(log.getReason()).isEqualTo("ADJUSTMENT");
+        assertThat(log.getReason()).isEqualTo(InventoryChangeReason.ADJUSTMENT);
         assertThat(log.getOperatorId()).isEqualTo(3L);
         assertThat(log.getOperatorName()).isEqualTo(OPERATOR_NAME);
         assertThat(log.getOperatorRole()).isEqualTo(Role.PRODUCT_MANAGER);

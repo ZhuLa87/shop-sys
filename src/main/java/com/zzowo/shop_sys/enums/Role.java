@@ -13,5 +13,12 @@ public enum Role {
     CUSTOMER_SERVICE,  // 客服人員
     ORDER_MANAGER,     // 訂單管理者
     PRODUCT_MANAGER,   // 商品管理者
-    SUPER_ADMIN        // 系統最高管理者
-}
+    SUPER_ADMIN;       // 系統最高管理者
+
+    // Spring Security 的角色 authority 必須以 "ROLE_" 開頭
+    public static final String AUTHORITY_PREFIX = "ROLE_";
+
+    public String getAuthority() {
+        return AUTHORITY_PREFIX + name();
+    }
+}
