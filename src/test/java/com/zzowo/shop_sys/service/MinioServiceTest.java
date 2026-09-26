@@ -52,6 +52,14 @@ class MinioServiceTest {
     }
 
     @Test
+    void isPublicUrlUnder_matchesOnlyOwnBucketPrefix() {
+        assertThat(minioService.isPublicUrlUnder("http://cdn.test/shop-sys-public/avatars/7/a.png", "avatars/7/")).isTrue();
+        assertThat(minioService.isPublicUrlUnder("http://cdn.test/shop-sys-public/avatars/8/a.png", "avatars/7/")).isFalse();
+        assertThat(minioService.isPublicUrlUnder("https://evil.test/shop-sys-public/avatars/7/a.png", "avatars/7/")).isFalse();
+        assertThat(minioService.isPublicUrlUnder(null, "avatars/7/")).isFalse();
+    }
+
+    @Test
     void presign_unsupportedContentType_throws() {
         assertThatThrownBy(() -> minioService.generatePresignedUrl(request("avatar", 7L, "a.html", "text/html")))
                 .isInstanceOf(BusinessException.class);

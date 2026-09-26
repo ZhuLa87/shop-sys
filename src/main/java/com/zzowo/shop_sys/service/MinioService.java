@@ -58,6 +58,11 @@ public class MinioService {
         }
     }
 
+    // 判斷 URL 是否為本系統 bucket 內指定路徑下的物件 (避免使用者把任意外部 URL 存成頭像)
+    public boolean isPublicUrlUnder(String url, String keyPrefix) {
+        return url != null && url.startsWith(buildPublicUrl(keyPrefix));
+    }
+
     public String buildPublicUrl(String objectKey) {
         return minioConfig.getPublicUrl() + "/" + minioConfig.getBucketName() + "/" + objectKey;
     }

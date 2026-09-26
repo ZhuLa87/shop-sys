@@ -2,9 +2,11 @@ package com.zzowo.shop_sys.dto.request.product;
 
 import com.zzowo.shop_sys.enums.ProductStatus;
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -16,6 +18,7 @@ public class ProductRequest {
 
     @Schema(description = "商品名稱", example = "iPhone 16 Pro")
     @NotBlank(message = "商品名稱不可為空")
+    @Size(max = 255, message = "長度不可超過 255 個字元")
     private String name;
 
     @Schema(description = "商品描述", example = "最新款 Apple 旗艦手機,搭載 A18 Pro 晶片")
@@ -24,6 +27,7 @@ public class ProductRequest {
     @Schema(description = "售價 (新台幣) ,不可小於 0", example = "39900")
     @NotNull(message = "價格不可為空")
     @Min(value = 0, message = "價格不可小於 0")
+    @Digits(integer = 8, fraction = 2, message = "價格最多 8 位整數與 2 位小數")
     private BigDecimal price;
 
     @Schema(description = "庫存數量,不可小於 0", example = "50")
@@ -36,8 +40,9 @@ public class ProductRequest {
     private ProductStatus status;
 
     @Schema(description = "封面圖片 URL", example = "https://example.com/images/cover.jpg")
+    @Size(max = 255, message = "長度不可超過 255 個字元")
     private String coverImageUrl;
 
     @Schema(description = "商品圖片 URL 列表 (輪播圖) ", example = "[\"https://example.com/1.jpg\", \"https://example.com/2.jpg\"]")
-    private List<String> imageUrls;
+    private List<@Size(max = 255, message = "圖片 URL 長度不可超過 255 個字元") String> imageUrls;
 }

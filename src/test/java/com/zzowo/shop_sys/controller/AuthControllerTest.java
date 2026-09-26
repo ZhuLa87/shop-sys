@@ -72,6 +72,19 @@ class AuthControllerTest {
     }
 
     @Test
+    void login_blankEmail_returns422() throws Exception {
+        UserLoginRequest request = loginRequest();
+        request.setEmail("");
+
+        mockMvc.perform(post("/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isUnprocessableEntity());
+
+        verify(authService, never()).login(any());
+    }
+
+    @Test
     void login_serviceThrowsException_returns500() throws Exception {
         when(authService.login(any())).thenThrow(new RuntimeException("帳號不存在"));
 

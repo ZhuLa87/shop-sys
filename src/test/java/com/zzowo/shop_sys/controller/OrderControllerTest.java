@@ -117,6 +117,20 @@ class OrderControllerTest {
                 .andExpect(jsonPath("$.message").value("商品 [熱門商品] 庫存不足,結帳失敗"));
     }
 
+    @Test
+    @WithMockUser(roles = "CUSTOMER")
+    void createOrder_addressTooLong_returns422() throws Exception {
+        OrderCreateRequest request = createRequest();
+        request.setRecipientAddress("地".repeat(256));
+
+        mockMvc.perform(post("/v1/orders")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isUnprocessableEntity());
+
+        verify(orderService, never()).createOrder(any(), any());
+    }
+
     // ── GET /v1/orders ───────────────────────────────────────────────────────
 
     @Test
