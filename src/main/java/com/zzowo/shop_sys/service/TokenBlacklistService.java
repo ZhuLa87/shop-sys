@@ -1,8 +1,8 @@
 package com.zzowo.shop_sys.service;
 
+import lombok.RequiredArgsConstructor;
 import com.zzowo.shop_sys.util.JwtUtil;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
@@ -11,15 +11,14 @@ import java.util.Date;
 
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class TokenBlacklistService {
 
     private static final String BL_PREFIX = "blacklist:";
 
-    @Autowired
-    private StringRedisTemplate redisTemplate;
+    private final StringRedisTemplate redisTemplate;
 
-    @Autowired
-    private JwtUtil jwtUtil;
+    private final JwtUtil jwtUtil;
 
     /**
      * 將 Access Token 加入黑名單,TTL 設為 Token 剩餘有效時間.

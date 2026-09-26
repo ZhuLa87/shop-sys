@@ -1,5 +1,6 @@
 package com.zzowo.shop_sys.service;
 
+import lombok.RequiredArgsConstructor;
 import com.zzowo.shop_sys.config.EcpayConfig;
 import com.zzowo.shop_sys.dto.response.payment.EcpayCheckoutResponse;
 import com.zzowo.shop_sys.entity.Order;
@@ -15,7 +16,6 @@ import com.zzowo.shop_sys.repository.PaymentRepository;
 import com.zzowo.shop_sys.repository.UserRepository;
 import com.zzowo.shop_sys.util.EcpayCheckMacValue;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -41,6 +41,7 @@ import java.util.stream.Collectors;
  */
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class PaymentService {
 
     public static final String PAYMENT_METHOD_ECPAY_CREDIT = "ECPAY_CREDIT";
@@ -62,14 +63,10 @@ public class PaymentService {
     private static final Pattern HTML_TAG = Pattern.compile("<[^>]*>");
     private static final Pattern FORBIDDEN_CHARS = Pattern.compile("[#;|`\\p{Cntrl}]");
 
-    @Autowired
-    private OrderRepository orderRepository;
-    @Autowired
-    private UserRepository userRepository;
-    @Autowired
-    private PaymentRepository paymentRepository;
-    @Autowired
-    private EcpayConfig ecpayConfig;
+    private final OrderRepository orderRepository;
+    private final UserRepository userRepository;
+    private final PaymentRepository paymentRepository;
+    private final EcpayConfig ecpayConfig;
 
     public enum Outcome {
         PAID,              // 訂單已付款 (本次轉為 PAID,或先前已處理過)

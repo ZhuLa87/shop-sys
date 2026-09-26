@@ -1,5 +1,6 @@
 package com.zzowo.shop_sys.service;
 
+import lombok.RequiredArgsConstructor;
 import com.zzowo.shop_sys.dto.request.cart.AddToCartRequest;
 import com.zzowo.shop_sys.dto.response.cart.CartItemResponse;
 import com.zzowo.shop_sys.entity.Cart;
@@ -13,7 +14,6 @@ import com.zzowo.shop_sys.mapper.CartMapper;
 import com.zzowo.shop_sys.repository.CartRepository;
 import com.zzowo.shop_sys.repository.ProductRepository;
 import com.zzowo.shop_sys.repository.UserRepository;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,19 +21,16 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
+@RequiredArgsConstructor
 public class CartService {
 
-    @Autowired
-    private CartRepository cartRepository;
+    private final CartRepository cartRepository;
 
-    @Autowired
-    private ProductRepository productRepository;
+    private final ProductRepository productRepository;
 
-    @Autowired
-    private UserRepository userRepository;
+    private final UserRepository userRepository;
 
-    @Autowired
-    private CartMapper cartMapper;
+    private final CartMapper cartMapper;
 
     // 取得某使用者的購物車清單
     @Transactional

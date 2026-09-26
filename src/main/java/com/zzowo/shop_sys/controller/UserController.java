@@ -1,5 +1,6 @@
 package com.zzowo.shop_sys.controller;
 
+import lombok.RequiredArgsConstructor;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -16,7 +17,6 @@ import com.zzowo.shop_sys.service.UserService;
 
 import jakarta.validation.Valid;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -27,10 +27,10 @@ import org.springframework.web.bind.annotation.RequestBody;
 @Tag(name = "User", description = "使用者管理 API")
 @RestController
 @RequestMapping("/v1/users")
+@RequiredArgsConstructor
 public class UserController {
 
-    @Autowired
-    private UserService userService;
+    private final UserService userService;
 
     @Operation(summary = "取得目前登入的使用者資訊", description = "回傳目前 Token 對應的使用者個人資料")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
