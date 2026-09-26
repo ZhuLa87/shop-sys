@@ -1,5 +1,6 @@
 package com.zzowo.shop_sys.controller;
 
+import lombok.RequiredArgsConstructor;
 import com.zzowo.shop_sys.dto.request.cart.AddToCartRequest;
 import com.zzowo.shop_sys.dto.response.ApiResponse;
 import com.zzowo.shop_sys.dto.response.cart.CartItemResponse;
@@ -8,7 +9,6 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -18,10 +18,10 @@ import java.util.List;
 @Tag(name = "Cart", description = "購物車 API (需登入,僅能操作自己的購物車) ")
 @RestController
 @RequestMapping("/v1/carts")
+@RequiredArgsConstructor
 public class CartController {
 
-    @Autowired
-    private CartService cartService;
+    private final CartService cartService;
 
     @Operation(summary = "查看我的購物車", description = "取得目前登入使用者的購物車所有項目")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")

@@ -1,5 +1,6 @@
 package com.zzowo.shop_sys.service;
 
+import lombok.RequiredArgsConstructor;
 import com.zzowo.shop_sys.dto.request.product.ProductRequest;
 import com.zzowo.shop_sys.dto.response.PageResponse;
 import com.zzowo.shop_sys.dto.response.product.InventoryLogResponse;
@@ -15,7 +16,6 @@ import com.zzowo.shop_sys.mapper.ProductMapper;
 import com.zzowo.shop_sys.repository.InventoryLogRepository;
 import com.zzowo.shop_sys.repository.ProductRepository;
 import com.zzowo.shop_sys.repository.UserRepository;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -28,6 +28,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
+@RequiredArgsConstructor
 public class ProductService {
 
     private static final Set<String> ALLOWED_SORT_FIELDS = Set.of("name", "price", "createdAt");
@@ -35,20 +36,15 @@ public class ProductService {
     // 前台列表可見的商品狀態 (已下架不顯示,缺貨中仍顯示)
     static final List<ProductStatus> STOREFRONT_STATUSES = List.of(ProductStatus.ON_SHELF, ProductStatus.OUT_OF_STOCK);
 
-    @Autowired
-    private ProductRepository productRepository;
+    private final ProductRepository productRepository;
 
-    @Autowired
-    private ProductMapper productMapper;
+    private final ProductMapper productMapper;
 
-    @Autowired
-    private InventoryLogRepository inventoryLogRepository;
+    private final InventoryLogRepository inventoryLogRepository;
 
-    @Autowired
-    private InventoryLogMapper inventoryLogMapper;
+    private final InventoryLogMapper inventoryLogMapper;
 
-    @Autowired
-    private UserRepository userRepository;
+    private final UserRepository userRepository;
 
     // 新增商品
     @Transactional

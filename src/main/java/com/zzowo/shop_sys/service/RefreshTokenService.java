@@ -1,8 +1,8 @@
 package com.zzowo.shop_sys.service;
 
+import lombok.RequiredArgsConstructor;
 import com.zzowo.shop_sys.exception.BusinessException;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
@@ -12,6 +12,7 @@ import java.util.UUID;
 
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class RefreshTokenService {
 
     private static final String RT_PREFIX = "refresh_token:"; // token → userId
@@ -20,8 +21,7 @@ public class RefreshTokenService {
     @Value("${jwt.refresh-expiration}")
     private long refreshExpirationMs;
 
-    @Autowired
-    private StringRedisTemplate redisTemplate;
+    private final StringRedisTemplate redisTemplate;
 
     /**
      * 為指定使用者建立新的 Refresh Token.

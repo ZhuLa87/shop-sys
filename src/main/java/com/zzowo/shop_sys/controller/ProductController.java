@@ -1,7 +1,7 @@
 package com.zzowo.shop_sys.controller;
 
+import lombok.RequiredArgsConstructor;
 import java.util.List;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
@@ -25,10 +25,10 @@ import jakarta.validation.Valid;
 @Tag(name = "Product", description = "商品管理 API")
 @RestController
 @RequestMapping("/v1/products")
+@RequiredArgsConstructor
 public class ProductController {
 
-    @Autowired
-    private ProductService productService;
+    private final ProductService productService;
 
     @Operation(
         summary = "取得前台商品列表",

@@ -1,5 +1,6 @@
 package com.zzowo.shop_sys.controller;
 
+import lombok.RequiredArgsConstructor;
 import com.zzowo.shop_sys.dto.request.auth.TokenRefreshRequest;
 import com.zzowo.shop_sys.dto.request.user.UserLoginRequest;
 import com.zzowo.shop_sys.dto.request.user.UserRegisterRequest;
@@ -19,29 +20,24 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirements;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @Tag(name = "Auth", description = "認證相關 API (註冊,登入,Token 刷新,登出) ")
 @RestController
 @RequestMapping("/v1/auth")
+@RequiredArgsConstructor
 public class AuthController {
 
-    @Autowired
-    private UserService userService;
+    private final UserService userService;
 
-    @Autowired
-    private RefreshTokenService refreshTokenService;
+    private final RefreshTokenService refreshTokenService;
 
-    @Autowired
-    private TokenBlacklistService tokenBlacklistService;
+    private final TokenBlacklistService tokenBlacklistService;
 
-    @Autowired
-    private JwtUtil jwtUtil;
+    private final JwtUtil jwtUtil;
 
-    @Autowired
-    private UserRepository userRepository;
+    private final UserRepository userRepository;
 
     @Operation(summary = "註冊新帳號", description = "建立新使用者帳號,預設角色為 CUSTOMER")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "註冊成功")

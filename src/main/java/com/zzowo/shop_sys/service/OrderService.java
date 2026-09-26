@@ -1,5 +1,6 @@
 package com.zzowo.shop_sys.service;
 
+import lombok.RequiredArgsConstructor;
 import com.zzowo.shop_sys.dto.request.order.OrderCreateRequest;
 import com.zzowo.shop_sys.dto.response.order.OrderResponse;
 import com.zzowo.shop_sys.entity.*;
@@ -16,7 +17,6 @@ import com.zzowo.shop_sys.repository.OrderRepository;
 import com.zzowo.shop_sys.repository.ProductRepository;
 import com.zzowo.shop_sys.repository.UserRepository;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,20 +28,15 @@ import java.util.stream.Collectors;
 
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class OrderService {
 
-    @Autowired
-    private OrderRepository orderRepository;
-    @Autowired
-    private CartRepository cartRepository;
-    @Autowired
-    private UserRepository userRepository;
-    @Autowired
-    private ProductRepository productRepository;
-    @Autowired
-    private OrderMapper orderMapper;
-    @Autowired
-    private InventoryLogRepository inventoryLogRepository;
+    private final OrderRepository orderRepository;
+    private final CartRepository cartRepository;
+    private final UserRepository userRepository;
+    private final ProductRepository productRepository;
+    private final OrderMapper orderMapper;
+    private final InventoryLogRepository inventoryLogRepository;
 
     // 建立訂單 (結帳)
     @Transactional

@@ -1,5 +1,6 @@
 package com.zzowo.shop_sys.controller;
 
+import lombok.RequiredArgsConstructor;
 import com.zzowo.shop_sys.dto.request.payment.EcpayCheckoutRequest;
 import com.zzowo.shop_sys.dto.response.ApiResponse;
 import com.zzowo.shop_sys.dto.response.payment.EcpayCheckoutResponse;
@@ -11,7 +12,6 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -25,14 +25,14 @@ import java.util.Map;
 @Tag(name = "Payment", description = "付款 API (綠界 AIO 信用卡)")
 @RestController
 @RequestMapping("/v1/payments/ecpay")
+@RequiredArgsConstructor
 public class PaymentController {
 
     // 綠界規定的回應格式:純文字,HTTP 200,不可帶引號/空白/換行,否則會重送
     // Source: https://developers.ecpay.com.tw/2878.md (2026-09-15)
     static final String ECPAY_ACK = "1|OK";
 
-    @Autowired
-    private PaymentService paymentService;
+    private final PaymentService paymentService;
 
     @Operation(summary = "建立綠界付款表單", description = "為自己的待付款 (PENDING) 訂單產生綠界付款參數,前端以 form POST 送到 actionUrl")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "產生成功")
