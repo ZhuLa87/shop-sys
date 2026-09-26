@@ -163,7 +163,7 @@ public class UserService {
         if (StringUtils.hasText(request.getPhone()))
             user.setPhone(request.getPhone());
         // 更新權限與狀態 (管理員特權)
-        if (request.getRole() != null) user.setRole(Role.valueOf(request.getRole()));
+        if (request.getRole() != null) user.setRole(request.getRole());
         if (request.getEnabled() != null) user.setEnabled(request.getEnabled());
 
         userRepository.save(user);
@@ -185,7 +185,7 @@ public class UserService {
 
         // 變更角色
         if (request.getRole() != null) {
-            Role newRole = Role.valueOf(request.getRole());
+            Role newRole = request.getRole();
             if (newRole == target.getRole()) {
                 return;
             }
