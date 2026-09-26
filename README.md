@@ -73,7 +73,7 @@ com.zzowo.shop_sys/
 
 - JWT Stateless 認證 (HS512;access token 30 分鐘,refresh token 7 天,支援 Token Rotation) 
 - Argon2 密碼雜湊,不可逆儲存
-- 帳號鎖定:連續失敗 5 次,鎖定 15 分鐘 (自動解鎖) 
+- 帳號停用:管理員停用的帳號無法登入或換發 token (登入失敗次數鎖定尚未實作) 
 - RBAC 角色權限控制 (7 種角色) 
 
 ### 會員系統

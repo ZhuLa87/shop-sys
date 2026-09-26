@@ -6,7 +6,6 @@ import com.zzowo.shop_sys.dto.response.upload.PresignResponse;
 import com.zzowo.shop_sys.exception.BusinessException;
 import io.minio.GetPresignedObjectUrlArgs;
 import io.minio.MinioClient;
-import io.minio.RemoveObjectArgs;
 import io.minio.http.Method;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -43,19 +42,6 @@ public class MinioService {
         String uploadUrl = buildPresignedPutUrl(objectKey, contentType);
         String publicUrl = buildPublicUrl(objectKey);
         return new PresignResponse(uploadUrl, publicUrl, objectKey);
-    }
-
-    public void deleteObject(String objectKey) {
-        try {
-            minioClient.removeObject(
-                    RemoveObjectArgs.builder()
-                            .bucket(minioConfig.getBucketName())
-                            .object(objectKey)
-                            .build()
-            );
-        } catch (Exception e) {
-            log.warn("MinIO 物件刪除失敗: {}", objectKey, e);
-        }
     }
 
     // 判斷 URL 是否為本系統 bucket 內指定路徑下的物件 (避免使用者把任意外部 URL 存成頭像)

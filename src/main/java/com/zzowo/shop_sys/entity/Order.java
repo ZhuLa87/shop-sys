@@ -34,7 +34,7 @@ public class Order {
     @Column(nullable = false)
     private OrderStatus status;
 
-    // 使用的優惠券
+    // 使用的優惠券 (優惠券尚未實作, 目前永遠為 null)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "coupon_id")
     private Coupon coupon;
