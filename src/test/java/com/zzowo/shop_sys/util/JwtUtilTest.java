@@ -46,34 +46,17 @@ class JwtUtilTest {
     void generateToken_containsUserIdAndRoleClaims() {
         String token = jwtUtil.generateToken(mockUser());
 
-        assertThat(jwtUtil.getUserIdFromToken(token)).isEqualTo(1L);
-        assertThat(jwtUtil.getRoleFromToken(token)).isEqualTo(Role.CUSTOMER.name());
-        assertThat(jwtUtil.getUsernameFromToken(token)).isEqualTo("test@example.com");
-    }
-
-    // ── validateToken ────────────────────────────────────────────────────────
-
-    @Test
-    void validateToken_validToken_returnsTrue() {
-        String token = jwtUtil.generateToken(mockUser());
-
-        assertThat(jwtUtil.validateToken(token)).isTrue();
+        var claims = jwtUtil.parseClaims(token).orElseThrow();
+        assertThat(((Number) claims.get("userId")).longValue()).isEqualTo(1L);
+        assertThat(claims.get(JwtUtil.CLAIM_ROLE, String.class)).isEqualTo(Role.CUSTOMER.name());
+        assertThat(claims.getSubject()).isEqualTo("test@example.com");
     }
 
     @Test
-    void validateToken_expiredToken_returnsFalse() {
-        // 將 expiration 設為負數,產生一個"發行時已過期"的 token
-        ReflectionTestUtils.setField(jwtUtil, "expiration", -10000L);
-        String token = jwtUtil.generateToken(mockUser());
-
-        assertThat(jwtUtil.validateToken(token)).isFalse();
-    }
-
-    @Test
-    void validateToken_tamperedToken_returnsFalse() {
+    void parseClaims_tamperedToken_returnsEmpty() {
         String token = jwtUtil.generateToken(mockUser()) + "tampered";
 
-        assertThat(jwtUtil.validateToken(token)).isFalse();
+        assertThat(jwtUtil.parseClaims(token)).isEmpty();
     }
 
     // ── getJtiFromToken ──────────────────────────────────────────────────────
@@ -105,6 +88,34 @@ class JwtUtilTest {
     }
 
     // ── helpers ──────────────────────────────────────────────────────────────
+
+    // ── parseClaims ──────────────────────────────────────────────────────────
+
+    @Test
+    void parseClaims_validToken_returnsSubjectRoleAndJti() {
+        String token = jwtUtil.generateToken(mockUser());
+
+        var claims = jwtUtil.parseClaims(token).orElseThrow();
+
+        assertThat(claims.getSubject()).isEqualTo(mockUser().getEmail());
+        assertThat(claims.get(JwtUtil.CLAIM_ROLE, String.class)).isEqualTo(mockUser().getRole().name());
+        assertThat(claims.getId()).isNotBlank();
+    }
+
+    @Test
+    void parseClaims_expiredToken_returnsEmpty() {
+        ReflectionTestUtils.setField(jwtUtil, "expiration", -10000L);
+        String token = jwtUtil.generateToken(mockUser());
+
+        assertThat(jwtUtil.parseClaims(token)).isEmpty();
+    }
+
+    @Test
+    void parseClaims_garbageOrBlank_returnsEmpty() {
+        assertThat(jwtUtil.parseClaims("not-a-jwt")).isEmpty();
+        assertThat(jwtUtil.parseClaims("")).isEmpty();
+        assertThat(jwtUtil.parseClaims(null)).isEmpty();
+    }
 
     private User mockUser() {
         User user = new User();

@@ -3,6 +3,7 @@ package com.zzowo.shop_sys.util;
 import com.zzowo.shop_sys.entity.User;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
@@ -12,6 +13,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Function;
 
@@ -21,6 +23,7 @@ import javax.crypto.SecretKey;
 public class JwtUtil {
 
     public static final String TOKEN_TYPE = "Bearer";
+    public static final String CLAIM_ROLE = "role";
 
     // 從 application.yaml 讀取設定
     @Value("${jwt.secret}")
@@ -29,27 +32,30 @@ public class JwtUtil {
     @Value("${jwt.expiration}")
     private long expiration;
 
-    /**
-     * 生成密鑰
-     *
-     * 取得簽名用的 Key (因為 HMAC-SHA 需要至少 256 bit 的密鑰,這裡做一點處理)
-     */
+    // secret 由 @Value 注入後不會再變, 簽名用的 Key 只建立一次
+    private volatile SecretKey signKey;
+
     private SecretKey getSignKey() {
-        return Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
+        SecretKey key = signKey;
+        if (key == null) {
+            key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
+            signKey = key;
+        }
+        return key;
     }
 
     /**
-     * 從token中獲取用戶名
+     * 驗證簽章與有效期並取出 claims. 簽章錯誤, 格式錯誤或已過期都回傳 empty.
+     * 供 JwtAuthenticationFilter 每個請求只解析一次 token.
      */
-    public String getUsernameFromToken(String token) {
-        if (token == null || token.trim().isEmpty()) {
-            return null;
+    public Optional<Claims> parseClaims(String token) {
+        if (token == null || token.isBlank()) {
+            return Optional.empty();
         }
         try {
-            return getClaimFromToken(token, Claims::getSubject);
-        } catch (Exception e) {
-            // JWT 解析失敗
-            return null;
+            return Optional.of(getAllClaimsFromToken(token));
+        } catch (JwtException | IllegalArgumentException e) {
+            return Optional.empty();
         }
     }
 
@@ -101,45 +107,13 @@ public class JwtUtil {
     }
 
     /**
-     * 檢查token是否過期
-     */
-    private Boolean isTokenExpired(String token) {
-        try {
-            final Date expiration = getExpirationDateFromToken(token);
-            return expiration != null && expiration.before(new Date());
-        } catch (Exception e) {
-            return true; // 如果無法解析,視為過期
-        }
-    }
-
-    /**
      * 生成token (將 userId 與 role 寫入 claims,讓 Filter 無需查詢資料庫) 
      */
     public String generateToken(User user) {
         Map<String, Object> claims = new HashMap<>();
         claims.put("userId", user.getId());
-        claims.put("role", user.getRole().name());
+        claims.put(CLAIM_ROLE, user.getRole().name());
         return createToken(claims, user.getUsername());
-    }
-
-    public Long getUserIdFromToken(String token) {
-        return getClaimFromToken(token, claims -> ((Number) claims.get("userId")).longValue());
-    }
-
-    public String getRoleFromToken(String token) {
-        return getClaimFromToken(token, claims -> (String) claims.get("role"));
-    }
-
-    /**
-     * 僅驗證 token 結構與有效期,不需要查詢資料庫
-     */
-    public Boolean validateToken(String token) {
-        try {
-            getAllClaimsFromToken(token);
-            return !isTokenExpired(token);
-        } catch (Exception e) {
-            return false;
-        }
     }
 
     public long getAccessExpirationSeconds() {

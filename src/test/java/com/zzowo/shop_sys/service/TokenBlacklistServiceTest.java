@@ -75,34 +75,29 @@ class TokenBlacklistServiceTest {
     // ── isBlacklisted ────────────────────────────────────────────────────────
 
     @Test
-    void isBlacklisted_tokenInRedis_returnsTrue() {
-        when(jwtUtil.getJtiFromToken("blocked-token")).thenReturn("jti-blocked");
+    void isBlacklistedJti_jtiInRedis_returnsTrue() {
         when(redisTemplate.hasKey("blacklist:jti-blocked")).thenReturn(Boolean.TRUE);
 
-        assertThat(tokenBlacklistService.isBlacklisted("blocked-token")).isTrue();
+        assertThat(tokenBlacklistService.isBlacklistedJti("jti-blocked")).isTrue();
     }
 
     @Test
-    void isBlacklisted_tokenNotInRedis_returnsFalse() {
-        when(jwtUtil.getJtiFromToken("clean-token")).thenReturn("jti-clean");
+    void isBlacklistedJti_jtiNotInRedis_returnsFalse() {
         when(redisTemplate.hasKey("blacklist:jti-clean")).thenReturn(Boolean.FALSE);
 
-        assertThat(tokenBlacklistService.isBlacklisted("clean-token")).isFalse();
+        assertThat(tokenBlacklistService.isBlacklistedJti("jti-clean")).isFalse();
     }
 
     @Test
-    void isBlacklisted_redisUnavailable_failsClosed() {
-        when(jwtUtil.getJtiFromToken("some-token")).thenReturn("jti-1");
+    void isBlacklistedJti_redisUnavailable_failsClosed() {
         when(redisTemplate.hasKey("blacklist:jti-1")).thenThrow(new RuntimeException("connection refused"));
 
-        assertThat(tokenBlacklistService.isBlacklisted("some-token")).isTrue();
+        assertThat(tokenBlacklistService.isBlacklistedJti("jti-1")).isTrue();
     }
 
     @Test
-    void isBlacklisted_jtiIsNull_returnsFalse() {
-        when(jwtUtil.getJtiFromToken("weird-token")).thenReturn(null);
-
-        assertThat(tokenBlacklistService.isBlacklisted("weird-token")).isFalse();
+    void isBlacklistedJti_null_returnsFalse() {
+        assertThat(tokenBlacklistService.isBlacklistedJti(null)).isFalse();
         verify(redisTemplate, never()).hasKey(anyString());
     }
 }
