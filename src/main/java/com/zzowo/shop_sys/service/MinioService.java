@@ -12,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
@@ -25,10 +26,21 @@ public class MinioService {
 
     private static final int PRESIGN_EXPIRY_MINUTES = 15;
 
+    // 副檔名只由白名單內的 Content-Type 決定, 不採用使用者提供的檔名
+    private static final Map<String, String> EXTENSIONS = Map.of(
+            "image/jpeg", "jpg",
+            "image/png", "png",
+            "image/webp", "webp",
+            "image/gif", "gif");
+
     public PresignResponse generatePresignedUrl(PresignRequest request) {
-        String ext = extractExtension(request.getFilename());
+        String contentType = request.getContentType();
+        String ext = EXTENSIONS.get(contentType);
+        if (ext == null) {
+            throw new BusinessException("不支援的檔案類型: " + contentType);
+        }
         String objectKey = buildObjectKey(request.getType(), request.getResourceId(), ext);
-        String uploadUrl = buildPresignedPutUrl(objectKey);
+        String uploadUrl = buildPresignedPutUrl(objectKey, contentType);
         String publicUrl = buildPublicUrl(objectKey);
         return new PresignResponse(uploadUrl, publicUrl, objectKey);
     }
@@ -60,7 +72,9 @@ public class MinioService {
         };
     }
 
-    private String buildPresignedPutUrl(String objectKey) {
+    // Content-Type 納入簽章: 上傳時帶其他 Content-Type (例如 text/html) 會被 MinIO 拒絕,
+    // 避免公開 bucket 把上傳的檔案當成網頁提供
+    private String buildPresignedPutUrl(String objectKey, String contentType) {
         try {
             return minioClient.getPresignedObjectUrl(
                     GetPresignedObjectUrlArgs.builder()
@@ -68,17 +82,12 @@ public class MinioService {
                             .bucket(minioConfig.getBucketName())
                             .object(objectKey)
                             .expiry(PRESIGN_EXPIRY_MINUTES, TimeUnit.MINUTES)
+                            .extraHeaders(Map.of("Content-Type", contentType))
                             .build()
             );
         } catch (Exception e) {
             log.error("無法產生 MinIO presigned URL, objectKey={}", objectKey, e);
             throw new BusinessException("無法產生上傳授權,請稍後再試");
         }
-    }
-
-    private String extractExtension(String filename) {
-        int dot = filename.lastIndexOf('.');
-        if (dot < 0 || dot >= filename.length() - 1) return "jpg";
-        return filename.substring(dot + 1).toLowerCase();
     }
 }
