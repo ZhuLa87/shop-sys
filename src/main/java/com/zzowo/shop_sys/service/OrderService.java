@@ -9,7 +9,6 @@ import com.zzowo.shop_sys.enums.InventoryChangeReason;
 import com.zzowo.shop_sys.enums.ProductStatus;
 import com.zzowo.shop_sys.enums.Role;
 import com.zzowo.shop_sys.exception.BusinessException;
-import org.springframework.http.HttpStatus;
 import com.zzowo.shop_sys.exception.ResourceNotFoundException;
 import com.zzowo.shop_sys.mapper.OrderMapper;
 import com.zzowo.shop_sys.repository.CartRepository;
@@ -192,8 +191,9 @@ public class OrderService {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new ResourceNotFoundException("訂單不存在"));
 
+        // 不屬於自己的訂單與不存在的訂單回應相同, 避免以 403/404 的差異列舉訂單
         if (!order.getUser().getId().equals(user.getId()) && user.getRole() != Role.SUPER_ADMIN) {
-             throw new BusinessException("無權限查看此訂單", HttpStatus.FORBIDDEN);
+            throw new ResourceNotFoundException("訂單不存在");
         }
 
         return orderMapper.toOrderResponse(order);

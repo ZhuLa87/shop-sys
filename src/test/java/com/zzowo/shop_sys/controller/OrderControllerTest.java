@@ -16,7 +16,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.Import;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithAnonymousUser;
 import org.springframework.security.test.context.support.WithMockUser;
@@ -163,17 +162,6 @@ class OrderControllerTest {
         mockMvc.perform(get("/v1/orders/50"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.id").value(50));
-    }
-
-    @Test
-    @WithMockUser(roles = "CUSTOMER")
-    void getOrder_otherUsersOrder_returns403() throws Exception {
-        when(orderService.getOrderById(any(), any()))
-                .thenThrow(new BusinessException("無權限查看此訂單", HttpStatus.FORBIDDEN));
-
-        mockMvc.perform(get("/v1/orders/50"))
-                .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.message").value("無權限查看此訂單"));
     }
 
     @Test
