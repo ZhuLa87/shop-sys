@@ -42,8 +42,7 @@ public class OrderService {
     @Transactional
     public OrderResponse createOrder(String email, OrderCreateRequest request) {
         // 確認使用者身分
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new ResourceNotFoundException("使用者不存在"));
+        User user = userRepository.getByEmailOrThrow(email);
 
         // 取得購物車
         List<Cart> cartItems = cartRepository.findByUserId(user.getId());
@@ -173,8 +172,7 @@ public class OrderService {
     // 查看我的訂單
     @Transactional(readOnly = true)
     public List<OrderResponse> getMyOrders(String email) {
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new ResourceNotFoundException("使用者不存在"));
+        User user = userRepository.getByEmailOrThrow(email);
 
         List<Order> orders = orderRepository.findByUserIdOrderByCreatedAtDesc(user.getId());
         return orders.stream().map(orderMapper::toOrderResponse).collect(Collectors.toList());
@@ -184,8 +182,7 @@ public class OrderService {
     @Transactional(readOnly = true)
     public OrderResponse getOrderById(String email, Long orderId) {
         // 確認使用者身分
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new ResourceNotFoundException("使用者不存在"));
+        User user = userRepository.getByEmailOrThrow(email);
 
         // 取得訂單
         Order order = orderRepository.findById(orderId)

@@ -98,15 +98,7 @@ public class ProductService {
 
     // 取得前台商品列表 (上架中 + 缺貨中,分頁 + 關鍵字搜尋)
     public PageResponse<ProductResponse> getStorefrontProducts(Pageable pageable, String keyword) {
-        pageable.getSort().forEach(order -> {
-            if (!ALLOWED_SORT_FIELDS.contains(order.getProperty())) {
-                throw new BusinessException("不支援的排序欄位: " + order.getProperty() + ",允許欄位: name, price, createdAt");
-            }
-        });
-
-        if (pageable.getPageSize() > MAX_PAGE_SIZE) {
-            pageable = PageRequest.of(pageable.getPageNumber(), MAX_PAGE_SIZE, pageable.getSort());
-        }
+        pageable = sanitizePageable(pageable);
 
         Page<Product> productPage;
         if (keyword != null && !keyword.isBlank()) {
@@ -147,15 +139,7 @@ public class ProductService {
 
     // 管理員查詢所有商品 (分頁 + 關鍵字 + 狀態篩選)
     public PageResponse<ProductResponse> getAdminProducts(Pageable pageable, String keyword, ProductStatus status) {
-        pageable.getSort().forEach(order -> {
-            if (!ALLOWED_SORT_FIELDS.contains(order.getProperty())) {
-                throw new BusinessException("不支援的排序欄位: " + order.getProperty() + ",允許欄位: name, price, createdAt");
-            }
-        });
-
-        if (pageable.getPageSize() > MAX_PAGE_SIZE) {
-            pageable = PageRequest.of(pageable.getPageNumber(), MAX_PAGE_SIZE, pageable.getSort());
-        }
+        pageable = sanitizePageable(pageable);
 
         boolean hasKeyword = keyword != null && !keyword.isBlank();
         Page<Product> productPage;
@@ -194,6 +178,20 @@ public class ProductService {
         return inventoryLogRepository.findAllByOrderByCreatedAtDesc().stream()
                 .map(inventoryLogMapper::toResponse)
                 .collect(Collectors.toList());
+    }
+
+    // 排序欄位只允許白名單, 每頁筆數超過上限時改為上限
+    private Pageable sanitizePageable(Pageable pageable) {
+        pageable.getSort().forEach(order -> {
+            if (!ALLOWED_SORT_FIELDS.contains(order.getProperty())) {
+                throw new BusinessException("不支援的排序欄位: " + order.getProperty() + ",允許欄位: name, price, createdAt");
+            }
+        });
+
+        if (pageable.getPageSize() > MAX_PAGE_SIZE) {
+            return PageRequest.of(pageable.getPageNumber(), MAX_PAGE_SIZE, pageable.getSort());
+        }
+        return pageable;
     }
 
     // 取得操作者供庫存紀錄快照使用;找不到使用者時回 null (紀錄仍要留,只是沒有操作者)

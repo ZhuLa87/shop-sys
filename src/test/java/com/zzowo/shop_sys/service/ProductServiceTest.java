@@ -15,6 +15,7 @@ import com.zzowo.shop_sys.mapper.ProductMapper;
 import com.zzowo.shop_sys.repository.InventoryLogRepository;
 import com.zzowo.shop_sys.repository.ProductRepository;
 import com.zzowo.shop_sys.repository.UserRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -48,6 +49,12 @@ class ProductServiceTest {
     @Mock InventoryLogMapper inventoryLogMapper;
     @Mock UserRepository userRepository;
     @InjectMocks ProductService productService;
+
+    @BeforeEach
+    void callRealGetByEmailOrThrow() {
+        // default method 在 mock 上預設回傳 null, 讓它走真正的實作 (委派給下方各測試 stub 的 findByEmail)
+        lenient().when(userRepository.getByEmailOrThrow(any())).thenCallRealMethod();
+    }
 
     // ── createProduct (庫存紀錄) ──────────────────────────────────────────────
 
