@@ -9,8 +9,8 @@ server:
 spring:
     application:
         name: shop-sys
-    profiles:
-        active: ${SPRING_PROFILES_ACTIVE:dev}
+    # profile 刻意不給預設值: 由環境變數 SPRING_PROFILES_ACTIVE 決定 (Spring 會直接讀取).
+    # 沒設時套用 default profile, 不會執行 DataInitializer 建立已知密碼的測試帳號.
 
     datasource:
         url: ${DB_URL:jdbc:mariadb://localhost:3306/shop-sys}
@@ -67,6 +67,13 @@ management:
                 # 否則 DB 斷線時 readiness 仍會回 UP
                 readiness:
                     include: readinessState, db, redis
+
+# Swagger 預設關閉 (/swagger-ui/** 與 /v3/api-docs/** 是 permitAll), 只有 dev/staging 明確開啟
+springdoc:
+    api-docs:
+        enabled: false
+    swagger-ui:
+        enabled: false
 
 # JWT 配置
 jwt:

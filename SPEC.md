@@ -81,7 +81,7 @@ Shop-Sys 是一套 **單一廠商 B2C 電商平台 (Single-Vendor B2C E-Commerce
 | JPA DDL 模式 | `update` (自動維護 Schema) |
 | JWT 有效期限 | 86400000 ms (24 小時) |
 | JWT 演算法 | HS512 (HMAC-SHA512) |
-| 預設 Spring Profile | `dev` (於 `application.yaml` 設定) |
+| Spring Profile | 由環境變數 `SPRING_PROFILES_ACTIVE` 指定 (`dev` / `staging` / `prod`), 沒有預設值 |
 
 ### 2.4 專案套件結構
 
@@ -184,7 +184,7 @@ com.zzowo.shop_sys/
 
 ### 2.5 開發環境測試資料
 
-`application.yaml` 預設啟用 `dev` profile,應用程式啟動時 `DataInitializer` 會自動執行.若資料庫已有資料則跳過,確保冪等性 (idempotent) .
+以 `SPRING_PROFILES_ACTIVE=dev` 啟動時 `DataInitializer` 會自動執行.若資料庫已有資料則跳過,確保冪等性 (idempotent) .
 
 #### 預設測試帳號
 
