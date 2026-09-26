@@ -14,18 +14,11 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.BadCredentialsException;
-import org.springframework.security.authentication.DisabledException;
-import org.springframework.security.authentication.LockedException;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import com.zzowo.shop_sys.dto.request.user.AdminUpdateUserRequest;
-import com.zzowo.shop_sys.dto.request.user.UserLoginRequest;
 import com.zzowo.shop_sys.dto.request.user.UserRegisterRequest;
 import com.zzowo.shop_sys.dto.request.user.UserSelfUpdateRequest;
-import com.zzowo.shop_sys.dto.response.auth.LoginResponse;
 import com.zzowo.shop_sys.dto.response.user.RegisterResponse;
 import com.zzowo.shop_sys.entity.User;
 import com.zzowo.shop_sys.enums.Role;
@@ -33,89 +26,14 @@ import com.zzowo.shop_sys.exception.BusinessException;
 import com.zzowo.shop_sys.exception.ResourceNotFoundException;
 import com.zzowo.shop_sys.mapper.UserMapper;
 import com.zzowo.shop_sys.repository.UserRepository;
-import com.zzowo.shop_sys.util.JwtUtil;
 
 @ExtendWith(MockitoExtension.class)
 class UserServiceTest {
 
     @Mock UserRepository userRepository;
-    @Mock AuthenticationManager authenticationManager;
-    @Mock JwtUtil jwtUtil;
-    @Mock RefreshTokenService refreshTokenService;
     @Mock PasswordEncoder passwordEncoder;
     @Mock UserMapper userMapper;
     @InjectMocks UserService userService;
-
-    @Test
-    void login_validCredentials_returnsTokens() {
-        User user = buildUser(true, true);
-        when(authenticationManager.authenticate(any()))
-                .thenReturn(new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities()));
-        when(jwtUtil.generateToken(user)).thenReturn("access-token");
-        when(jwtUtil.getAccessExpirationSeconds()).thenReturn(1800L);
-        when(refreshTokenService.create(1L)).thenReturn("refresh-token");
-
-        LoginResponse response = userService.login(loginRequest());
-
-        assertThat(response.getAccessToken()).isEqualTo("access-token");
-        assertThat(response.getRefreshToken()).isEqualTo("refresh-token");
-        assertThat(user.getLastLoginAt()).isNotNull();
-        verify(userRepository).save(user);
-    }
-
-    @Test
-    void login_wrongPassword_throws401() {
-        when(authenticationManager.authenticate(any())).thenThrow(new BadCredentialsException("bad"));
-
-        assertThatThrownBy(() -> userService.login(loginRequest()))
-                .isInstanceOf(BusinessException.class)
-                .hasMessage("帳號或密碼錯誤")
-                .extracting(e -> ((BusinessException) e).getStatus())
-                .isEqualTo(HttpStatus.UNAUTHORIZED);
-
-        verify(refreshTokenService, never()).create(any());
-    }
-
-    @Test
-    void login_disabledAccount_throws423() {
-        when(authenticationManager.authenticate(any())).thenThrow(new DisabledException("disabled"));
-
-        assertThatThrownBy(() -> userService.login(loginRequest()))
-                .isInstanceOf(BusinessException.class)
-                .extracting(e -> ((BusinessException) e).getStatus())
-                .isEqualTo(HttpStatus.LOCKED);
-    }
-
-    @Test
-    void login_lockedAccount_throws423() {
-        when(authenticationManager.authenticate(any())).thenThrow(new LockedException("locked"));
-
-        assertThatThrownBy(() -> userService.login(loginRequest()))
-                .isInstanceOf(BusinessException.class)
-                .extracting(e -> ((BusinessException) e).getStatus())
-                .isEqualTo(HttpStatus.LOCKED);
-    }
-
-    @Test
-    void assertAccountActive_disabledUser_throws423() {
-        assertThatThrownBy(() -> userService.assertAccountActive(buildUser(false, true)))
-                .isInstanceOf(BusinessException.class)
-                .extracting(e -> ((BusinessException) e).getStatus())
-                .isEqualTo(HttpStatus.LOCKED);
-    }
-
-    @Test
-    void assertAccountActive_lockedUser_throws423() {
-        assertThatThrownBy(() -> userService.assertAccountActive(buildUser(true, false)))
-                .isInstanceOf(BusinessException.class)
-                .extracting(e -> ((BusinessException) e).getStatus())
-                .isEqualTo(HttpStatus.LOCKED);
-    }
-
-    @Test
-    void assertAccountActive_activeUser_passes() {
-        userService.assertAccountActive(buildUser(true, true));
-    }
 
     // ── register ─────────────────────────────────────────────────────────────
 
@@ -419,12 +337,5 @@ class UserServiceTest {
         user.setEnabled(enabled);
         user.setAccountNonLocked(accountNonLocked);
         return user;
-    }
-
-    private UserLoginRequest loginRequest() {
-        UserLoginRequest request = new UserLoginRequest();
-        request.setEmail("user@test.com");
-        request.setPassword("password123");
-        return request;
     }
 }
