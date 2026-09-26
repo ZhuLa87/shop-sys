@@ -226,7 +226,7 @@ class UserServiceTest {
         stubOperator();
 
         AdminUpdateUserRequest request = new AdminUpdateUserRequest();
-        request.setRole("PRODUCT_MANAGER");
+        request.setRole(Role.PRODUCT_MANAGER);
         request.setEnabled(false);
         userService.updateUserByAdmin(OPERATOR_EMAIL, 1L, request);
 
@@ -289,7 +289,7 @@ class UserServiceTest {
         when(userRepository.findByEmail("user@test.com")).thenReturn(java.util.Optional.of(self));
 
         AdminUpdateUserRequest request = new AdminUpdateUserRequest();
-        request.setRole("PRODUCT_MANAGER");
+        request.setRole(Role.PRODUCT_MANAGER);
 
         assertThatThrownBy(() -> userService.updateUserByAdmin("user@test.com", 1L, request))
                 .isInstanceOf(BusinessException.class)
@@ -308,7 +308,7 @@ class UserServiceTest {
         when(userRepository.findByEmail("user@test.com")).thenReturn(java.util.Optional.of(self));
 
         AdminUpdateUserRequest request = new AdminUpdateUserRequest();
-        request.setRole("SUPER_ADMIN");
+        request.setRole(Role.SUPER_ADMIN);
         request.setName("改個名字");
 
         userService.updateUserByAdmin("user@test.com", 1L, request);
@@ -344,7 +344,7 @@ class UserServiceTest {
         when(userRepository.countByRoleAndEnabledIsTrueAndIdNot(Role.SUPER_ADMIN, 1L)).thenReturn(0L);
 
         AdminUpdateUserRequest request = new AdminUpdateUserRequest();
-        request.setRole("CUSTOMER");
+        request.setRole(Role.CUSTOMER);
 
         assertThatThrownBy(() -> userService.updateUserByAdmin(OPERATOR_EMAIL, 1L, request))
                 .isInstanceOf(BusinessException.class)

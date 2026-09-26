@@ -188,4 +188,36 @@ class OrderControllerTest {
         request.setRecipientAddress("台北市中正區忠孝東路一段 1 號");
         return request;
     }
+
+    // ── Spring MVC 標準例外不再變成 500 ────────────────────────────────────────
+
+    @Test
+    @WithMockUser(roles = "CUSTOMER")
+    void getOrder_nonNumericId_returns400() throws Exception {
+        mockMvc.perform(get("/v1/orders/abc"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.message").value("參數格式錯誤: id"));
+    }
+
+    @Test
+    @WithMockUser(roles = "CUSTOMER")
+    void unknownPath_returns404() throws Exception {
+        mockMvc.perform(get("/v1/orders/1/unknown"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.success").value(false));
+    }
+
+    @Test
+    @WithMockUser(roles = "CUSTOMER")
+    void createOrder_dataIntegrityViolation_returns409() throws Exception {
+        when(orderService.createOrder(any(), any()))
+                .thenThrow(new org.springframework.dao.DataIntegrityViolationException("duplicate key"));
+
+        mockMvc.perform(post("/v1/orders")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(createRequest())))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.success").value(false));
+    }
 }

@@ -26,6 +26,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.zzowo.shop_sys.config.SecurityConfig;
 import com.zzowo.shop_sys.dto.request.user.AdminUpdateUserRequest;
 import com.zzowo.shop_sys.dto.request.user.UserSelfUpdateRequest;
+import com.zzowo.shop_sys.enums.Role;
 import com.zzowo.shop_sys.dto.response.user.UserResponse;
 import com.zzowo.shop_sys.exception.ResourceNotFoundException;
 import com.zzowo.shop_sys.repository.UserRepository;
@@ -181,7 +182,7 @@ class UserControllerTest {
     @WithMockUser(roles = "SUPER_ADMIN")
     void updateUserByAdmin_superAdmin_returns200() throws Exception {
         AdminUpdateUserRequest request = new AdminUpdateUserRequest();
-        request.setRole("PRODUCT_MANAGER");
+        request.setRole(Role.PRODUCT_MANAGER);
 
         mockMvc.perform(put("/v1/users/2")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -189,6 +190,28 @@ class UserControllerTest {
                 .andExpect(status().isOk());
 
         verify(userService).updateUserByAdmin(any(), any(), any());
+    }
+
+    @Test
+    @WithMockUser(roles = "SUPER_ADMIN")
+    void updateUserByAdmin_unknownRole_returns400() throws Exception {
+        mockMvc.perform(put("/v1/users/2")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"role\":\"ADMIN\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false));
+
+        verify(userService, never()).updateUserByAdmin(any(), any(), any());
+    }
+
+    @Test
+    @WithMockUser(roles = "SUPER_ADMIN")
+    void updateUserByAdmin_unsupportedContentType_returns415() throws Exception {
+        mockMvc.perform(put("/v1/users/2")
+                        .contentType(MediaType.TEXT_PLAIN)
+                        .content("role=CUSTOMER"))
+                .andExpect(status().isUnsupportedMediaType())
+                .andExpect(jsonPath("$.success").value(false));
     }
 
     @Test
