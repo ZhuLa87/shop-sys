@@ -28,6 +28,9 @@ public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
+    // 使用 Spring 管理的 ObjectMapper, 401/403 回應才會套用與一般 API 相同的序列化設定
+    private final ObjectMapper objectMapper;
+
     @Bean
     public PasswordEncoder passwordEncoder() {
         return Argon2PasswordEncoder.defaultsForSpringSecurity_v5_8();
@@ -113,7 +116,7 @@ public class SecurityConfig {
             response.setCharacterEncoding("UTF-8");
 
             ApiResponse<Void> apiResponse = ApiResponse.error("請先登入或提供有效 Token");
-            new ObjectMapper().writeValue(response.getOutputStream(), apiResponse);
+            objectMapper.writeValue(response.getOutputStream(), apiResponse);
         };
     }
 
@@ -126,7 +129,7 @@ public class SecurityConfig {
             response.setCharacterEncoding("UTF-8");
 
             ApiResponse<Void> apiResponse = ApiResponse.error("您的權限不足以執行此操作");
-            new ObjectMapper().writeValue(response.getOutputStream(), apiResponse);
+            objectMapper.writeValue(response.getOutputStream(), apiResponse);
         };
     }
 }
