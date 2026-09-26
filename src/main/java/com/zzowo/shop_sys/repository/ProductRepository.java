@@ -17,12 +17,6 @@ import java.util.Optional;
 
 @Repository
 public interface ProductRepository extends JpaRepository<Product, Long> {
-    // 搜尋名稱含有 keyword 的商品 (類似 SQL 的 LIKE %keyword%)
-    List<Product> findByNameContaining(String keyword);
-
-    // 找出所有狀態為 status 的商品 (例如找所有 "ON_SHELF" 的商品)
-    List<Product> findByStatus(ProductStatus status);
-
     // 分頁查詢上架商品
     Page<Product> findByStatus(ProductStatus status, Pageable pageable);
 

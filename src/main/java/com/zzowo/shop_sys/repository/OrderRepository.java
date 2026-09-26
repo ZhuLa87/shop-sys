@@ -17,9 +17,6 @@ import java.util.Optional;
 
 @Repository
 public interface OrderRepository extends JpaRepository<Order, Long> {
-    // 找出某個用戶的所有訂單
-    List<Order> findByUserId(Long userId);
-
     // 找出某個用戶的所有訂單,並依照建立時間新到舊排序
     List<Order> findByUserIdOrderByCreatedAtDesc(Long userId);
 

@@ -5,6 +5,7 @@ import lombok.Getter;
 import lombok.Setter;
 import java.time.LocalDateTime;
 
+// 尚未實作: 目前只對應既有 schema, 沒有任何 service 或 API 使用 (出貨功能尚在規劃中)
 @Getter
 @Setter
 @Entity

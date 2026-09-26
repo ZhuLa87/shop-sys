@@ -49,8 +49,7 @@ public class UserController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "使用者不存在")
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<UserResponse>> getUserById(
-            @Parameter(description = "使用者 ID") @PathVariable Long id,
-            @Parameter(hidden = true) @AuthenticationPrincipal String email) {
+            @Parameter(description = "使用者 ID") @PathVariable Long id) {
         UserResponse userProfile = userService.getUserById(id);
         return ResponseEntity.ok(ApiResponse.success("成功取得使用者資料", userProfile));
     }
@@ -60,8 +59,7 @@ public class UserController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "未登入")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "權限不足")
     @GetMapping
-    public ResponseEntity<ApiResponse<List<UserResponse>>> getAllUsers(
-            @Parameter(hidden = true) @AuthenticationPrincipal String email) {
+    public ResponseEntity<ApiResponse<List<UserResponse>>> getAllUsers() {
         return ResponseEntity.ok(ApiResponse.success("成功取得所有使用者資料", userService.getAllUsers()));
     }
 

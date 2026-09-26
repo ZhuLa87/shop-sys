@@ -39,7 +39,7 @@ class ProductRepositoryTest {
         em.persistAndFlush(buildProduct("上架B", ProductStatus.ON_SHELF));
         em.persistAndFlush(buildProduct("下架C", ProductStatus.OFF_SHELF));
 
-        List<Product> result = productRepository.findByStatus(ProductStatus.ON_SHELF);
+        List<Product> result = productRepository.findByStatus(ProductStatus.ON_SHELF, PageRequest.of(0, 10)).getContent();
 
         assertThat(result).hasSize(2)
                 .extracting("name")

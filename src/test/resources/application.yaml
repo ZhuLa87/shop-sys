@@ -39,13 +39,6 @@ app:
       enabled: false
       timeout-minutes: 30
       check-interval-ms: 60000
-  security:
-    account-locking:
-      enabled: false
-      max-failed-attempts: 5
-      lock-duration-minutes: 15
-      reset-failure-count-minutes: 60
-      auto-unlock: true
 
 minio:
   endpoint: http://localhost:9000
