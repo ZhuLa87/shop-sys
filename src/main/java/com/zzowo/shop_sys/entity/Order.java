@@ -2,12 +2,14 @@ package com.zzowo.shop_sys.entity;
 
 import com.zzowo.shop_sys.enums.OrderStatus;
 import jakarta.persistence.*;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
-@Data
+@Getter
+@Setter
 @Entity
 @Table(name = "orders")
 public class Order {
