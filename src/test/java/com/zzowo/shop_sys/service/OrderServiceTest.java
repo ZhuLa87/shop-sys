@@ -35,6 +35,7 @@ import com.zzowo.shop_sys.entity.Order;
 import com.zzowo.shop_sys.entity.OrderItem;
 import com.zzowo.shop_sys.entity.Product;
 import com.zzowo.shop_sys.entity.User;
+import com.zzowo.shop_sys.enums.InventoryChangeReason;
 import com.zzowo.shop_sys.enums.OrderStatus;
 import com.zzowo.shop_sys.enums.ProductStatus;
 import com.zzowo.shop_sys.enums.Role;
@@ -81,7 +82,7 @@ class OrderServiceTest {
         verify(inventoryLogRepository).save(logCaptor.capture());
         InventoryLog log = logCaptor.getValue();
         assertThat(log.getChangeAmount()).isEqualTo(-3);
-        assertThat(log.getReason()).isEqualTo("ORDER");
+        assertThat(log.getReason()).isEqualTo(InventoryChangeReason.ORDER);
         assertThat(log.getOperatorId()).isEqualTo(1L);
         assertThat(log.getOperatorName()).isEqualTo("下單顧客");
         assertThat(log.getOperatorRole()).isEqualTo(Role.CUSTOMER);
@@ -363,7 +364,7 @@ class OrderServiceTest {
         verify(inventoryLogRepository).save(logCaptor.capture());
         InventoryLog log = logCaptor.getValue();
         assertThat(log.getChangeAmount()).isEqualTo(3);
-        assertThat(log.getReason()).isEqualTo("CANCEL");
+        assertThat(log.getReason()).isEqualTo(InventoryChangeReason.CANCEL);
         assertThat(log.getOperatorId()).isNull(); // 系統自動作業
         assertThat(log.getOperatorName()).isNull();
         assertThat(log.getOperatorRole()).isNull();

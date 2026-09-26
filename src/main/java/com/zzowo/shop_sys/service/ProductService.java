@@ -8,6 +8,7 @@ import com.zzowo.shop_sys.dto.response.product.ProductResponse;
 import com.zzowo.shop_sys.entity.InventoryLog;
 import com.zzowo.shop_sys.entity.Product;
 import com.zzowo.shop_sys.entity.User;
+import com.zzowo.shop_sys.enums.InventoryChangeReason;
 import com.zzowo.shop_sys.enums.ProductStatus;
 import com.zzowo.shop_sys.exception.BusinessException;
 import com.zzowo.shop_sys.exception.ResourceNotFoundException;
@@ -58,7 +59,7 @@ public class ProductService {
         // 初始庫存視為一次進貨,讓 inventory_logs 的變動加總等於目前庫存
         Integer initialStock = savedProduct.getStockQuantity();
         if (initialStock != null && initialStock > 0) {
-            writeInventoryLog(savedProduct, initialStock, "RESTOCK", operator(email));
+            writeInventoryLog(savedProduct, initialStock, InventoryChangeReason.RESTOCK, operator(email));
         }
 
         return productMapper.toDetailResponse(savedProduct);
@@ -80,7 +81,7 @@ public class ProductService {
         // 只改名稱/描述時不產生雜訊紀錄
         int delta = savedProduct.getStockQuantity() - oldStock;
         if (delta != 0) {
-            writeInventoryLog(savedProduct, delta, "ADJUSTMENT", operator(email));
+            writeInventoryLog(savedProduct, delta, InventoryChangeReason.ADJUSTMENT, operator(email));
         }
 
         return productMapper.toDetailResponse(savedProduct);
@@ -201,7 +202,7 @@ public class ProductService {
     }
 
     // 寫入庫存異動紀錄 (欄位與 OrderService 結帳扣庫存時一致)
-    private void writeInventoryLog(Product product, int changeAmount, String reason, User operator) {
+    private void writeInventoryLog(Product product, int changeAmount, InventoryChangeReason reason, User operator) {
         InventoryLog log = new InventoryLog();
         log.setProduct(product);
         log.setChangeAmount(changeAmount);

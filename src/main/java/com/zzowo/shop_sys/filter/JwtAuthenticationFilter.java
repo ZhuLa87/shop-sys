@@ -1,6 +1,7 @@
 package com.zzowo.shop_sys.filter;
 
 import lombok.RequiredArgsConstructor;
+import com.zzowo.shop_sys.enums.Role;
 import com.zzowo.shop_sys.service.TokenBlacklistService;
 import com.zzowo.shop_sys.util.JwtUtil;
 import jakarta.servlet.FilterChain;
@@ -49,7 +50,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 String role = jwtUtil.getRoleFromToken(jwt);
 
                 UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
-                        email, null, List.of(new SimpleGrantedAuthority("ROLE_" + role)));
+                        email, null, List.of(new SimpleGrantedAuthority(Role.AUTHORITY_PREFIX + role)));
 
                 authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                 SecurityContextHolder.getContext().setAuthentication(authToken);

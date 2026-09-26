@@ -109,8 +109,7 @@ public class User implements UserDetails {
     // 傳回使用者擁有的權限 (Authorities) 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        // Spring Security 規定角色格式要是 "ROLE_XXX"
-        return List.of(new SimpleGrantedAuthority("ROLE_" + role.name()));
+        return List.of(new SimpleGrantedAuthority(role.getAuthority()));
     }
 
     // 回傳使用者密碼

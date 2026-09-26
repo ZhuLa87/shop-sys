@@ -5,6 +5,7 @@ import com.zzowo.shop_sys.dto.request.order.OrderCreateRequest;
 import com.zzowo.shop_sys.dto.response.order.OrderResponse;
 import com.zzowo.shop_sys.entity.*;
 import com.zzowo.shop_sys.enums.OrderStatus;
+import com.zzowo.shop_sys.enums.InventoryChangeReason;
 import com.zzowo.shop_sys.enums.ProductStatus;
 import com.zzowo.shop_sys.enums.Role;
 import com.zzowo.shop_sys.exception.BusinessException;
@@ -101,7 +102,7 @@ public class OrderService {
             }
 
             // 建立庫存異動紀錄
-            writeInventoryLog(product, -quantityToDeduct, "ORDER", user);
+            writeInventoryLog(product, -quantityToDeduct, InventoryChangeReason.ORDER, user);
 
             // 建立訂單明細 (name/coverImageUrl 為快照,確保商品日後改名或刪除仍可正確顯示)
             OrderItem item = new OrderItem();
@@ -163,7 +164,7 @@ public class OrderService {
             }
 
             // operator 為 null 代表系統自動作業
-            writeInventoryLog(product, item.getQuantity(), "CANCEL", null);
+            writeInventoryLog(product, item.getQuantity(), InventoryChangeReason.CANCEL, null);
         }
 
         log.info("逾時未付款訂單已自動取消,orderId={}", orderId);
@@ -199,7 +200,7 @@ public class OrderService {
     }
 
     // 寫入庫存異動紀錄 (operator 為 null 代表系統自動作業)
-    private void writeInventoryLog(Product product, int changeAmount, String reason, User operator) {
+    private void writeInventoryLog(Product product, int changeAmount, InventoryChangeReason reason, User operator) {
         InventoryLog inventoryLog = new InventoryLog();
         inventoryLog.setProduct(product);
         inventoryLog.setChangeAmount(changeAmount);
