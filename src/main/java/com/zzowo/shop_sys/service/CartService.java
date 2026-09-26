@@ -71,7 +71,16 @@ public class CartService {
                 .orElse(new Cart());
 
         int existingQuantity = (cart.getId() == null) ? 0 : cart.getQuantity();
-        int totalTargetQuantity = existingQuantity + request.getQuantity();
+        // addExact: 溢位成負數會通過下方的庫存檢查,並在結帳時變成負數明細折抵訂單金額
+        int totalTargetQuantity;
+        try {
+            totalTargetQuantity = Math.addExact(existingQuantity, request.getQuantity());
+        } catch (ArithmeticException e) {
+            throw new BusinessException("購物車數量超過上限");
+        }
+        if (totalTargetQuantity > AddToCartRequest.MAX_QUANTITY) {
+            throw new BusinessException("每項商品最多只能加入 " + AddToCartRequest.MAX_QUANTITY + " 件,目前購物車內已有 " + existingQuantity + " 件");
+        }
 
         // 檢查庫存 (已有的 + 這次要加的)
         if (product.getStockQuantity() < totalTargetQuantity) {

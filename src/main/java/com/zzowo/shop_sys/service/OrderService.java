@@ -82,6 +82,11 @@ public class OrderService {
                 throw new BusinessException("商品 [" + product.getName() + "] 目前" + product.getStatus().getDescription() + ",結帳失敗");
             }
 
+            // 防禦性檢查: 數量非正數時扣庫存會變成加庫存,明細小計也會變成負數
+            if (cart.getQuantity() == null || cart.getQuantity() <= 0) {
+                throw new BusinessException("商品 [" + product.getName() + "] 購買數量異常,請重新確認購物車內容");
+            }
+
             // 快速失敗: 先用已載入的資料擋掉明顯不足的情況,省下一次沒必要的 DB 寫入
             if (product.getStockQuantity() < cart.getQuantity()) {
                 throw new BusinessException("商品 [" + product.getName() + "] 庫存不足,結帳失敗");

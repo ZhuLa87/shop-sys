@@ -155,6 +155,39 @@ class CartServiceTest {
     }
 
     @Test
+    void addToCart_totalAboveMax_throws_andSavesNothing() {
+        User user = buildUser(1L);
+        Product product = buildProduct(10L, 5000);
+        stubUser(user);
+        when(productRepository.findById(10L)).thenReturn(Optional.of(product));
+        when(cartRepository.findByUserIdAndProductId(1L, 10L))
+                .thenReturn(Optional.of(buildCart(5L, user, product, 990)));
+
+        assertThatThrownBy(() -> cartService.addToCart(EMAIL, addRequest(10L, 10)))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("最多只能加入 999 件");
+
+        verify(cartRepository, never()).save(any());
+    }
+
+    @Test
+    void addToCart_quantityOverflow_throws_andSavesNothing() {
+        // 舊版 int 累加會溢位成負數,通過庫存檢查後在結帳時折抵訂單金額
+        User user = buildUser(1L);
+        Product product = buildProduct(10L, Integer.MAX_VALUE);
+        stubUser(user);
+        when(productRepository.findById(10L)).thenReturn(Optional.of(product));
+        when(cartRepository.findByUserIdAndProductId(1L, 10L))
+                .thenReturn(Optional.of(buildCart(5L, user, product, Integer.MAX_VALUE)));
+
+        assertThatThrownBy(() -> cartService.addToCart(EMAIL, addRequest(10L, 1)))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("上限");
+
+        verify(cartRepository, never()).save(any());
+    }
+
+    @Test
     void addToCart_newItemExceedsStock_throws() {
         User user = buildUser(1L);
         Product product = buildProduct(10L, 2);
