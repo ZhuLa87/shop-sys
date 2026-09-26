@@ -25,7 +25,6 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.http.HttpStatus;
 
 import com.zzowo.shop_sys.dto.request.order.OrderCreateRequest;
 import com.zzowo.shop_sys.dto.response.order.OrderResponse;
@@ -321,17 +320,16 @@ class OrderServiceTest {
     }
 
     @Test
-    void getOrderById_otherUsersOrder_throwsForbidden() {
+    void getOrderById_otherUsersOrder_throwsNotFound() {
         User requester = buildUser(1L, Role.CUSTOMER);
         User owner = buildUser(2L, Role.CUSTOMER);
         stubUser(requester);
         when(orderRepository.findById(50L)).thenReturn(Optional.of(buildOrder(50L, owner)));
 
+        // 與訂單不存在的回應相同, 無法用來列舉訂單
         assertThatThrownBy(() -> orderService.getOrderById(EMAIL, 50L))
-                .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("無權限")
-                .extracting(e -> ((BusinessException) e).getStatus())
-                .isEqualTo(HttpStatus.FORBIDDEN);
+                .isInstanceOf(ResourceNotFoundException.class)
+                .hasMessage("訂單不存在");
     }
 
     @Test

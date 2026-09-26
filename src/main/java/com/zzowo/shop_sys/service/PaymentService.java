@@ -16,7 +16,6 @@ import com.zzowo.shop_sys.repository.PaymentRepository;
 import com.zzowo.shop_sys.repository.UserRepository;
 import com.zzowo.shop_sys.util.EcpayCheckMacValue;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -87,9 +86,10 @@ public class PaymentService {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new ResourceNotFoundException("訂單不存在"));
 
-        // 付款只能由下單者本人進行 (管理員可以查看,但不代付)
+        // 付款只能由下單者本人進行 (管理員可以查看,但不代付);
+        // 他人的訂單與不存在的訂單回應相同, 避免以 403/404 的差異列舉訂單
         if (!order.getUser().getId().equals(user.getId())) {
-            throw new BusinessException("無權限操作此訂單", HttpStatus.FORBIDDEN);
+            throw new ResourceNotFoundException("訂單不存在");
         }
 
         if (order.getStatus() != OrderStatus.PENDING) {

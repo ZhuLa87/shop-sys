@@ -23,7 +23,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.http.HttpStatus;
 
 import com.zzowo.shop_sys.config.EcpayConfig;
 import com.zzowo.shop_sys.dto.response.payment.EcpayCheckoutResponse;
@@ -35,6 +34,7 @@ import com.zzowo.shop_sys.enums.OrderStatus;
 import com.zzowo.shop_sys.enums.PaymentStatus;
 import com.zzowo.shop_sys.enums.Role;
 import com.zzowo.shop_sys.exception.BusinessException;
+import com.zzowo.shop_sys.exception.ResourceNotFoundException;
 import com.zzowo.shop_sys.repository.OrderRepository;
 import com.zzowo.shop_sys.repository.PaymentRepository;
 import com.zzowo.shop_sys.repository.UserRepository;
@@ -133,14 +133,14 @@ class PaymentServiceTest {
     }
 
     @Test
-    void createEcpayCheckout_otherUsersOrder_throwsForbidden() {
+    void createEcpayCheckout_otherUsersOrder_throwsNotFound() {
         User buyer = buildUser(1L);
         Order order = buildOrder(buildUser(2L), "100");
         stubCheckout(buyer, order);
 
         assertThatThrownBy(() -> paymentService.createEcpayCheckout(EMAIL, ORDER_ID))
-                .isInstanceOf(BusinessException.class)
-                .extracting("status").isEqualTo(HttpStatus.FORBIDDEN);
+                .isInstanceOf(ResourceNotFoundException.class)
+                .hasMessage("訂單不存在");
         verify(paymentRepository, never()).save(any());
     }
 
