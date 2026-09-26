@@ -2,12 +2,14 @@ package com.zzowo.shop_sys.entity;
 
 import com.zzowo.shop_sys.enums.Role;
 import jakarta.persistence.*;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 import org.hibernate.annotations.NotFound;
 import org.hibernate.annotations.NotFoundAction;
 import java.time.LocalDateTime;
 
-@Data
+@Getter
+@Setter
 @Entity
 @Table(name = "inventory_logs")
 public class InventoryLog {

@@ -1,9 +1,11 @@
 package com.zzowo.shop_sys.entity;
 
 import jakarta.persistence.*;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 
-@Data
+@Getter
+@Setter
 @Entity
 @Table(name = "product_images")
 public class ProductImage {
@@ -18,8 +20,6 @@ public class ProductImage {
     // product_id:外鍵,連到產品的主鍵
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "product_id", nullable = false)
-    @lombok.ToString.Exclude            // 防止 toString 遞迴
-    @lombok.EqualsAndHashCode.Exclude  // 防止 equals/hashCode 遞迴
     private Product product;
 
     // 圖片的 URL 位置

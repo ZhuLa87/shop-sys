@@ -1,12 +1,14 @@
 package com.zzowo.shop_sys.entity;
 
 import jakarta.persistence.*;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 import org.hibernate.annotations.NotFound;
 import org.hibernate.annotations.NotFoundAction;
 import java.math.BigDecimal;
 
-@Data
+@Getter
+@Setter
 @Entity
 @Table(name = "order_items")
 public class OrderItem {
@@ -21,8 +23,6 @@ public class OrderItem {
     // order_id:外鍵指向訂單主鍵
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "order_id", nullable = false)
-    @lombok.ToString.Exclude            // 防止 toString 遞迴
-    @lombok.EqualsAndHashCode.Exclude  // 防止 equals/hashCode 遞迴
     private Order order;
 
     // 對應的商品 (多對一)

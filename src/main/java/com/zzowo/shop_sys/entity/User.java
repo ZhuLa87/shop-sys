@@ -1,7 +1,8 @@
 package com.zzowo.shop_sys.entity;
 
 import jakarta.persistence.*;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 import org.hibernate.annotations.SQLRestriction;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -14,7 +15,8 @@ import java.util.Collection;
 import java.util.List;
 
 @SQLRestriction("deleted_at IS NULL")
-@Data
+@Getter
+@Setter
 @Entity
 @Table(name = "users")
 public class User implements UserDetails {
