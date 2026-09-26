@@ -232,6 +232,38 @@ class ProductServiceTest {
         verify(productRepository, never()).save(any());
     }
 
+    // ── getProductById ───────────────────────────────────────────────────────
+
+    @Test
+    void getProductById_offShelf_storefront_throwsNotFound() {
+        Product product = buildProduct();
+        product.setStatus(ProductStatus.OFF_SHELF);
+        when(productRepository.findByIdWithImages(1L)).thenReturn(Optional.of(product));
+
+        assertThatThrownBy(() -> productService.getProductById(1L, false))
+                .isInstanceOf(ResourceNotFoundException.class);
+    }
+
+    @Test
+    void getProductById_offShelf_includeHidden_returnsProduct() {
+        Product product = buildProduct();
+        product.setStatus(ProductStatus.OFF_SHELF);
+        when(productRepository.findByIdWithImages(1L)).thenReturn(Optional.of(product));
+        when(productMapper.toDetailResponse(product)).thenReturn(new ProductResponse());
+
+        assertThat(productService.getProductById(1L, true)).isNotNull();
+    }
+
+    @Test
+    void getProductById_outOfStock_storefront_returnsProduct() {
+        Product product = buildProduct();
+        product.setStatus(ProductStatus.OUT_OF_STOCK);
+        when(productRepository.findByIdWithImages(1L)).thenReturn(Optional.of(product));
+        when(productMapper.toDetailResponse(product)).thenReturn(new ProductResponse());
+
+        assertThat(productService.getProductById(1L, false)).isNotNull();
+    }
+
     // ── getStorefrontProducts ────────────────────────────────────────────────
 
     @Test

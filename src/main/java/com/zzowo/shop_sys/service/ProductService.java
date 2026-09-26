@@ -120,8 +120,11 @@ public class ProductService {
     }
 
     // 取得單一商品詳情
-    public ProductResponse getProductById(Long id) {
+    // 前台只能看到上架中/缺貨中的商品, 已下架的回 404 (與不存在無法區分, 避免列舉未發布商品);
+    // 後台編輯商品時共用此端點, 由 includeHidden 放行
+    public ProductResponse getProductById(Long id, boolean includeHidden) {
         Product product = productRepository.findByIdWithImages(id)
+                .filter(p -> includeHidden || STOREFRONT_STATUSES.contains(p.getStatus()))
                 .orElseThrow(() -> new ResourceNotFoundException("商品不存在"));
 
         return productMapper.toDetailResponse(product);
