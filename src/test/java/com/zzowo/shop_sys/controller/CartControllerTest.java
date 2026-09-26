@@ -100,6 +100,17 @@ class CartControllerTest {
 
     @Test
     @WithMockUser(roles = "CUSTOMER")
+    void addToCart_quantityAboveMax_returns422() throws Exception {
+        mockMvc.perform(post("/v1/carts")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(addRequest(10L, Integer.MAX_VALUE))))
+                .andExpect(status().isUnprocessableEntity());
+
+        verify(cartService, never()).addToCart(any(), any());
+    }
+
+    @Test
+    @WithMockUser(roles = "CUSTOMER")
     void addToCart_missingProductId_returns422() throws Exception {
         mockMvc.perform(post("/v1/carts")
                         .contentType(MediaType.APPLICATION_JSON)

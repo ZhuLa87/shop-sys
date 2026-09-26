@@ -46,10 +46,11 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 
     // 原子扣庫存: 庫存不足時條件不成立,回傳 0 筆,由呼叫端判定為庫存不足
     // version + 1 讓後台整包覆寫商品時仍會觸發樂觀鎖衝突,避免庫存被舊表單值還原
+    // :qty > 0 擋下非正數: 負數扣減等於憑空增加庫存
     // deleted_at IS NULL 明確寫出,不倚賴 @SQLRestriction 是否作用於 bulk update
     @Modifying(flushAutomatically = true)
     @Query(value = "UPDATE products SET stock_quantity = stock_quantity - :qty, version = version + 1 " +
-                   "WHERE id = :id AND stock_quantity >= :qty AND deleted_at IS NULL",
+                   "WHERE id = :id AND :qty > 0 AND stock_quantity >= :qty AND deleted_at IS NULL",
            nativeQuery = true)
     int deductStock(@Param("id") Long id, @Param("qty") int qty);
 

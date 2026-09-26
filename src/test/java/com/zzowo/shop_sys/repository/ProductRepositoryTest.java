@@ -241,6 +241,19 @@ class ProductRepositoryTest {
     }
 
     @Test
+    void deductStock_negativeQuantity_returns0_andDoesNotIncreaseStock() {
+        Product p = buildProduct("負數扣減", ProductStatus.ON_SHELF, 2);
+        em.persistAndFlush(p);
+        em.clear();
+
+        int updated = productRepository.deductStock(p.getId(), -5);
+
+        em.clear();
+        assertThat(updated).isZero();
+        assertThat(productRepository.findById(p.getId()).orElseThrow().getStockQuantity()).isEqualTo(2);
+    }
+
+    @Test
     void deductStock_softDeletedProduct_returns0() {
         Product p = buildProduct("已刪除商品", ProductStatus.ON_SHELF, 10);
         p.setDeletedAt(LocalDateTime.now());

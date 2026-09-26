@@ -177,6 +177,21 @@ class OrderServiceTest {
     }
 
     @Test
+    void createOrder_nonPositiveQuantity_throws_andDoesNotTouchStock() {
+        User user = buildUser(1L, Role.CUSTOMER);
+        Product product = buildProduct(10L, "異常商品", BigDecimal.valueOf(100), 10);
+        stubUser(user);
+        when(cartRepository.findByUserId(1L)).thenReturn(List.of(buildCart(1L, user, product, -5)));
+
+        assertThatThrownBy(() -> orderService.createOrder(EMAIL, createRequest()))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("數量異常");
+
+        verify(productRepository, never()).deductStock(anyLong(), anyInt());
+        verify(orderRepository, never()).save(any());
+    }
+
+    @Test
     void createOrder_insufficientStock_throwsWithProductName_andSavesNothing() {
         User user = buildUser(1L, Role.CUSTOMER);
         Product product = buildProduct(10L, "熱門商品", BigDecimal.valueOf(100), 2);
