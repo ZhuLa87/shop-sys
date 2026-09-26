@@ -80,8 +80,7 @@ public class PaymentService {
     // 建立綠界付款表單參數,每次呼叫都產生新的 MerchantTradeNo (重新付款不可沿用舊編號)
     @Transactional
     public EcpayCheckoutResponse createEcpayCheckout(String email, Long orderId) {
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new ResourceNotFoundException("使用者不存在"));
+        User user = userRepository.getByEmailOrThrow(email);
 
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new ResourceNotFoundException("訂單不存在"));

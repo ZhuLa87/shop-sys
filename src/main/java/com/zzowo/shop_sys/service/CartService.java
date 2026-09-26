@@ -35,7 +35,7 @@ public class CartService {
     // 取得某使用者的購物車清單
     @Transactional
     public List<CartItemResponse> getUserCart(String email) {
-        User user = getUserByEmail(email);
+        User user = userRepository.getByEmailOrThrow(email);
         List<Cart> carts = cartRepository.findByUserId(user.getId());
 
         // 過濾並自動清除購物車中已被軟刪除的商品
@@ -57,7 +57,7 @@ public class CartService {
     // 加入購物車
     @Transactional
     public void addToCart(String email, AddToCartRequest request) {
-        User user = getUserByEmail(email);
+        User user = userRepository.getByEmailOrThrow(email);
         Product product = productRepository.findById(request.getProductId())
                 .orElseThrow(() -> new ResourceNotFoundException("商品不存在"));
 
@@ -103,7 +103,7 @@ public class CartService {
     // 移除購物車項目
     @Transactional
     public void removeFromCart(String email, Long cartId) {
-        User user = getUserByEmail(email);
+        User user = userRepository.getByEmailOrThrow(email);
         Cart cart = cartRepository.findById(cartId)
                 .orElseThrow(() -> new ResourceNotFoundException("購物車資料不存在"));
 
@@ -113,11 +113,5 @@ public class CartService {
         }
 
         cartRepository.delete(cart);
-    }
-
-    // 輔助方法:用 Email 找 User
-    private User getUserByEmail(String email) {
-        return userRepository.findByEmail(email)
-                .orElseThrow(() -> new ResourceNotFoundException("使用者不存在"));
     }
 }

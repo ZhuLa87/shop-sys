@@ -3,6 +3,7 @@ package com.zzowo.shop_sys.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -16,6 +17,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -56,6 +58,12 @@ class PaymentServiceTest {
     @Mock PaymentRepository paymentRepository;
     @Spy EcpayConfig ecpayConfig = testConfig();
     @InjectMocks PaymentService paymentService;
+
+    @BeforeEach
+    void callRealGetByEmailOrThrow() {
+        // default method 在 mock 上預設回傳 null, 讓它走真正的實作 (委派給下方各測試 stub 的 findByEmail)
+        lenient().when(userRepository.getByEmailOrThrow(any())).thenCallRealMethod();
+    }
 
     // ── createEcpayCheckout ──────────────────────────────────────────────────
 

@@ -40,8 +40,7 @@ public class UserService {
      * @return
      */
     public UserResponse getUserProfile(String email) {
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new ResourceNotFoundException("找不到使用者"));
+        User user = userRepository.getByEmailOrThrow(email);
         return userMapper.toUserResponse(user);
     }
 
@@ -68,8 +67,7 @@ public class UserService {
     // 一般使用者更新自己的資料
     public void updateMyInfo(String currentEmail, UserSelfUpdateRequest request) {
         // 找出是誰在操作
-        User user = userRepository.findByEmail(currentEmail)
-                .orElseThrow(() -> new ResourceNotFoundException("使用者不存在"));
+        User user = userRepository.getByEmailOrThrow(currentEmail);
 
         // 如果要改 Email,需檢查新 Email 是否已被其他人使用
         if (StringUtils.hasText(request.getEmail()) && !request.getEmail().equals(user.getEmail())) {
@@ -134,8 +132,7 @@ public class UserService {
 
     // 擋下會把管理員鎖在系統外的操作
     private void assertNotLockingOutAdmins(String operatorEmail, User target, AdminUpdateUserRequest request) {
-        User operator = userRepository.findByEmail(operatorEmail)
-                .orElseThrow(() -> new ResourceNotFoundException("找不到操作者"));
+        User operator = userRepository.getByEmailOrThrow(operatorEmail);
         boolean isSelf = operator.getId().equals(target.getId());
 
         // 停用帳號
