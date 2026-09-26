@@ -72,6 +72,7 @@ public class ProductService {
                 .orElseThrow(() -> new ResourceNotFoundException("找不到商品 ID: " + id));
 
         // 表單會整包覆寫庫存,先記下舊值才算得出差額
+        // 已知限制: 表單打開後才發生的結帳扣減會被舊值蓋掉 (見 ProductRepository.deductStock 的說明)
         int oldStock = product.getStockQuantity() == null ? 0 : product.getStockQuantity();
 
         productMapper.updateEntityFromRequest(product, request);
@@ -124,7 +125,7 @@ public class ProductService {
 
     // 查詢特定商品的庫存紀錄
     public List<InventoryLogResponse> getProductInventoryLogs(Long productId) {
-        // 確認商品存在 (這行是為了防呆,若商品不存在 repository 通常會回傳空 list 或報錯,視需求而定)
+        // 商品不存在時回 404, 而不是回傳空的紀錄清單
         if (!productRepository.existsById(productId)) {
             throw new ResourceNotFoundException("找不到商品 ID: " + productId);
         }

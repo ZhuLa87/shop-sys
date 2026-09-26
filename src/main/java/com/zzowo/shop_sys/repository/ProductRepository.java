@@ -39,7 +39,8 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     Optional<Product> findByIdWithImages(@Param("id") Long id);
 
     // 原子扣庫存: 庫存不足時條件不成立,回傳 0 筆,由呼叫端判定為庫存不足
-    // version + 1 讓後台整包覆寫商品時仍會觸發樂觀鎖衝突,避免庫存被舊表單值還原
+    // version + 1 只能讓"同一時間正在寫入"的後台更新觸發樂觀鎖衝突. 已知限制: ProductRequest 沒有帶 version,
+    // 管理員打開編輯表單之後才發生的結帳扣減, 仍會被表單上的舊庫存值覆寫 (尚未修正, 需要改 API 契約)
     // :qty > 0 擋下非正數: 負數扣減等於憑空增加庫存
     // deleted_at IS NULL 明確寫出,不倚賴 @SQLRestriction 是否作用於 bulk update
     @Modifying(flushAutomatically = true)

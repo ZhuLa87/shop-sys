@@ -42,7 +42,6 @@ public class ProductController {
                       "支援分頁,關鍵字搜尋 (商品名稱) 與排序.排序欄位:name,price,createdAt (預設 createdAt,desc) "
     )
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
-    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "未登入")
     @GetMapping
     public ResponseEntity<ApiResponse<PageResponse<ProductResponse>>> getProducts(
             @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable,
