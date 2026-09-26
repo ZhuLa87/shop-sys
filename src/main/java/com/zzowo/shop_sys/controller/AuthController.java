@@ -50,7 +50,7 @@ public class AuthController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "423", description = "帳號已被鎖定")
     @SecurityRequirements
     @PostMapping("/login")
-    public ResponseEntity<ApiResponse<LoginResponse>> login(@RequestBody UserLoginRequest request) {
+    public ResponseEntity<ApiResponse<LoginResponse>> login(@Valid @RequestBody UserLoginRequest request) {
         LoginResponse loginResponse = authService.login(request);
         return ResponseEntity.ok(ApiResponse.success("登入成功", loginResponse));
     }

@@ -33,6 +33,7 @@ class UserServiceTest {
     @Mock UserRepository userRepository;
     @Mock PasswordEncoder passwordEncoder;
     @Mock UserMapper userMapper;
+    @Mock MinioService minioService;
     @InjectMocks UserService userService;
 
     // ── register ─────────────────────────────────────────────────────────────
@@ -133,6 +134,37 @@ class UserServiceTest {
 
         assertThatThrownBy(() -> userService.updateMyInfo("ghost@test.com", new UserSelfUpdateRequest()))
                 .isInstanceOf(ResourceNotFoundException.class);
+    }
+
+    @Test
+    void updateMyInfo_avatarUnderOwnDirectory_isSaved() {
+        User user = buildUser(true, true);
+        String url = "http://cdn.test/bucket/avatars/1/abc.png";
+        when(userRepository.findByEmail("user@test.com")).thenReturn(java.util.Optional.of(user));
+        when(minioService.isPublicUrlUnder(url, "avatars/1/")).thenReturn(true);
+        UserSelfUpdateRequest request = new UserSelfUpdateRequest();
+        request.setAvatarUrl(url);
+
+        userService.updateMyInfo("user@test.com", request);
+
+        assertThat(user.getAvatarUrl()).isEqualTo(url);
+        verify(userRepository).save(user);
+    }
+
+    @Test
+    void updateMyInfo_externalAvatarUrl_throws_andSavesNothing() {
+        User user = buildUser(true, true);
+        String url = "https://tracker.example.com/pixel.png";
+        when(userRepository.findByEmail("user@test.com")).thenReturn(java.util.Optional.of(user));
+        when(minioService.isPublicUrlUnder(url, "avatars/1/")).thenReturn(false);
+        UserSelfUpdateRequest request = new UserSelfUpdateRequest();
+        request.setAvatarUrl(url);
+
+        assertThatThrownBy(() -> userService.updateMyInfo("user@test.com", request))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("頭像");
+
+        verify(userRepository, never()).save(any());
     }
 
     // ── updateUserByAdmin ────────────────────────────────────────────────────
