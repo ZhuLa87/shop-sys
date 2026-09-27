@@ -1,10 +1,13 @@
 package com.zzowo.shop_sys.entity;
 
 import jakarta.persistence.*;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 import java.time.LocalDateTime;
 
-@Data
+// 尚未實作: 目前只對應既有 schema, 沒有任何 service 或 API 使用 (出貨功能尚在規劃中)
+@Getter
+@Setter
 @Entity
 @Table(name = "shipments")
 public class Shipment {

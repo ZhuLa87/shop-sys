@@ -81,7 +81,7 @@ Shop-Sys 是一套 **單一廠商 B2C 電商平台 (Single-Vendor B2C E-Commerce
 | JPA DDL 模式 | `update` (自動維護 Schema) |
 | JWT 有效期限 | 86400000 ms (24 小時) |
 | JWT 演算法 | HS512 (HMAC-SHA512) |
-| 預設 Spring Profile | `dev` (於 `application.yaml` 設定) |
+| Spring Profile | 由環境變數 `SPRING_PROFILES_ACTIVE` 指定 (`dev` / `staging` / `prod`), 沒有預設值 |
 
 ### 2.4 專案套件結構
 
@@ -184,7 +184,7 @@ com.zzowo.shop_sys/
 
 ### 2.5 開發環境測試資料
 
-`application.yaml` 預設啟用 `dev` profile,應用程式啟動時 `DataInitializer` 會自動執行.若資料庫已有資料則跳過,確保冪等性 (idempotent) .
+以 `SPRING_PROFILES_ACTIVE=dev` 啟動時 `DataInitializer` 會自動執行.若資料庫已有資料則跳過,確保冪等性 (idempotent) .
 
 #### 預設測試帳號
 
@@ -411,7 +411,7 @@ orders (N) ─────────── (1) coupons        [預留]
 - 所有新注冊帳號預設角色為 `CUSTOMER`,`enabled = true`.
 - 登入成功後更新 `last_login_at`,並回傳 JWT Token (有效 24 小時) .
 - 登入失敗時,無論是帳號不存在或密碼錯誤,統一回傳 `"帳號或密碼錯誤"`,避免使用者枚舉攻擊 (User Enumeration).
-- 登入失敗連續 5 次,帳號鎖定 15 分鐘 (設定驅動,`auto-unlock: true`) .
+- (尚未實作) 登入失敗連續 5 次,帳號鎖定 15 分鐘.
 
 ### 4.2 商品管理
 
@@ -1057,7 +1057,9 @@ Controller 執行業務邏輯
 - 密碼明文**永不儲存**,系統中僅存 Hash 值.
 - 密碼最小長度 8 碼 (由 DTO 驗證層保障) .
 
-### 6.3 帳號鎖定機制
+### 6.3 帳號鎖定機制 (尚未實作)
+
+目前沒有登入失敗計數, 以下為規劃中的設定值.
 
 | 設定 | 值 |
 | :--- | :--- |

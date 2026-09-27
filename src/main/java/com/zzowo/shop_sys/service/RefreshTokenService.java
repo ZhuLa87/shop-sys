@@ -1,8 +1,8 @@
 package com.zzowo.shop_sys.service;
 
+import lombok.RequiredArgsConstructor;
 import com.zzowo.shop_sys.exception.BusinessException;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
@@ -12,6 +12,7 @@ import java.util.UUID;
 
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class RefreshTokenService {
 
     private static final String RT_PREFIX = "refresh_token:"; // token → userId
@@ -20,8 +21,7 @@ public class RefreshTokenService {
     @Value("${jwt.refresh-expiration}")
     private long refreshExpirationMs;
 
-    @Autowired
-    private StringRedisTemplate redisTemplate;
+    private final StringRedisTemplate redisTemplate;
 
     /**
      * 為指定使用者建立新的 Refresh Token.
@@ -52,13 +52,14 @@ public class RefreshTokenService {
      * @throws BusinessException 若 Token 無效或已過期
      */
     public Long validateAndDelete(String token) {
-        String userIdStr = redisTemplate.opsForValue().get(RT_PREFIX + token);
+        // GETDEL 一次完成讀取與刪除: 同一個 token 的併發請求只有一個拿得到值,
+        // 維持 Token Rotation "只能使用一次" 的保證
+        String userIdStr = redisTemplate.opsForValue().getAndDelete(RT_PREFIX + token);
         if (userIdStr == null) {
             throw new BusinessException("無效或已過期的 Refresh Token,請重新登入");
         }
         Long userId = Long.parseLong(userIdStr);
 
-        redisTemplate.delete(RT_PREFIX + token);
         redisTemplate.delete(UR_PREFIX + userId);
 
         return userId;

@@ -1,5 +1,6 @@
 package com.zzowo.shop_sys.service;
 
+import lombok.RequiredArgsConstructor;
 import com.zzowo.shop_sys.config.EcpayConfig;
 import com.zzowo.shop_sys.dto.response.payment.EcpayCheckoutResponse;
 import com.zzowo.shop_sys.entity.Order;
@@ -15,8 +16,6 @@ import com.zzowo.shop_sys.repository.PaymentRepository;
 import com.zzowo.shop_sys.repository.UserRepository;
 import com.zzowo.shop_sys.util.EcpayCheckMacValue;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -41,6 +40,7 @@ import java.util.stream.Collectors;
  */
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class PaymentService {
 
     public static final String PAYMENT_METHOD_ECPAY_CREDIT = "ECPAY_CREDIT";
@@ -62,14 +62,10 @@ public class PaymentService {
     private static final Pattern HTML_TAG = Pattern.compile("<[^>]*>");
     private static final Pattern FORBIDDEN_CHARS = Pattern.compile("[#;|`\\p{Cntrl}]");
 
-    @Autowired
-    private OrderRepository orderRepository;
-    @Autowired
-    private UserRepository userRepository;
-    @Autowired
-    private PaymentRepository paymentRepository;
-    @Autowired
-    private EcpayConfig ecpayConfig;
+    private final OrderRepository orderRepository;
+    private final UserRepository userRepository;
+    private final PaymentRepository paymentRepository;
+    private final EcpayConfig ecpayConfig;
 
     public enum Outcome {
         PAID,              // 訂單已付款 (本次轉為 PAID,或先前已處理過)
@@ -84,15 +80,15 @@ public class PaymentService {
     // 建立綠界付款表單參數,每次呼叫都產生新的 MerchantTradeNo (重新付款不可沿用舊編號)
     @Transactional
     public EcpayCheckoutResponse createEcpayCheckout(String email, Long orderId) {
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new ResourceNotFoundException("使用者不存在"));
+        User user = userRepository.getByEmailOrThrow(email);
 
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new ResourceNotFoundException("訂單不存在"));
 
-        // 付款只能由下單者本人進行 (管理員可以查看,但不代付)
+        // 付款只能由下單者本人進行 (管理員可以查看,但不代付);
+        // 他人的訂單與不存在的訂單回應相同, 避免以 403/404 的差異列舉訂單
         if (!order.getUser().getId().equals(user.getId())) {
-            throw new BusinessException("無權限操作此訂單", HttpStatus.FORBIDDEN);
+            throw new ResourceNotFoundException("訂單不存在");
         }
 
         if (order.getStatus() != OrderStatus.PENDING) {

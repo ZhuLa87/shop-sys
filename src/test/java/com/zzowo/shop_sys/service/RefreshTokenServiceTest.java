@@ -74,18 +74,18 @@ class RefreshTokenServiceTest {
 
     @Test
     void validateAndDelete_validToken_returnsUserIdAndDeletesBothKeys() {
-        when(valueOps.get("refresh_token:valid-token")).thenReturn("42");
+        when(valueOps.getAndDelete("refresh_token:valid-token")).thenReturn("42");
 
         Long userId = refreshTokenService.validateAndDelete("valid-token");
 
         assertThat(userId).isEqualTo(42L);
-        verify(redisTemplate).delete("refresh_token:valid-token");
+        verify(valueOps).getAndDelete("refresh_token:valid-token");
         verify(redisTemplate).delete("user_refresh:42");
     }
 
     @Test
     void validateAndDelete_tokenNotInRedis_throwsBusinessException() {
-        when(valueOps.get("refresh_token:ghost-token")).thenReturn(null);
+        when(valueOps.getAndDelete("refresh_token:ghost-token")).thenReturn(null);
 
         assertThatThrownBy(() -> refreshTokenService.validateAndDelete("ghost-token"))
                 .isInstanceOf(BusinessException.class)

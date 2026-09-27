@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -12,6 +13,7 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -46,6 +48,12 @@ class CartServiceTest {
     @Mock UserRepository userRepository;
     @Mock CartMapper cartMapper;
     @InjectMocks CartService cartService;
+
+    @BeforeEach
+    void callRealGetByEmailOrThrow() {
+        // default method 在 mock 上預設回傳 null, 讓它走真正的實作 (委派給下方各測試 stub 的 findByEmail)
+        lenient().when(userRepository.getByEmailOrThrow(any())).thenCallRealMethod();
+    }
 
     // ── getUserCart ──────────────────────────────────────────────────────────
 
@@ -152,6 +160,39 @@ class CartServiceTest {
         assertThatNoException().isThrownBy(() -> cartService.addToCart(EMAIL, addRequest(10L, 3)));
 
         assertThat(captureSavedCart().getQuantity()).isEqualTo(10);
+    }
+
+    @Test
+    void addToCart_totalAboveMax_throws_andSavesNothing() {
+        User user = buildUser(1L);
+        Product product = buildProduct(10L, 5000);
+        stubUser(user);
+        when(productRepository.findById(10L)).thenReturn(Optional.of(product));
+        when(cartRepository.findByUserIdAndProductId(1L, 10L))
+                .thenReturn(Optional.of(buildCart(5L, user, product, 990)));
+
+        assertThatThrownBy(() -> cartService.addToCart(EMAIL, addRequest(10L, 10)))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("最多只能加入 999 件");
+
+        verify(cartRepository, never()).save(any());
+    }
+
+    @Test
+    void addToCart_quantityOverflow_throws_andSavesNothing() {
+        // 舊版 int 累加會溢位成負數,通過庫存檢查後在結帳時折抵訂單金額
+        User user = buildUser(1L);
+        Product product = buildProduct(10L, Integer.MAX_VALUE);
+        stubUser(user);
+        when(productRepository.findById(10L)).thenReturn(Optional.of(product));
+        when(cartRepository.findByUserIdAndProductId(1L, 10L))
+                .thenReturn(Optional.of(buildCart(5L, user, product, Integer.MAX_VALUE)));
+
+        assertThatThrownBy(() -> cartService.addToCart(EMAIL, addRequest(10L, 1)))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("上限");
+
+        verify(cartRepository, never()).save(any());
     }
 
     @Test

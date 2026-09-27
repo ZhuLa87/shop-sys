@@ -19,6 +19,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.math.BigDecimal;
 import java.util.List;
 
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -35,6 +36,41 @@ class ProductControllerTest {
     @MockitoBean JwtUtil jwtUtil;
     @MockitoBean UserRepository userRepository;
     @MockitoBean TokenBlacklistService tokenBlacklistService;
+
+    // ── GET /v1/products/{id} ────────────────────────────────────────────────
+
+    @Test
+    @WithAnonymousUser
+    void getProduct_anonymous_excludesHiddenProducts() throws Exception {
+        when(productService.getProductById(1L, false)).thenReturn(new ProductResponse());
+
+        mockMvc.perform(get("/v1/products/1"))
+                .andExpect(status().isOk());
+
+        verify(productService).getProductById(1L, false);
+    }
+
+    @Test
+    @WithMockUser(roles = "CUSTOMER")
+    void getProduct_customer_excludesHiddenProducts() throws Exception {
+        when(productService.getProductById(1L, false)).thenReturn(new ProductResponse());
+
+        mockMvc.perform(get("/v1/products/1"))
+                .andExpect(status().isOk());
+
+        verify(productService).getProductById(1L, false);
+    }
+
+    @Test
+    @WithMockUser(roles = "PRODUCT_MANAGER")
+    void getProduct_productManager_includesHiddenProducts() throws Exception {
+        when(productService.getProductById(1L, true)).thenReturn(new ProductResponse());
+
+        mockMvc.perform(get("/v1/products/1"))
+                .andExpect(status().isOk());
+
+        verify(productService).getProductById(1L, true);
+    }
 
     // ── GET /v1/products/deleted ─────────────────────────────────────────────
 

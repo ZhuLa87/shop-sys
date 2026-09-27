@@ -1,13 +1,14 @@
 package com.zzowo.shop_sys.service;
 
+import lombok.RequiredArgsConstructor;
 import com.zzowo.shop_sys.dto.request.order.OrderCreateRequest;
 import com.zzowo.shop_sys.dto.response.order.OrderResponse;
 import com.zzowo.shop_sys.entity.*;
 import com.zzowo.shop_sys.enums.OrderStatus;
+import com.zzowo.shop_sys.enums.InventoryChangeReason;
 import com.zzowo.shop_sys.enums.ProductStatus;
 import com.zzowo.shop_sys.enums.Role;
 import com.zzowo.shop_sys.exception.BusinessException;
-import org.springframework.http.HttpStatus;
 import com.zzowo.shop_sys.exception.ResourceNotFoundException;
 import com.zzowo.shop_sys.mapper.OrderMapper;
 import com.zzowo.shop_sys.repository.CartRepository;
@@ -16,7 +17,6 @@ import com.zzowo.shop_sys.repository.OrderRepository;
 import com.zzowo.shop_sys.repository.ProductRepository;
 import com.zzowo.shop_sys.repository.UserRepository;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,27 +28,21 @@ import java.util.stream.Collectors;
 
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class OrderService {
 
-    @Autowired
-    private OrderRepository orderRepository;
-    @Autowired
-    private CartRepository cartRepository;
-    @Autowired
-    private UserRepository userRepository;
-    @Autowired
-    private ProductRepository productRepository;
-    @Autowired
-    private OrderMapper orderMapper;
-    @Autowired
-    private InventoryLogRepository inventoryLogRepository;
+    private final OrderRepository orderRepository;
+    private final CartRepository cartRepository;
+    private final UserRepository userRepository;
+    private final ProductRepository productRepository;
+    private final OrderMapper orderMapper;
+    private final InventoryLogRepository inventoryLogRepository;
 
     // 建立訂單 (結帳)
     @Transactional
     public OrderResponse createOrder(String email, OrderCreateRequest request) {
         // 確認使用者身分
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new ResourceNotFoundException("使用者不存在"));
+        User user = userRepository.getByEmailOrThrow(email);
 
         // 取得購物車
         List<Cart> cartItems = cartRepository.findByUserId(user.getId());
@@ -87,6 +81,11 @@ public class OrderService {
                 throw new BusinessException("商品 [" + product.getName() + "] 目前" + product.getStatus().getDescription() + ",結帳失敗");
             }
 
+            // 防禦性檢查: 數量非正數時扣庫存會變成加庫存,明細小計也會變成負數
+            if (cart.getQuantity() == null || cart.getQuantity() <= 0) {
+                throw new BusinessException("商品 [" + product.getName() + "] 購買數量異常,請重新確認購物車內容");
+            }
+
             // 快速失敗: 先用已載入的資料擋掉明顯不足的情況,省下一次沒必要的 DB 寫入
             if (product.getStockQuantity() < cart.getQuantity()) {
                 throw new BusinessException("商品 [" + product.getName() + "] 庫存不足,結帳失敗");
@@ -101,7 +100,7 @@ public class OrderService {
             }
 
             // 建立庫存異動紀錄
-            writeInventoryLog(product, -quantityToDeduct, "ORDER", user);
+            writeInventoryLog(product, -quantityToDeduct, InventoryChangeReason.ORDER, user);
 
             // 建立訂單明細 (name/coverImageUrl 為快照,確保商品日後改名或刪除仍可正確顯示)
             OrderItem item = new OrderItem();
@@ -163,7 +162,7 @@ public class OrderService {
             }
 
             // operator 為 null 代表系統自動作業
-            writeInventoryLog(product, item.getQuantity(), "CANCEL", null);
+            writeInventoryLog(product, item.getQuantity(), InventoryChangeReason.CANCEL, null);
         }
 
         log.info("逾時未付款訂單已自動取消,orderId={}", orderId);
@@ -173,8 +172,7 @@ public class OrderService {
     // 查看我的訂單
     @Transactional(readOnly = true)
     public List<OrderResponse> getMyOrders(String email) {
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new ResourceNotFoundException("使用者不存在"));
+        User user = userRepository.getByEmailOrThrow(email);
 
         List<Order> orders = orderRepository.findByUserIdOrderByCreatedAtDesc(user.getId());
         return orders.stream().map(orderMapper::toOrderResponse).collect(Collectors.toList());
@@ -184,22 +182,22 @@ public class OrderService {
     @Transactional(readOnly = true)
     public OrderResponse getOrderById(String email, Long orderId) {
         // 確認使用者身分
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new ResourceNotFoundException("使用者不存在"));
+        User user = userRepository.getByEmailOrThrow(email);
 
         // 取得訂單
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new ResourceNotFoundException("訂單不存在"));
 
+        // 不屬於自己的訂單與不存在的訂單回應相同, 避免以 403/404 的差異列舉訂單
         if (!order.getUser().getId().equals(user.getId()) && user.getRole() != Role.SUPER_ADMIN) {
-             throw new BusinessException("無權限查看此訂單", HttpStatus.FORBIDDEN);
+            throw new ResourceNotFoundException("訂單不存在");
         }
 
         return orderMapper.toOrderResponse(order);
     }
 
     // 寫入庫存異動紀錄 (operator 為 null 代表系統自動作業)
-    private void writeInventoryLog(Product product, int changeAmount, String reason, User operator) {
+    private void writeInventoryLog(Product product, int changeAmount, InventoryChangeReason reason, User operator) {
         InventoryLog inventoryLog = new InventoryLog();
         inventoryLog.setProduct(product);
         inventoryLog.setChangeAmount(changeAmount);

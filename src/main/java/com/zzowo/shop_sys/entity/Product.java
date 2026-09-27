@@ -1,7 +1,8 @@
 package com.zzowo.shop_sys.entity;
 
 import jakarta.persistence.*;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 import org.hibernate.annotations.SQLRestriction;
 
 import java.math.BigDecimal;
@@ -10,7 +11,8 @@ import java.util.List;
 
 import com.zzowo.shop_sys.enums.ProductStatus;
 
-@Data
+@Getter
+@Setter
 @SQLRestriction("deleted_at IS NULL")
 @Entity
 @Table(name = "products")

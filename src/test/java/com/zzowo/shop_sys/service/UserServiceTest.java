@@ -3,10 +3,12 @@ package com.zzowo.shop_sys.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -14,18 +16,11 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.BadCredentialsException;
-import org.springframework.security.authentication.DisabledException;
-import org.springframework.security.authentication.LockedException;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import com.zzowo.shop_sys.dto.request.user.AdminUpdateUserRequest;
-import com.zzowo.shop_sys.dto.request.user.UserLoginRequest;
 import com.zzowo.shop_sys.dto.request.user.UserRegisterRequest;
 import com.zzowo.shop_sys.dto.request.user.UserSelfUpdateRequest;
-import com.zzowo.shop_sys.dto.response.auth.LoginResponse;
 import com.zzowo.shop_sys.dto.response.user.RegisterResponse;
 import com.zzowo.shop_sys.entity.User;
 import com.zzowo.shop_sys.enums.Role;
@@ -33,88 +28,20 @@ import com.zzowo.shop_sys.exception.BusinessException;
 import com.zzowo.shop_sys.exception.ResourceNotFoundException;
 import com.zzowo.shop_sys.mapper.UserMapper;
 import com.zzowo.shop_sys.repository.UserRepository;
-import com.zzowo.shop_sys.util.JwtUtil;
 
 @ExtendWith(MockitoExtension.class)
 class UserServiceTest {
 
     @Mock UserRepository userRepository;
-    @Mock AuthenticationManager authenticationManager;
-    @Mock JwtUtil jwtUtil;
-    @Mock RefreshTokenService refreshTokenService;
     @Mock PasswordEncoder passwordEncoder;
     @Mock UserMapper userMapper;
+    @Mock MinioService minioService;
     @InjectMocks UserService userService;
 
-    @Test
-    void login_validCredentials_returnsTokens() {
-        User user = buildUser(true, true);
-        when(authenticationManager.authenticate(any()))
-                .thenReturn(new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities()));
-        when(jwtUtil.generateToken(user)).thenReturn("access-token");
-        when(jwtUtil.getAccessExpirationSeconds()).thenReturn(1800L);
-        when(refreshTokenService.create(1L)).thenReturn("refresh-token");
-
-        LoginResponse response = userService.login(loginRequest());
-
-        assertThat(response.getAccessToken()).isEqualTo("access-token");
-        assertThat(response.getRefreshToken()).isEqualTo("refresh-token");
-        assertThat(user.getLastLoginAt()).isNotNull();
-        verify(userRepository).save(user);
-    }
-
-    @Test
-    void login_wrongPassword_throws401() {
-        when(authenticationManager.authenticate(any())).thenThrow(new BadCredentialsException("bad"));
-
-        assertThatThrownBy(() -> userService.login(loginRequest()))
-                .isInstanceOf(BusinessException.class)
-                .hasMessage("帳號或密碼錯誤")
-                .extracting(e -> ((BusinessException) e).getStatus())
-                .isEqualTo(HttpStatus.UNAUTHORIZED);
-
-        verify(refreshTokenService, never()).create(any());
-    }
-
-    @Test
-    void login_disabledAccount_throws423() {
-        when(authenticationManager.authenticate(any())).thenThrow(new DisabledException("disabled"));
-
-        assertThatThrownBy(() -> userService.login(loginRequest()))
-                .isInstanceOf(BusinessException.class)
-                .extracting(e -> ((BusinessException) e).getStatus())
-                .isEqualTo(HttpStatus.LOCKED);
-    }
-
-    @Test
-    void login_lockedAccount_throws423() {
-        when(authenticationManager.authenticate(any())).thenThrow(new LockedException("locked"));
-
-        assertThatThrownBy(() -> userService.login(loginRequest()))
-                .isInstanceOf(BusinessException.class)
-                .extracting(e -> ((BusinessException) e).getStatus())
-                .isEqualTo(HttpStatus.LOCKED);
-    }
-
-    @Test
-    void assertAccountActive_disabledUser_throws423() {
-        assertThatThrownBy(() -> userService.assertAccountActive(buildUser(false, true)))
-                .isInstanceOf(BusinessException.class)
-                .extracting(e -> ((BusinessException) e).getStatus())
-                .isEqualTo(HttpStatus.LOCKED);
-    }
-
-    @Test
-    void assertAccountActive_lockedUser_throws423() {
-        assertThatThrownBy(() -> userService.assertAccountActive(buildUser(true, false)))
-                .isInstanceOf(BusinessException.class)
-                .extracting(e -> ((BusinessException) e).getStatus())
-                .isEqualTo(HttpStatus.LOCKED);
-    }
-
-    @Test
-    void assertAccountActive_activeUser_passes() {
-        userService.assertAccountActive(buildUser(true, true));
+    @BeforeEach
+    void callRealGetByEmailOrThrow() {
+        // default method 在 mock 上預設回傳 null, 讓它走真正的實作 (委派給下方各測試 stub 的 findByEmail)
+        lenient().when(userRepository.getByEmailOrThrow(any())).thenCallRealMethod();
     }
 
     // ── register ─────────────────────────────────────────────────────────────
@@ -217,6 +144,37 @@ class UserServiceTest {
                 .isInstanceOf(ResourceNotFoundException.class);
     }
 
+    @Test
+    void updateMyInfo_avatarUnderOwnDirectory_isSaved() {
+        User user = buildUser(true, true);
+        String url = "http://cdn.test/bucket/avatars/1/0123456789abcdef0123456789abcdef.png";
+        when(userRepository.findByEmail("user@test.com")).thenReturn(java.util.Optional.of(user));
+        when(minioService.isUploadedObjectUrl(url, "avatars/1/")).thenReturn(true);
+        UserSelfUpdateRequest request = new UserSelfUpdateRequest();
+        request.setAvatarUrl(url);
+
+        userService.updateMyInfo("user@test.com", request);
+
+        assertThat(user.getAvatarUrl()).isEqualTo(url);
+        verify(userRepository).save(user);
+    }
+
+    @Test
+    void updateMyInfo_externalAvatarUrl_throws_andSavesNothing() {
+        User user = buildUser(true, true);
+        String url = "https://tracker.example.com/pixel.png";
+        when(userRepository.findByEmail("user@test.com")).thenReturn(java.util.Optional.of(user));
+        when(minioService.isUploadedObjectUrl(url, "avatars/1/")).thenReturn(false);
+        UserSelfUpdateRequest request = new UserSelfUpdateRequest();
+        request.setAvatarUrl(url);
+
+        assertThatThrownBy(() -> userService.updateMyInfo("user@test.com", request))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("頭像");
+
+        verify(userRepository, never()).save(any());
+    }
+
     // ── updateUserByAdmin ────────────────────────────────────────────────────
 
     @Test
@@ -226,7 +184,7 @@ class UserServiceTest {
         stubOperator();
 
         AdminUpdateUserRequest request = new AdminUpdateUserRequest();
-        request.setRole("PRODUCT_MANAGER");
+        request.setRole(Role.PRODUCT_MANAGER);
         request.setEnabled(false);
         userService.updateUserByAdmin(OPERATOR_EMAIL, 1L, request);
 
@@ -289,7 +247,7 @@ class UserServiceTest {
         when(userRepository.findByEmail("user@test.com")).thenReturn(java.util.Optional.of(self));
 
         AdminUpdateUserRequest request = new AdminUpdateUserRequest();
-        request.setRole("PRODUCT_MANAGER");
+        request.setRole(Role.PRODUCT_MANAGER);
 
         assertThatThrownBy(() -> userService.updateUserByAdmin("user@test.com", 1L, request))
                 .isInstanceOf(BusinessException.class)
@@ -308,7 +266,7 @@ class UserServiceTest {
         when(userRepository.findByEmail("user@test.com")).thenReturn(java.util.Optional.of(self));
 
         AdminUpdateUserRequest request = new AdminUpdateUserRequest();
-        request.setRole("SUPER_ADMIN");
+        request.setRole(Role.SUPER_ADMIN);
         request.setName("改個名字");
 
         userService.updateUserByAdmin("user@test.com", 1L, request);
@@ -344,7 +302,7 @@ class UserServiceTest {
         when(userRepository.countByRoleAndEnabledIsTrueAndIdNot(Role.SUPER_ADMIN, 1L)).thenReturn(0L);
 
         AdminUpdateUserRequest request = new AdminUpdateUserRequest();
-        request.setRole("CUSTOMER");
+        request.setRole(Role.CUSTOMER);
 
         assertThatThrownBy(() -> userService.updateUserByAdmin(OPERATOR_EMAIL, 1L, request))
                 .isInstanceOf(BusinessException.class)
@@ -419,12 +377,5 @@ class UserServiceTest {
         user.setEnabled(enabled);
         user.setAccountNonLocked(accountNonLocked);
         return user;
-    }
-
-    private UserLoginRequest loginRequest() {
-        UserLoginRequest request = new UserLoginRequest();
-        request.setEmail("user@test.com");
-        request.setPassword("password123");
-        return request;
     }
 }

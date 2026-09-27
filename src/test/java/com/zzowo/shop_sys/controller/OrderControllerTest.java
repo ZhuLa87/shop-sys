@@ -16,7 +16,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.Import;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithAnonymousUser;
 import org.springframework.security.test.context.support.WithMockUser;
@@ -117,6 +116,20 @@ class OrderControllerTest {
                 .andExpect(jsonPath("$.message").value("商品 [熱門商品] 庫存不足,結帳失敗"));
     }
 
+    @Test
+    @WithMockUser(roles = "CUSTOMER")
+    void createOrder_addressTooLong_returns422() throws Exception {
+        OrderCreateRequest request = createRequest();
+        request.setRecipientAddress("地".repeat(256));
+
+        mockMvc.perform(post("/v1/orders")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isUnprocessableEntity());
+
+        verify(orderService, never()).createOrder(any(), any());
+    }
+
     // ── GET /v1/orders ───────────────────────────────────────────────────────
 
     @Test
@@ -153,17 +166,6 @@ class OrderControllerTest {
 
     @Test
     @WithMockUser(roles = "CUSTOMER")
-    void getOrder_otherUsersOrder_returns403() throws Exception {
-        when(orderService.getOrderById(any(), any()))
-                .thenThrow(new BusinessException("無權限查看此訂單", HttpStatus.FORBIDDEN));
-
-        mockMvc.perform(get("/v1/orders/50"))
-                .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.message").value("無權限查看此訂單"));
-    }
-
-    @Test
-    @WithMockUser(roles = "CUSTOMER")
     void getOrder_notFound_returns404() throws Exception {
         when(orderService.getOrderById(any(), any()))
                 .thenThrow(new ResourceNotFoundException("訂單不存在"));
@@ -187,5 +189,37 @@ class OrderControllerTest {
         request.setRecipientPhone("0912345678");
         request.setRecipientAddress("台北市中正區忠孝東路一段 1 號");
         return request;
+    }
+
+    // ── Spring MVC 標準例外不再變成 500 ────────────────────────────────────────
+
+    @Test
+    @WithMockUser(roles = "CUSTOMER")
+    void getOrder_nonNumericId_returns400() throws Exception {
+        mockMvc.perform(get("/v1/orders/abc"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.message").value("參數格式錯誤: id"));
+    }
+
+    @Test
+    @WithMockUser(roles = "CUSTOMER")
+    void unknownPath_returns404() throws Exception {
+        mockMvc.perform(get("/v1/orders/1/unknown"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.success").value(false));
+    }
+
+    @Test
+    @WithMockUser(roles = "CUSTOMER")
+    void createOrder_dataIntegrityViolation_returns409() throws Exception {
+        when(orderService.createOrder(any(), any()))
+                .thenThrow(new org.springframework.dao.DataIntegrityViolationException("duplicate key"));
+
+        mockMvc.perform(post("/v1/orders")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(createRequest())))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.success").value(false));
     }
 }

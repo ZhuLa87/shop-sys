@@ -39,7 +39,7 @@ class ProductRepositoryTest {
         em.persistAndFlush(buildProduct("上架B", ProductStatus.ON_SHELF));
         em.persistAndFlush(buildProduct("下架C", ProductStatus.OFF_SHELF));
 
-        List<Product> result = productRepository.findByStatus(ProductStatus.ON_SHELF);
+        List<Product> result = productRepository.findByStatus(ProductStatus.ON_SHELF, PageRequest.of(0, 10)).getContent();
 
         assertThat(result).hasSize(2)
                 .extracting("name")
@@ -234,6 +234,19 @@ class ProductRepositoryTest {
         em.clear();
 
         int updated = productRepository.deductStock(p.getId(), 3);
+
+        em.clear();
+        assertThat(updated).isZero();
+        assertThat(productRepository.findById(p.getId()).orElseThrow().getStockQuantity()).isEqualTo(2);
+    }
+
+    @Test
+    void deductStock_negativeQuantity_returns0_andDoesNotIncreaseStock() {
+        Product p = buildProduct("負數扣減", ProductStatus.ON_SHELF, 2);
+        em.persistAndFlush(p);
+        em.clear();
+
+        int updated = productRepository.deductStock(p.getId(), -5);
 
         em.clear();
         assertThat(updated).isZero();

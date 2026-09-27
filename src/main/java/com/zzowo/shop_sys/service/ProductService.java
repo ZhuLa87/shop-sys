@@ -1,5 +1,6 @@
 package com.zzowo.shop_sys.service;
 
+import lombok.RequiredArgsConstructor;
 import com.zzowo.shop_sys.dto.request.product.ProductRequest;
 import com.zzowo.shop_sys.dto.response.PageResponse;
 import com.zzowo.shop_sys.dto.response.product.InventoryLogResponse;
@@ -7,6 +8,7 @@ import com.zzowo.shop_sys.dto.response.product.ProductResponse;
 import com.zzowo.shop_sys.entity.InventoryLog;
 import com.zzowo.shop_sys.entity.Product;
 import com.zzowo.shop_sys.entity.User;
+import com.zzowo.shop_sys.enums.InventoryChangeReason;
 import com.zzowo.shop_sys.enums.ProductStatus;
 import com.zzowo.shop_sys.exception.BusinessException;
 import com.zzowo.shop_sys.exception.ResourceNotFoundException;
@@ -15,7 +17,6 @@ import com.zzowo.shop_sys.mapper.ProductMapper;
 import com.zzowo.shop_sys.repository.InventoryLogRepository;
 import com.zzowo.shop_sys.repository.ProductRepository;
 import com.zzowo.shop_sys.repository.UserRepository;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -28,6 +29,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
+@RequiredArgsConstructor
 public class ProductService {
 
     private static final Set<String> ALLOWED_SORT_FIELDS = Set.of("name", "price", "createdAt");
@@ -35,20 +37,15 @@ public class ProductService {
     // 前台列表可見的商品狀態 (已下架不顯示,缺貨中仍顯示)
     static final List<ProductStatus> STOREFRONT_STATUSES = List.of(ProductStatus.ON_SHELF, ProductStatus.OUT_OF_STOCK);
 
-    @Autowired
-    private ProductRepository productRepository;
+    private final ProductRepository productRepository;
 
-    @Autowired
-    private ProductMapper productMapper;
+    private final ProductMapper productMapper;
 
-    @Autowired
-    private InventoryLogRepository inventoryLogRepository;
+    private final InventoryLogRepository inventoryLogRepository;
 
-    @Autowired
-    private InventoryLogMapper inventoryLogMapper;
+    private final InventoryLogMapper inventoryLogMapper;
 
-    @Autowired
-    private UserRepository userRepository;
+    private final UserRepository userRepository;
 
     // 新增商品
     @Transactional
@@ -62,7 +59,7 @@ public class ProductService {
         // 初始庫存視為一次進貨,讓 inventory_logs 的變動加總等於目前庫存
         Integer initialStock = savedProduct.getStockQuantity();
         if (initialStock != null && initialStock > 0) {
-            writeInventoryLog(savedProduct, initialStock, "RESTOCK", operator(email));
+            writeInventoryLog(savedProduct, initialStock, InventoryChangeReason.RESTOCK, operator(email));
         }
 
         return productMapper.toDetailResponse(savedProduct);
@@ -75,6 +72,7 @@ public class ProductService {
                 .orElseThrow(() -> new ResourceNotFoundException("找不到商品 ID: " + id));
 
         // 表單會整包覆寫庫存,先記下舊值才算得出差額
+        // 已知限制: 表單打開後才發生的結帳扣減會被舊值蓋掉 (見 ProductRepository.deductStock 的說明)
         int oldStock = product.getStockQuantity() == null ? 0 : product.getStockQuantity();
 
         productMapper.updateEntityFromRequest(product, request);
@@ -84,7 +82,7 @@ public class ProductService {
         // 只改名稱/描述時不產生雜訊紀錄
         int delta = savedProduct.getStockQuantity() - oldStock;
         if (delta != 0) {
-            writeInventoryLog(savedProduct, delta, "ADJUSTMENT", operator(email));
+            writeInventoryLog(savedProduct, delta, InventoryChangeReason.ADJUSTMENT, operator(email));
         }
 
         return productMapper.toDetailResponse(savedProduct);
@@ -101,15 +99,7 @@ public class ProductService {
 
     // 取得前台商品列表 (上架中 + 缺貨中,分頁 + 關鍵字搜尋)
     public PageResponse<ProductResponse> getStorefrontProducts(Pageable pageable, String keyword) {
-        pageable.getSort().forEach(order -> {
-            if (!ALLOWED_SORT_FIELDS.contains(order.getProperty())) {
-                throw new BusinessException("不支援的排序欄位: " + order.getProperty() + ",允許欄位: name, price, createdAt");
-            }
-        });
-
-        if (pageable.getPageSize() > MAX_PAGE_SIZE) {
-            pageable = PageRequest.of(pageable.getPageNumber(), MAX_PAGE_SIZE, pageable.getSort());
-        }
+        pageable = sanitizePageable(pageable);
 
         Page<Product> productPage;
         if (keyword != null && !keyword.isBlank()) {
@@ -123,8 +113,11 @@ public class ProductService {
     }
 
     // 取得單一商品詳情
-    public ProductResponse getProductById(Long id) {
+    // 前台只能看到上架中/缺貨中的商品, 已下架的回 404 (與不存在無法區分, 避免列舉未發布商品);
+    // 後台編輯商品時共用此端點, 由 includeHidden 放行
+    public ProductResponse getProductById(Long id, boolean includeHidden) {
         Product product = productRepository.findByIdWithImages(id)
+                .filter(p -> includeHidden || STOREFRONT_STATUSES.contains(p.getStatus()))
                 .orElseThrow(() -> new ResourceNotFoundException("商品不存在"));
 
         return productMapper.toDetailResponse(product);
@@ -132,7 +125,7 @@ public class ProductService {
 
     // 查詢特定商品的庫存紀錄
     public List<InventoryLogResponse> getProductInventoryLogs(Long productId) {
-        // 確認商品存在 (這行是為了防呆,若商品不存在 repository 通常會回傳空 list 或報錯,視需求而定)
+        // 商品不存在時回 404, 而不是回傳空的紀錄清單
         if (!productRepository.existsById(productId)) {
             throw new ResourceNotFoundException("找不到商品 ID: " + productId);
         }
@@ -147,15 +140,7 @@ public class ProductService {
 
     // 管理員查詢所有商品 (分頁 + 關鍵字 + 狀態篩選)
     public PageResponse<ProductResponse> getAdminProducts(Pageable pageable, String keyword, ProductStatus status) {
-        pageable.getSort().forEach(order -> {
-            if (!ALLOWED_SORT_FIELDS.contains(order.getProperty())) {
-                throw new BusinessException("不支援的排序欄位: " + order.getProperty() + ",允許欄位: name, price, createdAt");
-            }
-        });
-
-        if (pageable.getPageSize() > MAX_PAGE_SIZE) {
-            pageable = PageRequest.of(pageable.getPageNumber(), MAX_PAGE_SIZE, pageable.getSort());
-        }
+        pageable = sanitizePageable(pageable);
 
         boolean hasKeyword = keyword != null && !keyword.isBlank();
         Page<Product> productPage;
@@ -196,6 +181,20 @@ public class ProductService {
                 .collect(Collectors.toList());
     }
 
+    // 排序欄位只允許白名單, 每頁筆數超過上限時改為上限
+    private Pageable sanitizePageable(Pageable pageable) {
+        pageable.getSort().forEach(order -> {
+            if (!ALLOWED_SORT_FIELDS.contains(order.getProperty())) {
+                throw new BusinessException("不支援的排序欄位: " + order.getProperty() + ",允許欄位: name, price, createdAt");
+            }
+        });
+
+        if (pageable.getPageSize() > MAX_PAGE_SIZE) {
+            return PageRequest.of(pageable.getPageNumber(), MAX_PAGE_SIZE, pageable.getSort());
+        }
+        return pageable;
+    }
+
     // 取得操作者供庫存紀錄快照使用;找不到使用者時回 null (紀錄仍要留,只是沒有操作者)
     private User operator(String email) {
         if (email == null) {
@@ -205,7 +204,7 @@ public class ProductService {
     }
 
     // 寫入庫存異動紀錄 (欄位與 OrderService 結帳扣庫存時一致)
-    private void writeInventoryLog(Product product, int changeAmount, String reason, User operator) {
+    private void writeInventoryLog(Product product, int changeAmount, InventoryChangeReason reason, User operator) {
         InventoryLog log = new InventoryLog();
         log.setProduct(product);
         log.setChangeAmount(changeAmount);

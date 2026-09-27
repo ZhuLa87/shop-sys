@@ -5,6 +5,7 @@ import com.zzowo.shop_sys.dto.response.product.ProductResponse;
 import com.zzowo.shop_sys.entity.InventoryLog;
 import com.zzowo.shop_sys.entity.Product;
 import com.zzowo.shop_sys.entity.User;
+import com.zzowo.shop_sys.enums.InventoryChangeReason;
 import com.zzowo.shop_sys.enums.ProductStatus;
 import com.zzowo.shop_sys.enums.Role;
 import com.zzowo.shop_sys.exception.BusinessException;
@@ -14,6 +15,7 @@ import com.zzowo.shop_sys.mapper.ProductMapper;
 import com.zzowo.shop_sys.repository.InventoryLogRepository;
 import com.zzowo.shop_sys.repository.ProductRepository;
 import com.zzowo.shop_sys.repository.UserRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -48,6 +50,12 @@ class ProductServiceTest {
     @Mock UserRepository userRepository;
     @InjectMocks ProductService productService;
 
+    @BeforeEach
+    void callRealGetByEmailOrThrow() {
+        // default method 在 mock 上預設回傳 null, 讓它走真正的實作 (委派給下方各測試 stub 的 findByEmail)
+        lenient().when(userRepository.getByEmailOrThrow(any())).thenCallRealMethod();
+    }
+
     // ── createProduct (庫存紀錄) ──────────────────────────────────────────────
 
     @Test
@@ -60,7 +68,7 @@ class ProductServiceTest {
 
         InventoryLog log = captureSavedLog();
         assertThat(log.getChangeAmount()).isEqualTo(50);
-        assertThat(log.getReason()).isEqualTo("RESTOCK");
+        assertThat(log.getReason()).isEqualTo(InventoryChangeReason.RESTOCK);
         assertThat(log.getOperatorId()).isEqualTo(3L);
         assertThat(log.getOperatorName()).isEqualTo(OPERATOR_NAME);
         assertThat(log.getOperatorRole()).isEqualTo(Role.PRODUCT_MANAGER);
@@ -89,7 +97,7 @@ class ProductServiceTest {
 
         InventoryLog log = captureSavedLog();
         assertThat(log.getChangeAmount()).isEqualTo(15);
-        assertThat(log.getReason()).isEqualTo("ADJUSTMENT");
+        assertThat(log.getReason()).isEqualTo(InventoryChangeReason.ADJUSTMENT);
         assertThat(log.getOperatorId()).isEqualTo(3L);
         assertThat(log.getOperatorName()).isEqualTo(OPERATOR_NAME);
         assertThat(log.getOperatorRole()).isEqualTo(Role.PRODUCT_MANAGER);
@@ -229,6 +237,38 @@ class ProductServiceTest {
                 .isInstanceOf(ResourceNotFoundException.class)
                 .hasMessageContaining("99");
         verify(productRepository, never()).save(any());
+    }
+
+    // ── getProductById ───────────────────────────────────────────────────────
+
+    @Test
+    void getProductById_offShelf_storefront_throwsNotFound() {
+        Product product = buildProduct();
+        product.setStatus(ProductStatus.OFF_SHELF);
+        when(productRepository.findByIdWithImages(1L)).thenReturn(Optional.of(product));
+
+        assertThatThrownBy(() -> productService.getProductById(1L, false))
+                .isInstanceOf(ResourceNotFoundException.class);
+    }
+
+    @Test
+    void getProductById_offShelf_includeHidden_returnsProduct() {
+        Product product = buildProduct();
+        product.setStatus(ProductStatus.OFF_SHELF);
+        when(productRepository.findByIdWithImages(1L)).thenReturn(Optional.of(product));
+        when(productMapper.toDetailResponse(product)).thenReturn(new ProductResponse());
+
+        assertThat(productService.getProductById(1L, true)).isNotNull();
+    }
+
+    @Test
+    void getProductById_outOfStock_storefront_returnsProduct() {
+        Product product = buildProduct();
+        product.setStatus(ProductStatus.OUT_OF_STOCK);
+        when(productRepository.findByIdWithImages(1L)).thenReturn(Optional.of(product));
+        when(productMapper.toDetailResponse(product)).thenReturn(new ProductResponse());
+
+        assertThat(productService.getProductById(1L, false)).isNotNull();
     }
 
     // ── getStorefrontProducts ────────────────────────────────────────────────
