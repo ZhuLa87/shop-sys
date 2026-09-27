@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.Map;
 import java.util.UUID;
+import java.util.regex.Pattern;
 import java.util.concurrent.TimeUnit;
 
 @Slf4j
@@ -32,6 +33,10 @@ public class MinioService {
             "image/webp", "webp",
             "image/gif", "gif");
 
+    // buildObjectKey 產生的檔名: 32 位小寫 hex (去掉連字號的 UUID) + 白名單副檔名
+    private static final Pattern UPLOADED_FILENAME = Pattern.compile(
+            "[0-9a-f]{32}\\.(" + String.join("|", EXTENSIONS.values()) + ")");
+
     public PresignResponse generatePresignedUrl(PresignRequest request) {
         String contentType = request.getContentType();
         String ext = EXTENSIONS.get(contentType);
@@ -44,9 +49,13 @@ public class MinioService {
         return new PresignResponse(uploadUrl, publicUrl, objectKey);
     }
 
-    // 判斷 URL 是否為本系統 bucket 內指定路徑下的物件 (避免使用者把任意外部 URL 存成頭像)
-    public boolean isPublicUrlUnder(String url, String keyPrefix) {
-        return url != null && url.startsWith(buildPublicUrl(keyPrefix));
+    // 判斷 URL 是否為透過 presign 上傳到指定目錄下的物件 (避免使用者把任意 URL 存成頭像).
+    // 只比對前綴不夠: "avatars/7/../8/x.png" 會被瀏覽器正規化成別的路徑, 甚至跳出 bucket,
+    // 所以前綴之後必須完全符合 buildObjectKey 產生的檔名格式, 不允許子目錄, "..", query 或 fragment
+    public boolean isUploadedObjectUrl(String url, String keyPrefix) {
+        String prefix = buildPublicUrl(keyPrefix);
+        return url != null && url.startsWith(prefix)
+                && UPLOADED_FILENAME.matcher(url.substring(prefix.length())).matches();
     }
 
     public String buildPublicUrl(String objectKey) {
