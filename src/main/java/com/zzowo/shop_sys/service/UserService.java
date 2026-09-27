@@ -82,7 +82,7 @@ public class UserService {
         if (StringUtils.hasText(request.getPhone())) user.setPhone(request.getPhone());
         if (StringUtils.hasText(request.getAvatarUrl())) {
             // 只接受透過 /upload/presign 上傳到自己頭像目錄的檔案
-            if (!minioService.isPublicUrlUnder(request.getAvatarUrl(), "avatars/" + user.getId() + "/")) {
+            if (!minioService.isUploadedObjectUrl(request.getAvatarUrl(), "avatars/" + user.getId() + "/")) {
                 throw new BusinessException("頭像 URL 不合法,請重新上傳");
             }
             user.setAvatarUrl(request.getAvatarUrl());

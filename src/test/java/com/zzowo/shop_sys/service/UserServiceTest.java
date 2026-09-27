@@ -147,9 +147,9 @@ class UserServiceTest {
     @Test
     void updateMyInfo_avatarUnderOwnDirectory_isSaved() {
         User user = buildUser(true, true);
-        String url = "http://cdn.test/bucket/avatars/1/abc.png";
+        String url = "http://cdn.test/bucket/avatars/1/0123456789abcdef0123456789abcdef.png";
         when(userRepository.findByEmail("user@test.com")).thenReturn(java.util.Optional.of(user));
-        when(minioService.isPublicUrlUnder(url, "avatars/1/")).thenReturn(true);
+        when(minioService.isUploadedObjectUrl(url, "avatars/1/")).thenReturn(true);
         UserSelfUpdateRequest request = new UserSelfUpdateRequest();
         request.setAvatarUrl(url);
 
@@ -164,7 +164,7 @@ class UserServiceTest {
         User user = buildUser(true, true);
         String url = "https://tracker.example.com/pixel.png";
         when(userRepository.findByEmail("user@test.com")).thenReturn(java.util.Optional.of(user));
-        when(minioService.isPublicUrlUnder(url, "avatars/1/")).thenReturn(false);
+        when(minioService.isUploadedObjectUrl(url, "avatars/1/")).thenReturn(false);
         UserSelfUpdateRequest request = new UserSelfUpdateRequest();
         request.setAvatarUrl(url);
 

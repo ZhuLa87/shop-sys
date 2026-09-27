@@ -10,6 +10,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import com.zzowo.shop_sys.config.MinioConfig;
 import com.zzowo.shop_sys.dto.request.upload.PresignRequest;
@@ -52,11 +53,32 @@ class MinioServiceTest {
     }
 
     @Test
-    void isPublicUrlUnder_matchesOnlyOwnBucketPrefix() {
-        assertThat(minioService.isPublicUrlUnder("http://cdn.test/shop-sys-public/avatars/7/a.png", "avatars/7/")).isTrue();
-        assertThat(minioService.isPublicUrlUnder("http://cdn.test/shop-sys-public/avatars/8/a.png", "avatars/7/")).isFalse();
-        assertThat(minioService.isPublicUrlUnder("https://evil.test/shop-sys-public/avatars/7/a.png", "avatars/7/")).isFalse();
-        assertThat(minioService.isPublicUrlUnder(null, "avatars/7/")).isFalse();
+    void isUploadedObjectUrl_acceptsUrlProducedByPresign() {
+        PresignResponse res = minioService.generatePresignedUrl(request("avatar", 7L, "a.png", "image/png"));
+
+        assertThat(minioService.isUploadedObjectUrl(res.getPublicUrl(), "avatars/7/")).isTrue();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "http://cdn.test/shop-sys-public/avatars/8/0123456789abcdef0123456789abcdef.png",         // 別人的目錄
+            "https://evil.test/shop-sys-public/avatars/7/0123456789abcdef0123456789abcdef.png",       // 別的主機
+            "http://cdn.test/shop-sys-public/avatars/7/../8/0123456789abcdef0123456789abcdef.png",    // 路徑穿越到別人
+            "http://cdn.test/shop-sys-public/avatars/7/../../../other-bucket/0123456789abcdef0123456789abcdef.png", // 跳出 bucket
+            "http://cdn.test/shop-sys-public/avatars/7/%2e%2e/8/0123456789abcdef0123456789abcdef.png", // 編碼過的 ..
+            "http://cdn.test/shop-sys-public/avatars/7/sub/0123456789abcdef0123456789abcdef.png",     // 子目錄
+            "http://cdn.test/shop-sys-public/avatars/7/0123456789abcdef0123456789abcdef.html",        // 非白名單副檔名
+            "http://cdn.test/shop-sys-public/avatars/7/0123456789abcdef0123456789abcdef.png?x=1",     // query
+            "http://cdn.test/shop-sys-public/avatars/7/0123456789abcdef0123456789abcdef.png#x",       // fragment
+            "http://cdn.test/shop-sys-public/avatars/7/a.png"                                         // 非 presign 產生的檔名
+    })
+    void isUploadedObjectUrl_rejectsAnythingElse(String url) {
+        assertThat(minioService.isUploadedObjectUrl(url, "avatars/7/")).isFalse();
+    }
+
+    @Test
+    void isUploadedObjectUrl_null_returnsFalse() {
+        assertThat(minioService.isUploadedObjectUrl(null, "avatars/7/")).isFalse();
     }
 
     @Test
