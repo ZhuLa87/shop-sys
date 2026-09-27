@@ -1,10 +1,10 @@
 package com.zzowo.shop_sys.scheduler;
 
+import lombok.RequiredArgsConstructor;
 import com.zzowo.shop_sys.enums.OrderStatus;
 import com.zzowo.shop_sys.repository.OrderRepository;
 import com.zzowo.shop_sys.service.OrderService;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.data.domain.PageRequest;
@@ -19,16 +19,15 @@ import java.util.List;
 @Slf4j
 @Component
 @ConditionalOnProperty(name = "app.order.expiration.enabled", havingValue = "true", matchIfMissing = true)
+@RequiredArgsConstructor
 public class OrderExpirationScheduler {
 
     // 單次排程最多處理的訂單數,避免累積過多時一次撈爆記憶體
     private static final int BATCH_SIZE = 200;
 
-    @Autowired
-    private OrderRepository orderRepository;
+    private final OrderRepository orderRepository;
 
-    @Autowired
-    private OrderService orderService;
+    private final OrderService orderService;
 
     @Value("${app.order.expiration.timeout-minutes}")
     private int timeoutMinutes;

@@ -1,16 +1,19 @@
 package com.zzowo.shop_sys.controller;
 
+import lombok.RequiredArgsConstructor;
 import java.util.List;
-import org.springframework.beans.factory.annotation.Autowired;
+import java.util.Set;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import com.zzowo.shop_sys.dto.request.product.ProductRequest;
 import com.zzowo.shop_sys.enums.ProductStatus;
+import com.zzowo.shop_sys.enums.Role;
 import com.zzowo.shop_sys.dto.response.ApiResponse;
 import com.zzowo.shop_sys.dto.response.PageResponse;
 import com.zzowo.shop_sys.dto.response.product.InventoryLogResponse;
@@ -25,10 +28,13 @@ import jakarta.validation.Valid;
 @Tag(name = "Product", description = "商品管理 API")
 @RestController
 @RequestMapping("/v1/products")
+@RequiredArgsConstructor
 public class ProductController {
 
-    @Autowired
-    private ProductService productService;
+    private static final Set<String> PRODUCT_ADMIN_AUTHORITIES = Set.of(
+            Role.PRODUCT_MANAGER.getAuthority(), Role.SUPER_ADMIN.getAuthority());
+
+    private final ProductService productService;
 
     @Operation(
         summary = "取得前台商品列表",
@@ -36,7 +42,6 @@ public class ProductController {
                       "支援分頁,關鍵字搜尋 (商品名稱) 與排序.排序欄位:name,price,createdAt (預設 createdAt,desc) "
     )
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
-    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "未登入")
     @GetMapping
     public ResponseEntity<ApiResponse<PageResponse<ProductResponse>>> getProducts(
             @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable,
@@ -45,14 +50,16 @@ public class ProductController {
         return ResponseEntity.ok(ApiResponse.success("取得商品列表成功", products));
     }
 
-    @Operation(summary = "取得單一商品詳情", description = "依商品 ID 取得詳細資訊,僅限上架商品")
+    @Operation(summary = "取得單一商品詳情",
+        description = "依商品 ID 取得詳細資訊.一般使用者只能取得上架中或缺貨中的商品;" +
+                      "PRODUCT_MANAGER 與 SUPER_ADMIN 可取得任何狀態 (後台編輯用) ")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
-    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "未登入")
-    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "商品不存在")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "商品不存在或已下架")
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<ProductResponse>> getProduct(
-            @Parameter(description = "商品 ID") @PathVariable Long id) {
-        ProductResponse product = productService.getProductById(id);
+            @Parameter(description = "商品 ID") @PathVariable Long id,
+            @Parameter(hidden = true) Authentication authentication) {
+        ProductResponse product = productService.getProductById(id, canManageProducts(authentication));
         return ResponseEntity.ok(ApiResponse.success("取得商品詳情成功", product));
     }
 
@@ -147,5 +154,11 @@ public class ProductController {
             @Parameter(description = "商品 ID") @PathVariable Long id) {
         List<InventoryLogResponse> logs = productService.getProductInventoryLogs(id);
         return ResponseEntity.ok(ApiResponse.success("取得庫存紀錄成功", logs));
+    }
+
+    // 匿名請求時 authentication 為 null
+    private static boolean canManageProducts(Authentication authentication) {
+        return authentication != null && authentication.getAuthorities().stream()
+                .anyMatch(a -> PRODUCT_ADMIN_AUTHORITIES.contains(a.getAuthority()));
     }
 }

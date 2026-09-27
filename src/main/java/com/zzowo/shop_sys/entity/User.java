@@ -1,7 +1,8 @@
 package com.zzowo.shop_sys.entity;
 
 import jakarta.persistence.*;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 import org.hibernate.annotations.SQLRestriction;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -14,7 +15,8 @@ import java.util.Collection;
 import java.util.List;
 
 @SQLRestriction("deleted_at IS NULL")
-@Data
+@Getter
+@Setter
 @Entity
 @Table(name = "users")
 public class User implements UserDetails {
@@ -107,8 +109,7 @@ public class User implements UserDetails {
     // 傳回使用者擁有的權限 (Authorities) 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        // Spring Security 規定角色格式要是 "ROLE_XXX"
-        return List.of(new SimpleGrantedAuthority("ROLE_" + role.name()));
+        return List.of(new SimpleGrantedAuthority(role.getAuthority()));
     }
 
     // 回傳使用者密碼

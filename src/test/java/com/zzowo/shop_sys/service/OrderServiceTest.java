@@ -7,6 +7,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -17,6 +18,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -25,7 +27,6 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.http.HttpStatus;
 
 import com.zzowo.shop_sys.dto.request.order.OrderCreateRequest;
 import com.zzowo.shop_sys.dto.response.order.OrderResponse;
@@ -35,6 +36,7 @@ import com.zzowo.shop_sys.entity.Order;
 import com.zzowo.shop_sys.entity.OrderItem;
 import com.zzowo.shop_sys.entity.Product;
 import com.zzowo.shop_sys.entity.User;
+import com.zzowo.shop_sys.enums.InventoryChangeReason;
 import com.zzowo.shop_sys.enums.OrderStatus;
 import com.zzowo.shop_sys.enums.ProductStatus;
 import com.zzowo.shop_sys.enums.Role;
@@ -60,6 +62,12 @@ class OrderServiceTest {
     @Mock InventoryLogRepository inventoryLogRepository;
     @InjectMocks OrderService orderService;
 
+    @BeforeEach
+    void callRealGetByEmailOrThrow() {
+        // default method 在 mock 上預設回傳 null, 讓它走真正的實作 (委派給下方各測試 stub 的 findByEmail)
+        lenient().when(userRepository.getByEmailOrThrow(any())).thenCallRealMethod();
+    }
+
     // ── createOrder ──────────────────────────────────────────────────────────
 
     @Test
@@ -81,7 +89,7 @@ class OrderServiceTest {
         verify(inventoryLogRepository).save(logCaptor.capture());
         InventoryLog log = logCaptor.getValue();
         assertThat(log.getChangeAmount()).isEqualTo(-3);
-        assertThat(log.getReason()).isEqualTo("ORDER");
+        assertThat(log.getReason()).isEqualTo(InventoryChangeReason.ORDER);
         assertThat(log.getOperatorId()).isEqualTo(1L);
         assertThat(log.getOperatorName()).isEqualTo("下單顧客");
         assertThat(log.getOperatorRole()).isEqualTo(Role.CUSTOMER);
@@ -174,6 +182,21 @@ class OrderServiceTest {
         verify(productRepository, never()).deductStock(anyLong(), anyInt());
         verify(orderRepository, never()).save(any());
         verify(cartRepository, never()).deleteByUserId(any());
+    }
+
+    @Test
+    void createOrder_nonPositiveQuantity_throws_andDoesNotTouchStock() {
+        User user = buildUser(1L, Role.CUSTOMER);
+        Product product = buildProduct(10L, "異常商品", BigDecimal.valueOf(100), 10);
+        stubUser(user);
+        when(cartRepository.findByUserId(1L)).thenReturn(List.of(buildCart(1L, user, product, -5)));
+
+        assertThatThrownBy(() -> orderService.createOrder(EMAIL, createRequest()))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("數量異常");
+
+        verify(productRepository, never()).deductStock(anyLong(), anyInt());
+        verify(orderRepository, never()).save(any());
     }
 
     @Test
@@ -305,17 +328,16 @@ class OrderServiceTest {
     }
 
     @Test
-    void getOrderById_otherUsersOrder_throwsForbidden() {
+    void getOrderById_otherUsersOrder_throwsNotFound() {
         User requester = buildUser(1L, Role.CUSTOMER);
         User owner = buildUser(2L, Role.CUSTOMER);
         stubUser(requester);
         when(orderRepository.findById(50L)).thenReturn(Optional.of(buildOrder(50L, owner)));
 
+        // 與訂單不存在的回應相同, 無法用來列舉訂單
         assertThatThrownBy(() -> orderService.getOrderById(EMAIL, 50L))
-                .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("無權限")
-                .extracting(e -> ((BusinessException) e).getStatus())
-                .isEqualTo(HttpStatus.FORBIDDEN);
+                .isInstanceOf(ResourceNotFoundException.class)
+                .hasMessage("訂單不存在");
     }
 
     @Test
@@ -348,7 +370,7 @@ class OrderServiceTest {
         verify(inventoryLogRepository).save(logCaptor.capture());
         InventoryLog log = logCaptor.getValue();
         assertThat(log.getChangeAmount()).isEqualTo(3);
-        assertThat(log.getReason()).isEqualTo("CANCEL");
+        assertThat(log.getReason()).isEqualTo(InventoryChangeReason.CANCEL);
         assertThat(log.getOperatorId()).isNull(); // 系統自動作業
         assertThat(log.getOperatorName()).isNull();
         assertThat(log.getOperatorRole()).isNull();

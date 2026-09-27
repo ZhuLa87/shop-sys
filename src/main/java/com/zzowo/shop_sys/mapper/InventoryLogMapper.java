@@ -15,7 +15,7 @@ public class InventoryLogMapper {
         InventoryLogResponse response = new InventoryLogResponse();
         response.setId(log.getId());
         response.setChangeAmount(log.getChangeAmount());
-        response.setReason(log.getReason());
+        response.setReason(log.getReason().name());
         response.setOperatorId(log.getOperatorId());
         response.setOperatorName(log.getOperatorName());
         response.setOperatorRole(log.getOperatorRole());
@@ -29,4 +29,4 @@ public class InventoryLogMapper {
 
         return response;
     }
-}
+}

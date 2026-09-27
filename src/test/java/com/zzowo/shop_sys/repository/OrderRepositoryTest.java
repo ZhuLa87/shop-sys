@@ -37,7 +37,7 @@ class OrderRepositoryTest {
         em.persistAndFlush(buildOrder(user));
         em.persistAndFlush(buildOrder(other));
 
-        List<Order> result = orderRepository.findByUserId(user.getId());
+        List<Order> result = orderRepository.findByUserIdOrderByCreatedAtDesc(user.getId());
 
         assertThat(result).hasSize(1);
     }

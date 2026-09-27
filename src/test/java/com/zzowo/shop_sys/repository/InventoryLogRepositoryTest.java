@@ -1,5 +1,6 @@
 package com.zzowo.shop_sys.repository;
 
+import com.zzowo.shop_sys.enums.InventoryChangeReason;
 import com.zzowo.shop_sys.entity.InventoryLog;
 import com.zzowo.shop_sys.entity.Product;
 import com.zzowo.shop_sys.entity.User;
@@ -35,9 +36,9 @@ class InventoryLogRepositoryTest {
 
     @Test
     void findByProductIdOrderByCreatedAtDesc_returnsOnlyTargetProductLogsNewestFirst() {
-        InventoryLog log1 = em.persistAndFlush(buildLog(productA, -2, "ORDER"));
-        InventoryLog log2 = em.persistAndFlush(buildLog(productA, 10, "RESTOCK"));
-        em.persistAndFlush(buildLog(productB, -1, "ORDER")); // 不同商品,不應出現
+        InventoryLog log1 = em.persistAndFlush(buildLog(productA, -2, InventoryChangeReason.ORDER));
+        InventoryLog log2 = em.persistAndFlush(buildLog(productA, 10, InventoryChangeReason.RESTOCK));
+        em.persistAndFlush(buildLog(productB, -1, InventoryChangeReason.ORDER)); // 不同商品,不應出現
 
         setCreatedAt(log1.getId(), LocalDateTime.now().minusHours(1));
         setCreatedAt(log2.getId(), LocalDateTime.now());
@@ -54,9 +55,9 @@ class InventoryLogRepositoryTest {
 
     @Test
     void findAllByOrderByCreatedAtDesc_returnsAllLogsNewestFirst() {
-        InventoryLog log1 = em.persistAndFlush(buildLog(productA, -2, "ORDER"));
-        InventoryLog log2 = em.persistAndFlush(buildLog(productB, 5, "RESTOCK"));
-        InventoryLog log3 = em.persistAndFlush(buildLog(productA, 10, "ADJUSTMENT"));
+        InventoryLog log1 = em.persistAndFlush(buildLog(productA, -2, InventoryChangeReason.ORDER));
+        InventoryLog log2 = em.persistAndFlush(buildLog(productB, 5, InventoryChangeReason.RESTOCK));
+        InventoryLog log3 = em.persistAndFlush(buildLog(productA, 10, InventoryChangeReason.ADJUSTMENT));
 
         setCreatedAt(log1.getId(), LocalDateTime.now().minusHours(2));
         setCreatedAt(log2.getId(), LocalDateTime.now().minusHours(1));
@@ -76,7 +77,7 @@ class InventoryLogRepositoryTest {
     @Test
     void operatorSnapshot_isPersistedAndReadBack() {
         // 名稱與角色是寫入當下的快照,之後使用者改名或軟刪除都不影響這筆紀錄
-        InventoryLog log = buildLog(productA, 10, "RESTOCK");
+        InventoryLog log = buildLog(productA, 10, InventoryChangeReason.RESTOCK);
         log.applyOperator(buildOperator());
         Long id = em.persistAndFlush(log).getId();
         em.clear();
@@ -90,7 +91,7 @@ class InventoryLogRepositoryTest {
 
     @Test
     void operatorSnapshot_systemOperation_leavesAllOperatorFieldsNull() {
-        InventoryLog log = buildLog(productA, 3, "CANCEL");
+        InventoryLog log = buildLog(productA, 3, InventoryChangeReason.CANCEL);
         log.applyOperator(null);
         Long id = em.persistAndFlush(log).getId();
         em.clear();
@@ -121,7 +122,7 @@ class InventoryLogRepositoryTest {
         return p;
     }
 
-    private InventoryLog buildLog(Product product, int changeAmount, String reason) {
+    private InventoryLog buildLog(Product product, int changeAmount, InventoryChangeReason reason) {
         InventoryLog log = new InventoryLog();
         log.setProduct(product);
         log.setChangeAmount(changeAmount);

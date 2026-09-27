@@ -9,7 +9,7 @@ import org.springframework.stereotype.Component;
 import java.util.List;
 import java.util.stream.Collectors;
 
-@Component // 加上這個註解,讓 Spring 管理它,可以在 Service 裡 @Autowired
+@Component
 public class ProductMapper {
 
     // 給列表頁用 (只轉基本資料 + 封面圖,不觸發 getImages)

@@ -72,6 +72,7 @@
                 <el-input-number
                   :model-value="item.quantity"
                   :min="1"
+                  :max="999"
                   size="small"
                   class="w-24"
                   :disabled="updatingItems[item.id]"

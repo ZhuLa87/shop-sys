@@ -123,7 +123,7 @@
             <el-input-number
               v-model="quantity"
               :min="1"
-              :max="product.stockQuantity > 0 ? product.stockQuantity : 1"
+              :max="product.stockQuantity > 0 ? Math.min(product.stockQuantity, 999) : 1"
               :disabled="product.status !== 'ON_SHELF' || product.stockQuantity <= 0"
               size="default"
               class="w-32"

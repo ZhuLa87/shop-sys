@@ -1,13 +1,16 @@
 package com.zzowo.shop_sys.entity;
 
+import com.zzowo.shop_sys.enums.InventoryChangeReason;
 import com.zzowo.shop_sys.enums.Role;
 import jakarta.persistence.*;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 import org.hibernate.annotations.NotFound;
 import org.hibernate.annotations.NotFoundAction;
 import java.time.LocalDateTime;
 
-@Data
+@Getter
+@Setter
 @Entity
 @Table(name = "inventory_logs")
 public class InventoryLog {
@@ -25,22 +28,15 @@ public class InventoryLog {
     @NotFound(action = NotFoundAction.IGNORE)
     private Product product;
 
-    // 庫存變動數量:正數＝補貨,負數＝出貨或退貨扣除
+    // 庫存變動數量: 正數為增加 (進貨, 取消回補), 負數為減少 (出貨)
     @Column(name = "change_amount", nullable = false)
     private Integer changeAmount;
 
 
-    /**
-     * 異動原因,例如:
-     *
-     * "RESTOCK" (進貨) 
-     * "ORDER" (出貨) 
-     * "ADJUSTMENT" (人工調整) 
-     * "CANCEL" (訂單取消回庫) 
-     * "RETURN" (退貨增加庫存) 
-     */
+    // 異動原因
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private String reason;
+    private InventoryChangeReason reason;
 
     // 操作人員 ID (執行此異動的人,可選,可能是後台管理員或系統) 
     @Column(name = "operator_id")

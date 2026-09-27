@@ -1,5 +1,6 @@
 package com.zzowo.shop_sys.service;
 
+import lombok.RequiredArgsConstructor;
 import com.zzowo.shop_sys.dto.request.cart.AddToCartRequest;
 import com.zzowo.shop_sys.dto.response.cart.CartItemResponse;
 import com.zzowo.shop_sys.entity.Cart;
@@ -13,7 +14,6 @@ import com.zzowo.shop_sys.mapper.CartMapper;
 import com.zzowo.shop_sys.repository.CartRepository;
 import com.zzowo.shop_sys.repository.ProductRepository;
 import com.zzowo.shop_sys.repository.UserRepository;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,24 +21,21 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
+@RequiredArgsConstructor
 public class CartService {
 
-    @Autowired
-    private CartRepository cartRepository;
+    private final CartRepository cartRepository;
 
-    @Autowired
-    private ProductRepository productRepository;
+    private final ProductRepository productRepository;
 
-    @Autowired
-    private UserRepository userRepository;
+    private final UserRepository userRepository;
 
-    @Autowired
-    private CartMapper cartMapper;
+    private final CartMapper cartMapper;
 
     // 取得某使用者的購物車清單
     @Transactional
     public List<CartItemResponse> getUserCart(String email) {
-        User user = getUserByEmail(email);
+        User user = userRepository.getByEmailOrThrow(email);
         List<Cart> carts = cartRepository.findByUserId(user.getId());
 
         // 過濾並自動清除購物車中已被軟刪除的商品
@@ -60,7 +57,7 @@ public class CartService {
     // 加入購物車
     @Transactional
     public void addToCart(String email, AddToCartRequest request) {
-        User user = getUserByEmail(email);
+        User user = userRepository.getByEmailOrThrow(email);
         Product product = productRepository.findById(request.getProductId())
                 .orElseThrow(() -> new ResourceNotFoundException("商品不存在"));
 
@@ -74,7 +71,16 @@ public class CartService {
                 .orElse(new Cart());
 
         int existingQuantity = (cart.getId() == null) ? 0 : cart.getQuantity();
-        int totalTargetQuantity = existingQuantity + request.getQuantity();
+        // addExact: 溢位成負數會通過下方的庫存檢查,並在結帳時變成負數明細折抵訂單金額
+        int totalTargetQuantity;
+        try {
+            totalTargetQuantity = Math.addExact(existingQuantity, request.getQuantity());
+        } catch (ArithmeticException e) {
+            throw new BusinessException("購物車數量超過上限");
+        }
+        if (totalTargetQuantity > AddToCartRequest.MAX_QUANTITY) {
+            throw new BusinessException("每項商品最多只能加入 " + AddToCartRequest.MAX_QUANTITY + " 件,目前購物車內已有 " + existingQuantity + " 件");
+        }
 
         // 檢查庫存 (已有的 + 這次要加的)
         if (product.getStockQuantity() < totalTargetQuantity) {
@@ -97,7 +103,7 @@ public class CartService {
     // 移除購物車項目
     @Transactional
     public void removeFromCart(String email, Long cartId) {
-        User user = getUserByEmail(email);
+        User user = userRepository.getByEmailOrThrow(email);
         Cart cart = cartRepository.findById(cartId)
                 .orElseThrow(() -> new ResourceNotFoundException("購物車資料不存在"));
 
@@ -107,11 +113,5 @@ public class CartService {
         }
 
         cartRepository.delete(cart);
-    }
-
-    // 輔助方法:用 Email 找 User
-    private User getUserByEmail(String email) {
-        return userRepository.findByEmail(email)
-                .orElseThrow(() -> new ResourceNotFoundException("使用者不存在"));
     }
 }

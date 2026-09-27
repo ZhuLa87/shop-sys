@@ -1,6 +1,6 @@
 package com.zzowo.shop_sys.config;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -23,10 +23,13 @@ import com.zzowo.shop_sys.filter.JwtAuthenticationFilter;
 import jakarta.servlet.http.HttpServletResponse;
 
 @Configuration
+@RequiredArgsConstructor
 public class SecurityConfig {
 
-    @Autowired
-    private JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final JwtAuthenticationFilter jwtAuthenticationFilter;
+
+    // 使用 Spring 管理的 ObjectMapper, 401/403 回應才會套用與一般 API 相同的序列化設定
+    private final ObjectMapper objectMapper;
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -39,12 +42,11 @@ public class SecurityConfig {
         return authenticationConfiguration.getAuthenticationManager();
     }
 
-    // 2. 設定基本的網頁安全規則 (SecurityFilterChain)
-    // 因為我們剛加入 Security,如果不設定這個,所有功能(包含註冊)都會預設被擋住需要登入
+    // URL 層級的授權規則; 規則由上而下比對, 第一個符合的生效
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                // 暫時關閉 CSRF 防護 (因為我們之後要用 JWT,且目前是前後端分離,先關閉比較好測試)
+                // 純 Bearer token API: 瀏覽器不會自動夾帶 Authorization header, 沒有 CSRF 的攻擊面
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
                         // 1. 公開端點
@@ -93,9 +95,9 @@ public class SecurityConfig {
 
                         // 6. 其他所有請求都需要登入才能看
                         .anyRequest().authenticated())
-                // 設定為無狀態 (Stateless), 因為我們用 JWT,伺服器不需要存 Session
+                // 無狀態: 身分完全由每個請求的 JWT 決定, 不建立 Session
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                // 把過濾器加在 UsernamePasswordAuthenticationFilter 之前.先檢查 JWT,如果沒有 JWT 才走傳統流程 (但這裡其實只靠 JWT)
+                // 在授權判斷之前由 JWT 建立 SecurityContext
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
                 .exceptionHandling(conf -> conf
                         .authenticationEntryPoint(authenticationEntryPoint())
@@ -113,7 +115,7 @@ public class SecurityConfig {
             response.setCharacterEncoding("UTF-8");
 
             ApiResponse<Void> apiResponse = ApiResponse.error("請先登入或提供有效 Token");
-            new ObjectMapper().writeValue(response.getOutputStream(), apiResponse);
+            objectMapper.writeValue(response.getOutputStream(), apiResponse);
         };
     }
 
@@ -126,7 +128,7 @@ public class SecurityConfig {
             response.setCharacterEncoding("UTF-8");
 
             ApiResponse<Void> apiResponse = ApiResponse.error("您的權限不足以執行此操作");
-            new ObjectMapper().writeValue(response.getOutputStream(), apiResponse);
+            objectMapper.writeValue(response.getOutputStream(), apiResponse);
         };
     }
 }
