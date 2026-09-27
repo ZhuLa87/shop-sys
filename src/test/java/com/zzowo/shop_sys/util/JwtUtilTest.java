@@ -2,6 +2,7 @@ package com.zzowo.shop_sys.util;
 
 import com.zzowo.shop_sys.entity.User;
 import com.zzowo.shop_sys.enums.Role;
+import io.jsonwebtoken.security.WeakKeyException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -9,6 +10,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 import java.util.Date;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class JwtUtilTest {
 
@@ -21,6 +23,7 @@ class JwtUtilTest {
         jwtUtil = new JwtUtil();
         ReflectionTestUtils.setField(jwtUtil, "secret", SECRET);
         ReflectionTestUtils.setField(jwtUtil, "expiration", 1800000L); // 30 分鐘
+        ReflectionTestUtils.invokeMethod(jwtUtil, "init");
     }
 
     // ── generateToken ────────────────────────────────────────────────────────
@@ -88,6 +91,17 @@ class JwtUtilTest {
     }
 
     // ── helpers ──────────────────────────────────────────────────────────────
+
+    // ── init ─────────────────────────────────────────────────────────────────
+
+    @Test
+    void init_secretTooShort_failsImmediately() {
+        JwtUtil weak = new JwtUtil();
+        ReflectionTestUtils.setField(weak, "secret", "too-short");
+
+        assertThatThrownBy(() -> ReflectionTestUtils.invokeMethod(weak, "init"))
+                .isInstanceOf(WeakKeyException.class);
+    }
 
     // ── parseClaims ──────────────────────────────────────────────────────────
 
