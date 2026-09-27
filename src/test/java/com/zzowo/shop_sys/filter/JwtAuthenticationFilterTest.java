@@ -37,6 +37,7 @@ class JwtAuthenticationFilterTest {
         jwtUtil = new JwtUtil();
         ReflectionTestUtils.setField(jwtUtil, "secret", SECRET);
         ReflectionTestUtils.setField(jwtUtil, "expiration", 1800000L);
+        ReflectionTestUtils.invokeMethod(jwtUtil, "init");
         tokenBlacklistService = mock(TokenBlacklistService.class);
         filter = new JwtAuthenticationFilter(jwtUtil, tokenBlacklistService);
     }

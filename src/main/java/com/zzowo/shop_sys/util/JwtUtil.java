@@ -6,6 +6,7 @@ import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
+import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -32,16 +33,17 @@ public class JwtUtil {
     @Value("${jwt.expiration}")
     private long expiration;
 
-    // secret 由 @Value 注入後不會再變, 簽名用的 Key 只建立一次
-    private volatile SecretKey signKey;
+    private SecretKey signKey;
+
+    // 啟動時建立一次簽名用的 Key; JWT_SECRET 太短 (HMAC-SHA 至少需要 256 bit) 會在這裡直接啟動失敗,
+    // 而不是等到第一個請求才出錯
+    @PostConstruct
+    void init() {
+        signKey = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
+    }
 
     private SecretKey getSignKey() {
-        SecretKey key = signKey;
-        if (key == null) {
-            key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
-            signKey = key;
-        }
-        return key;
+        return signKey;
     }
 
     /**
