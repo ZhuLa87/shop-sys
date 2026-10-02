@@ -13,8 +13,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.zzowo.shop_sys.dto.request.user.UserLoginRequest;
-import com.zzowo.shop_sys.dto.response.auth.LoginResponse;
-import com.zzowo.shop_sys.dto.response.auth.TokenRefreshResponse;
 import com.zzowo.shop_sys.entity.User;
 import com.zzowo.shop_sys.exception.BusinessException;
 import com.zzowo.shop_sys.exception.ResourceNotFoundException;
@@ -35,7 +33,7 @@ public class AuthService {
     private final TokenBlacklistService tokenBlacklistService;
 
     @Transactional
-    public LoginResponse login(UserLoginRequest request) {
+    public IssuedTokens login(UserLoginRequest request) {
         Authentication authentication;
         try {
             authentication = authenticationManager.authenticate(
@@ -53,12 +51,12 @@ public class AuthService {
         String accessToken = jwtUtil.generateToken(user);
         String refreshToken = refreshTokenService.create(user.getId());
 
-        return new LoginResponse(accessToken, refreshToken, JwtUtil.TOKEN_TYPE, jwtUtil.getAccessExpirationSeconds());
+        return new IssuedTokens(accessToken, refreshToken, jwtUtil.getAccessExpirationSeconds());
     }
 
     // Token Rotation: 舊的 Refresh Token 立即失效, 換發新的一組
     @Transactional(readOnly = true)
-    public TokenRefreshResponse refresh(String refreshToken) {
+    public IssuedTokens refresh(String refreshToken) {
         Long userId = refreshTokenService.validateAndDelete(refreshToken);
 
         User user = userRepository.findById(userId)
@@ -69,15 +67,17 @@ public class AuthService {
         String newAccessToken = jwtUtil.generateToken(user);
         String newRefreshToken = refreshTokenService.create(userId);
 
-        return new TokenRefreshResponse(newAccessToken, newRefreshToken, JwtUtil.TOKEN_TYPE, jwtUtil.getAccessExpirationSeconds());
+        return new IssuedTokens(newAccessToken, newRefreshToken, jwtUtil.getAccessExpirationSeconds());
     }
 
-    // accessToken 可為 null (請求沒有帶 Authorization header 時), 此時只刪除 Refresh Token
+    // 兩者都可為 null (沒有 Authorization header / 沒有 refresh_token cookie), 只處理有帶的那個
     public void logout(String accessToken, String refreshToken) {
         if (accessToken != null) {
             tokenBlacklistService.blacklist(accessToken);
         }
-        refreshTokenService.deleteIfExists(refreshToken);
+        if (refreshToken != null) {
+            refreshTokenService.deleteIfExists(refreshToken);
+        }
     }
 
     // 換發 token 前檢查帳號狀態, 避免帳號被停用/鎖定後仍能無限期換發 access token

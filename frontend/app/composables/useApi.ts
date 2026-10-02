@@ -1,4 +1,5 @@
 import { type UseFetchOptions } from '#app'
+import { appendResponseHeader, type H3Event } from 'h3'
 
 interface ApiResponse<T> {
   success: boolean
@@ -8,11 +9,20 @@ interface ApiResponse<T> {
 
 interface TokenRefreshResult {
   accessToken: string
-  refreshToken: string
 }
 
-// 防止多個請求同時觸發 token refresh (單例 promise) 
-let refreshingPromise: Promise<TokenRefreshResult | null> | null = null
+// 防止多個請求同時觸發 token refresh (單例 promise).
+// 只用在瀏覽器端; SSR 時 module 變數會被所有使用者的請求共用, 改存在各自的 event.context
+let clientRefreshingPromise: Promise<TokenRefreshResult | null> | null = null
+
+// refresh token 是後端核發的 HttpOnly cookie, JS 讀不到.
+// SSR 時要把後端回的 Set-Cookie (新的 refresh token 或清除指令) 轉給瀏覽器
+const forwardSetCookie = (event: H3Event | null, headers: Headers | undefined) => {
+  if (!event || !headers) return
+  for (const cookie of headers.getSetCookie()) {
+    appendResponseHeader(event, 'set-cookie', cookie)
+  }
+}
 
 export const useApi = () => {
   const config = useRuntimeConfig()
@@ -20,10 +30,9 @@ export const useApi = () => {
     sameSite: 'lax',
     secure: true,
   })
-  const refreshTokenCookie = useCookie<string | null>('refresh_token', {
-    sameSite: 'lax',
-    secure: true,
-  })
+  // tryRefreshToken 會在非同步 callback 裡執行, 要先在 composable context 內取好
+  const event = import.meta.server ? useRequestEvent() ?? null : null
+  const requestCookie = import.meta.server ? useRequestHeaders(['cookie']).cookie : undefined
 
   const apiBase = config.public.apiBase || '/api/v1'
 
@@ -38,38 +47,52 @@ export const useApi = () => {
     return headers
   }
 
-  // 嘗試用 refresh token 換發新的 access token
-  const tryRefreshToken = async (): Promise<TokenRefreshResult | null> => {
-    if (!refreshTokenCookie.value) return null
-
-    if (refreshingPromise) return refreshingPromise
-
-    refreshingPromise = $fetch<ApiResponse<TokenRefreshResult>>(
-      `${apiBase}/auth/refresh`,
-      {
+  // 嘗試用 refresh token cookie 換發新的 access token
+  // (沒有 cookie 時後端回 401, 結果為 null)
+  const doRefresh = async (): Promise<TokenRefreshResult | null> => {
+    try {
+      const res = await $fetch.raw<ApiResponse<TokenRefreshResult>>(`${apiBase}/auth/refresh`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-        body: { refreshToken: refreshTokenCookie.value },
-      }
-    )
-      .then((res) => {
-        if (res.success && res.data) {
-          token.value = res.data.accessToken
-          refreshTokenCookie.value = res.data.refreshToken
-          return res.data
-        }
-        return null
+        headers: {
+          'Accept': 'application/json',
+          ...(requestCookie ? { cookie: requestCookie } : {}),
+        },
       })
-      .catch(() => null)
-      .finally(() => { refreshingPromise = null })
+      forwardSetCookie(event, res.headers)
+      const body = res._data
+      return body?.success && body.data ? body.data : null
+    } catch (error: any) {
+      forwardSetCookie(event, error?.response?.headers)
+      return null
+    }
+  }
 
-    return refreshingPromise
+  const sharedRefresh = (): Promise<TokenRefreshResult | null> => {
+    if (event) {
+      const ctx = event.context as { refreshingPromise?: Promise<TokenRefreshResult | null> }
+      // SSR 同一個請求內只換發一次; 舊 refresh token 已被輪替, 不能再送第二次
+      ctx.refreshingPromise ??= doRefresh()
+      return ctx.refreshingPromise
+    }
+
+    if (!clientRefreshingPromise) {
+      clientRefreshingPromise = doRefresh().finally(() => { clientRefreshingPromise = null })
+    }
+    return clientRefreshingPromise
+  }
+
+  // 每個 useApi() 都有自己的 auth_token ref, 彼此不會即時同步.
+  // 換發結果由多個呼叫端共用, 所以每個呼叫端都要寫進自己的 ref, 重試時才會帶新 token
+  const tryRefreshToken = async (): Promise<TokenRefreshResult | null> => {
+    const refreshed = await sharedRefresh()
+    if (refreshed) token.value = refreshed.accessToken
+    return refreshed
   }
 
   // 清除所有憑證並跳轉登入頁
   const clearAndRedirect = () => {
+    // refresh_token cookie 是 HttpOnly, 由後端在 refresh 失敗時清除
     token.value = null
-    refreshTokenCookie.value = null
     const userProfile = useCookie('user_profile')
     userProfile.value = null
 
@@ -157,6 +180,5 @@ export const useApi = () => {
     request,
     fetch,
     token,
-    refreshToken: refreshTokenCookie,
   }
 }
