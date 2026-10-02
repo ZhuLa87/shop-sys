@@ -12,6 +12,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import com.zzowo.shop_sys.dto.request.product.ProductRequest;
+import com.zzowo.shop_sys.dto.request.product.ProductUpdateRequest;
 import com.zzowo.shop_sys.enums.ProductStatus;
 import com.zzowo.shop_sys.enums.Role;
 import com.zzowo.shop_sys.dto.response.ApiResponse;
@@ -76,17 +77,21 @@ public class ProductController {
         return ResponseEntity.ok(ApiResponse.success("商品新增成功", response));
     }
 
-    @Operation(summary = "修改商品", description = "更新指定商品資訊 (需要 PRODUCT_MANAGER 或 SUPER_ADMIN 角色) ")
+    @Operation(summary = "修改商品",
+        description = "更新指定商品資訊 (需要 PRODUCT_MANAGER 或 SUPER_ADMIN 角色). " +
+                      "必須帶入取得商品時的 version; 期間若商品被修改或有結帳扣庫存, 回 409, 請重新取得後再送出")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "商品更新成功")
-    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "請求參數錯誤")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "請求格式錯誤")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "未登入")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "權限不足")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "商品不存在")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409", description = "version 不符, 商品已被變更")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "422", description = "欄位驗證失敗 (含缺少 version)")
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<ProductResponse>> updateProduct(
             @Parameter(hidden = true) @AuthenticationPrincipal String email,
             @Parameter(description = "商品 ID") @PathVariable Long id,
-            @Valid @RequestBody ProductRequest request) {
+            @Valid @RequestBody ProductUpdateRequest request) {
         ProductResponse response = productService.updateProduct(email, id, request);
         return ResponseEntity.ok(ApiResponse.success("商品更新成功", response));
     }

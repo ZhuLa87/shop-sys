@@ -663,7 +663,8 @@ GET /api/v1/products?keyword=耳機&sort=price,asc&size=10
         "stockQuantity": 50,
         "coverImageUrl": "https://cdn.example.com/img/001.jpg",
         "imageUrls": null,
-        "status": "ON_SHELF"
+        "status": "ON_SHELF",
+        "version": 3
       }
     ],
     "page": 0,
@@ -676,6 +677,7 @@ GET /api/v1/products?keyword=耳機&sort=price,asc&size=10
 ```
 
 > `imageUrls` 在列表頁為 `null`,詳情頁 (`GET /v1/products/{id}`) 才回傳完整圖片列表.
+> `version` 是樂觀鎖版本號,修改商品時要原樣帶回 (結帳扣庫存,取消訂單回補庫存也會讓它遞增).
 
 ---
 
@@ -683,7 +685,25 @@ GET /api/v1/products?keyword=耳機&sort=price,asc&size=10
 
 **權限**: 公開  
 **Path Variable**: `id` (商品 ID)  
-**Response** `200 OK`: 同上,但 `imageUrls` 包含完整圖片列表.
+**Response** `200 OK`: 同上,但 `imageUrls` 包含完整圖片列表.後台編輯表單從這裡取得 `version`:
+
+```json
+{
+  "success": true,
+  "message": "取得商品詳情成功",
+  "data": {
+    "id": 1,
+    "name": "藍芽耳機 Pro",
+    "description": "高音質無線耳機",
+    "price": 1990.00,
+    "stockQuantity": 50,
+    "coverImageUrl": "https://cdn.example.com/img/cover.jpg",
+    "imageUrls": ["https://cdn.example.com/img/001.jpg"],
+    "status": "ON_SHELF",
+    "version": 3
+  }
+}
+```
 
 ---
 
@@ -724,8 +744,11 @@ GET /api/v1/products?keyword=耳機&sort=price,asc&size=10
 #### PUT `/v1/products/{id}` - 修改商品
 
 **權限**: `PRODUCT_MANAGER`, `SUPER_ADMIN`  
-**Request Body**: 同 POST,欄位全量更新 (images 為全量替換)   
-**Response** `200 OK`: 回傳更新後的 `ProductResponse`
+**Request Body**: 同 POST,欄位全量更新 (images 為全量替換),另外必須帶 `version` (取得商品時回傳的值)   
+**Response** `200 OK`: 回傳更新後的 `ProductResponse`,其中的 `version` 已是更新後的值,可直接用於下一次修改  
+**錯誤**:
+- `422`: 缺少 `version` (與其他欄位驗證錯誤相同格式)
+- `409`: `version` 與目前不符.表單打開後商品被修改過或有人結帳扣了庫存,直接覆寫會把已售出的庫存加回去,須重新取得商品後再送出
 
 ---
 
