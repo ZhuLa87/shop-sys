@@ -211,6 +211,10 @@ const handleSave = async () => {
       if (form.password) payload.password = form.password
 
       const res = await authStore.updateProfile(payload)
+      if (res.reloginRequired) {
+        authStore.clearSessionAndGoToLogin('credentials-changed')
+        return
+      }
       if (res.success) {
         notify({ title: '儲存成功', message: '個人資料已成功更新.', type: 'success', duration: 3000 })
         form.password = ''

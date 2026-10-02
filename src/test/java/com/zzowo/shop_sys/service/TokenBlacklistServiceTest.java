@@ -1,8 +1,11 @@
 package com.zzowo.shop_sys.service;
 
 import com.zzowo.shop_sys.util.JwtUtil;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.Jwts;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -10,7 +13,9 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 
 import java.time.Duration;
+import java.util.Arrays;
 import java.util.Date;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.*;
@@ -72,32 +77,83 @@ class TokenBlacklistServiceTest {
         tokenBlacklistService.blacklist("malformed"); // 不應拋例外
     }
 
-    // ── isBlacklisted ────────────────────────────────────────────────────────
+    // ── revokeAllForUser ─────────────────────────────────────────────────────
 
     @Test
-    void isBlacklistedJti_jtiInRedis_returnsTrue() {
-        when(redisTemplate.hasKey("blacklist:jti-blocked")).thenReturn(Boolean.TRUE);
+    void revokeAllForUser_storesRevokeTime_withAccessTokenLifetimeAsTtl() {
+        when(redisTemplate.opsForValue()).thenReturn(valueOps);
+        when(jwtUtil.getAccessExpirationSeconds()).thenReturn(1800L);
+        long before = System.currentTimeMillis();
 
-        assertThat(tokenBlacklistService.isBlacklistedJti("jti-blocked")).isTrue();
+        tokenBlacklistService.revokeAllForUser(7L);
+
+        ArgumentCaptor<String> value = ArgumentCaptor.forClass(String.class);
+        verify(valueOps).set(eq("user_revoked_at:7"), value.capture(), eq(Duration.ofSeconds(1800)));
+        assertThat(Long.parseLong(value.getValue())).isBetween(before, System.currentTimeMillis());
+    }
+
+    // ── isRevoked ────────────────────────────────────────────────────────────
+
+    @Test
+    void isRevoked_notBlacklistedAndNoRevokeRecord_returnsFalse() {
+        stubRedis(null, null);
+
+        assertThat(tokenBlacklistService.isRevoked(claims(10_000))).isFalse();
     }
 
     @Test
-    void isBlacklistedJti_jtiNotInRedis_returnsFalse() {
-        when(redisTemplate.hasKey("blacklist:jti-clean")).thenReturn(Boolean.FALSE);
+    void isRevoked_jtiBlacklisted_returnsTrue() {
+        stubRedis("1", null);
 
-        assertThat(tokenBlacklistService.isBlacklistedJti("jti-clean")).isFalse();
+        assertThat(tokenBlacklistService.isRevoked(claims(10_000))).isTrue();
     }
 
     @Test
-    void isBlacklistedJti_redisUnavailable_failsClosed() {
-        when(redisTemplate.hasKey("blacklist:jti-1")).thenThrow(new RuntimeException("connection refused"));
+    void isRevoked_issuedBeforeRevoke_returnsTrue() {
+        stubRedis(null, "12000");
 
-        assertThat(tokenBlacklistService.isBlacklistedJti("jti-1")).isTrue();
+        assertThat(tokenBlacklistService.isRevoked(claims(10_000))).isTrue();
     }
 
     @Test
-    void isBlacklistedJti_null_returnsFalse() {
-        assertThat(tokenBlacklistService.isBlacklistedJti(null)).isFalse();
-        verify(redisTemplate, never()).hasKey(anyString());
+    void isRevoked_issuedInSameSecondAsRevoke_returnsTrue() {
+        // iat 只到秒: 10.000 秒發出的 token 可能是 10.000~10.999 之間任何時間, 撤銷在 10.500 時保守視為無效
+        stubRedis(null, "10500");
+
+        assertThat(tokenBlacklistService.isRevoked(claims(10_000))).isTrue();
+    }
+
+    @Test
+    void isRevoked_issuedAfterRevoke_returnsFalse() {
+        stubRedis(null, "10500");
+
+        assertThat(tokenBlacklistService.isRevoked(claims(11_000))).isFalse();
+    }
+
+    @Test
+    void isRevoked_redisUnavailable_failsClosed() {
+        when(redisTemplate.opsForValue()).thenReturn(valueOps);
+        when(valueOps.multiGet(any())).thenThrow(new RuntimeException("connection refused"));
+
+        assertThat(tokenBlacklistService.isRevoked(claims(10_000))).isTrue();
+    }
+
+    @Test
+    void isRevoked_tokenWithoutUserId_returnsTrue_withoutRedisLookup() {
+        Claims claims = Jwts.claims().id("jti-1").issuedAt(new Date(10_000)).build();
+
+        assertThat(tokenBlacklistService.isRevoked(claims)).isTrue();
+        verify(redisTemplate, never()).opsForValue();
+    }
+
+    private void stubRedis(String blacklisted, String revokedAt) {
+        when(redisTemplate.opsForValue()).thenReturn(valueOps);
+        when(valueOps.multiGet(List.of("blacklist:jti-1", "user_revoked_at:7")))
+                .thenReturn(Arrays.asList(blacklisted, revokedAt));
+    }
+
+    // 與 JwtUtil 簽發的一樣: userId 解析回來是 Integer
+    private Claims claims(long issuedAtMs) {
+        return Jwts.claims().id("jti-1").issuedAt(new Date(issuedAtMs)).add(JwtUtil.CLAIM_USER_ID, 7).build();
     }
 }

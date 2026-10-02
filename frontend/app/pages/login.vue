@@ -9,6 +9,14 @@
         </p>
       </div>
 
+      <el-alert
+        v-if="credentialsChanged"
+        title="密碼或電子信箱已變更,所有裝置都已登出,請重新登入."
+        type="info"
+        :closable="false"
+        show-icon
+      />
+
       <!-- Form -->
       <el-form
         ref="formRef"
@@ -67,6 +75,10 @@ import type { FormInstance, FormRules } from 'element-plus'
 import { useAuthStore } from '~/stores/auth'
 
 const authStore = useAuthStore()
+const route = useRoute()
+
+// 改密碼或 Email 後被導回來時提示原因 (見 stores/auth.ts clearSessionAndGoToLogin)
+const credentialsChanged = computed(() => route.query.reason === 'credentials-changed')
 
 const formRef = ref<FormInstance>()
 const loading = ref(false)

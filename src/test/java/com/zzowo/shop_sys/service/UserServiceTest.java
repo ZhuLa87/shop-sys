@@ -15,6 +15,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
@@ -24,6 +25,7 @@ import com.zzowo.shop_sys.dto.request.user.UserSelfUpdateRequest;
 import com.zzowo.shop_sys.dto.response.user.RegisterResponse;
 import com.zzowo.shop_sys.entity.User;
 import com.zzowo.shop_sys.enums.Role;
+import com.zzowo.shop_sys.event.UserSessionsRevokedEvent;
 import com.zzowo.shop_sys.exception.BusinessException;
 import com.zzowo.shop_sys.exception.ResourceNotFoundException;
 import com.zzowo.shop_sys.mapper.UserMapper;
@@ -36,6 +38,7 @@ class UserServiceTest {
     @Mock PasswordEncoder passwordEncoder;
     @Mock UserMapper userMapper;
     @Mock MinioService minioService;
+    @Mock ApplicationEventPublisher eventPublisher;
     @InjectMocks UserService userService;
 
     @BeforeEach
@@ -103,6 +106,34 @@ class UserServiceTest {
         userService.updateMyInfo("user@test.com", request);
 
         assertThat(user.getPasswordHash()).isEqualTo("new-hash");
+        assertThat(user.getLastPasswordChangeAt()).isNotNull();
+        verify(eventPublisher).publishEvent(new UserSessionsRevokedEvent(1L));
+    }
+
+    @Test
+    void updateMyInfo_newEmail_revokesSessions() {
+        User user = buildUser(true, true);
+        when(userRepository.findByEmail("user@test.com")).thenReturn(java.util.Optional.of(user));
+        when(userRepository.existsByEmail("new@test.com")).thenReturn(false);
+
+        UserSelfUpdateRequest request = new UserSelfUpdateRequest();
+        request.setEmail("new@test.com");
+        userService.updateMyInfo("user@test.com", request);
+
+        verify(eventPublisher).publishEvent(new UserSessionsRevokedEvent(1L));
+    }
+
+    @Test
+    void updateMyInfo_profileOnly_doesNotRevokeSessions() {
+        User user = buildUser(true, true);
+        when(userRepository.findByEmail("user@test.com")).thenReturn(java.util.Optional.of(user));
+
+        UserSelfUpdateRequest request = new UserSelfUpdateRequest();
+        request.setName("新名字");
+        request.setEmail("user@test.com"); // 與原本相同, 不算改 Email
+        userService.updateMyInfo("user@test.com", request);
+
+        verify(eventPublisher, never()).publishEvent(any());
     }
 
     @Test
@@ -191,6 +222,49 @@ class UserServiceTest {
         assertThat(user.getRole()).isEqualTo(Role.PRODUCT_MANAGER);
         assertThat(user.getEnabled()).isFalse();
         verify(userRepository).save(user);
+        verify(eventPublisher).publishEvent(new UserSessionsRevokedEvent(1L));
+    }
+
+    @Test
+    void updateUserByAdmin_disable_revokesSessions() {
+        assertAdminUpdateRevokes(buildUser(true, true), r -> r.setEnabled(false), true);
+    }
+
+    @Test
+    void updateUserByAdmin_changeRole_revokesSessions() {
+        assertAdminUpdateRevokes(buildUser(true, true), r -> r.setRole(Role.ORDER_MANAGER), true);
+    }
+
+    @Test
+    void updateUserByAdmin_resetPassword_revokesSessions_andRecordsChangeTime() {
+        User user = buildUser(true, true);
+        when(passwordEncoder.encode("reset123")).thenReturn("reset-hash");
+
+        assertAdminUpdateRevokes(user, r -> r.setPassword("reset123"), true);
+        assertThat(user.getLastPasswordChangeAt()).isNotNull();
+    }
+
+    @Test
+    void updateUserByAdmin_changeEmail_revokesSessions() {
+        when(userRepository.existsByEmail("moved@test.com")).thenReturn(false);
+
+        assertAdminUpdateRevokes(buildUser(true, true), r -> r.setEmail("moved@test.com"), true);
+    }
+
+    @Test
+    void updateUserByAdmin_sameRoleAndEnable_doesNotRevokeSessions() {
+        // 後台表單會把整包欄位送回來, 沒變的值不能把使用者踢下線
+        assertAdminUpdateRevokes(buildUser(true, true), r -> {
+            r.setRole(Role.CUSTOMER);
+            r.setEnabled(true);
+            r.setEmail("user@test.com");
+            r.setName("改名");
+        }, false);
+    }
+
+    @Test
+    void updateUserByAdmin_reEnable_doesNotRevokeSessions() {
+        assertAdminUpdateRevokes(buildUser(false, true), r -> r.setEnabled(true), false);
     }
 
     @Test
@@ -347,6 +421,22 @@ class UserServiceTest {
     }
 
     // ── helpers ──────────────────────────────────────────────────────────────
+
+    private void assertAdminUpdateRevokes(User user, java.util.function.Consumer<AdminUpdateUserRequest> change,
+                                          boolean expectRevoke) {
+        when(userRepository.findById(1L)).thenReturn(java.util.Optional.of(user));
+        stubOperator();
+        AdminUpdateUserRequest request = new AdminUpdateUserRequest();
+        change.accept(request);
+
+        userService.updateUserByAdmin(OPERATOR_EMAIL, 1L, request);
+
+        if (expectRevoke) {
+            verify(eventPublisher).publishEvent(new UserSessionsRevokedEvent(1L));
+        } else {
+            verify(eventPublisher, never()).publishEvent(any());
+        }
+    }
 
     private UserRegisterRequest registerRequest() {
         UserRegisterRequest request = new UserRegisterRequest();

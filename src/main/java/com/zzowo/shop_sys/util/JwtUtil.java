@@ -25,6 +25,7 @@ public class JwtUtil {
 
     public static final String TOKEN_TYPE = "Bearer";
     public static final String CLAIM_ROLE = "role";
+    public static final String CLAIM_USER_ID = "userId";
 
     // 從 application.yaml 讀取設定
     @Value("${jwt.secret}")
@@ -113,7 +114,7 @@ public class JwtUtil {
      */
     public String generateToken(User user) {
         Map<String, Object> claims = new HashMap<>();
-        claims.put("userId", user.getId());
+        claims.put(CLAIM_USER_ID, user.getId());
         claims.put(CLAIM_ROLE, user.getRole().name());
         return createToken(claims, user.getUsername());
     }

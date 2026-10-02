@@ -78,16 +78,30 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  // 修改個人資料 (PUT /users/me 回傳 void,更新後重新拉取)
+  // 修改個人資料 (PUT /users/me 回傳 void,更新後重新拉取).
+  // 改密碼或 Email 後後端會撤銷這個使用者所有的 token (包含目前這個), 此時不能再拉資料, 改由呼叫端引導重新登入
   const updateProfile = async (body: any) => {
+    const reloginRequired = !!body.password || (!!body.email && body.email !== userProfile.value?.email)
     const res = await api.request<void>('/users/me', {
       method: 'PUT',
       body
     })
-    if (res.success) {
+    if (res.success && !reloginRequired) {
       await fetchProfile()
     }
-    return res
+    return { ...res, reloginRequired: res.success && reloginRequired }
+  }
+
+  // token 已被後端撤銷時使用: 呼叫 /auth/logout 只會拿到 401, 直接清掉本地狀態.
+  // HttpOnly 的 refresh_token cookie 已在後端失效, 下次換發失敗時由後端清除
+  const clearSessionAndGoToLogin = (reason?: string) => {
+    token.value = null
+    userProfile.value = null
+    useCartStore().clearCartState()
+
+    if (import.meta.client) {
+      window.location.href = reason ? `/login?reason=${reason}` : '/login'
+    }
   }
 
   // 登出:通知後端黑名單目前 token 並清除 refresh_token cookie (HttpOnly,只有後端能清),再清除本地狀態
@@ -122,6 +136,7 @@ export const useAuthStore = defineStore('auth', () => {
     register,
     fetchProfile,
     updateProfile,
+    clearSessionAndGoToLogin,
     logout
   }
 })
