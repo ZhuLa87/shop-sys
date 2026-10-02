@@ -13,7 +13,6 @@ interface UserProfile {
 
 interface LoginResponse {
   accessToken: string
-  refreshToken: string
   tokenType: string
   expiresIn: number
 }
@@ -21,13 +20,9 @@ interface LoginResponse {
 export const useAuthStore = defineStore('auth', () => {
   const api = useApi()
 
-  // 使用 useCookie 儲存 token 與個人檔案,以便在 SSR 與頁面重新整理時保持登入狀態
+  // 使用 useCookie 儲存 access token 與個人檔案,以便在 SSR 與頁面重新整理時保持登入狀態.
+  // refresh token 由後端以 HttpOnly cookie 核發,前端碰不到
   const token = useCookie<string | null>('auth_token', {
-    sameSite: 'lax',
-    secure: true,
-  })
-
-  const refreshToken = useCookie<string | null>('refresh_token', {
     sameSite: 'lax',
     secure: true,
   })
@@ -54,7 +49,6 @@ export const useAuthStore = defineStore('auth', () => {
 
     if (res.success && res.data) {
       token.value = res.data.accessToken
-      refreshToken.value = res.data.refreshToken
       await fetchProfile()
 
       const cartStore = useCartStore()
@@ -96,21 +90,15 @@ export const useAuthStore = defineStore('auth', () => {
     return res
   }
 
-  // 登出:通知後端黑名單目前 token,再清除本地狀態
+  // 登出:通知後端黑名單目前 token 並清除 refresh_token cookie (HttpOnly,只有後端能清),再清除本地狀態
   const logout = async () => {
-    if (token.value && refreshToken.value) {
-      try {
-        await api.request('/auth/logout', {
-          method: 'POST',
-          body: { refreshToken: refreshToken.value }
-        })
-      } catch {
-        // 即使後端登出失敗,也繼續清除本地狀態
-      }
+    try {
+      await api.request('/auth/logout', { method: 'POST' })
+    } catch {
+      // 即使後端登出失敗,也繼續清除本地狀態
     }
 
     token.value = null
-    refreshToken.value = null
     userProfile.value = null
 
     const cartStore = useCartStore()
@@ -123,7 +111,6 @@ export const useAuthStore = defineStore('auth', () => {
 
   return {
     token,
-    refreshToken,
     userProfile,
     isAuthenticated,
     user,

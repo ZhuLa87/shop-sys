@@ -22,8 +22,6 @@ import org.springframework.security.authentication.LockedException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 
 import com.zzowo.shop_sys.dto.request.user.UserLoginRequest;
-import com.zzowo.shop_sys.dto.response.auth.LoginResponse;
-import com.zzowo.shop_sys.dto.response.auth.TokenRefreshResponse;
 import com.zzowo.shop_sys.entity.User;
 import com.zzowo.shop_sys.enums.Role;
 import com.zzowo.shop_sys.exception.BusinessException;
@@ -52,11 +50,11 @@ class AuthServiceTest {
         when(jwtUtil.getAccessExpirationSeconds()).thenReturn(1800L);
         when(refreshTokenService.create(1L)).thenReturn("refresh-token");
 
-        LoginResponse response = authService.login(loginRequest());
+        IssuedTokens tokens = authService.login(loginRequest());
 
-        assertThat(response.getAccessToken()).isEqualTo("access-token");
-        assertThat(response.getRefreshToken()).isEqualTo("refresh-token");
-        assertThat(response.getTokenType()).isEqualTo("Bearer");
+        assertThat(tokens.accessToken()).isEqualTo("access-token");
+        assertThat(tokens.refreshToken()).isEqualTo("refresh-token");
+        assertThat(tokens.expiresIn()).isEqualTo(1800L);
         assertThat(user.getLastLoginAt()).isNotNull();
         verify(userRepository).save(user);
     }
@@ -105,12 +103,11 @@ class AuthServiceTest {
         when(refreshTokenService.create(1L)).thenReturn("new-refresh-token");
         when(jwtUtil.getAccessExpirationSeconds()).thenReturn(1800L);
 
-        TokenRefreshResponse response = authService.refresh("old-rt");
+        IssuedTokens tokens = authService.refresh("old-rt");
 
-        assertThat(response.getAccessToken()).isEqualTo("new-access-token");
-        assertThat(response.getRefreshToken()).isEqualTo("new-refresh-token");
-        assertThat(response.getTokenType()).isEqualTo("Bearer");
-        assertThat(response.getExpiresIn()).isEqualTo(1800L);
+        assertThat(tokens.accessToken()).isEqualTo("new-access-token");
+        assertThat(tokens.refreshToken()).isEqualTo("new-refresh-token");
+        assertThat(tokens.expiresIn()).isEqualTo(1800L);
     }
 
     @Test
@@ -151,6 +148,14 @@ class AuthServiceTest {
 
         verify(tokenBlacklistService, never()).blacklist(any());
         verify(refreshTokenService).deleteIfExists("rt");
+    }
+
+    @Test
+    void logout_withoutRefreshToken_onlyBlacklistsAccessToken() {
+        authService.logout("access-token", null);
+
+        verify(tokenBlacklistService).blacklist("access-token");
+        verify(refreshTokenService, never()).deleteIfExists(any());
     }
 
     // ── assertAccountActive ──────────────────────────────────────────────────

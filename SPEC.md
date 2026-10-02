@@ -116,7 +116,7 @@ com.zzowo.shop_sys/
 │       ├── ApiResponse.java          # 統一回應封裝
 │       ├── PageResponse.java         # 分頁回應封裝 (content, page, size, totalElements, totalPages, last)
 │       ├── auth/
-│       │   ├── LoginResponse.java    # accessToken, refreshToken, tokenType, expiresIn
+│       │   ├── LoginResponse.java    # accessToken, tokenType, expiresIn (refresh token 走 HttpOnly cookie)
 │       │   └── TokenRefreshResponse.java
 │       ├── cart/CartItemResponse.java
 │       ├── order/
@@ -564,29 +564,26 @@ orders (N) ─────────── (1) coupons        [預留]
   "message": "登入成功",
   "data": {
     "accessToken": "eyJhbGciOiJIUzUxMiJ9...",
-    "refreshToken": "eyJhbGciOiJIUzUxMiJ9...",
     "tokenType": "Bearer",
     "expiresIn": 86400
   }
 }
 ```
 
+> Refresh Token 不放在 body,而是以 `Set-Cookie: refresh_token=...; Path=/; Secure; HttpOnly; SameSite=Lax` 核發 (session cookie,實際期限由 Redis TTL 控制),JS 讀不到,避免 XSS 偷走長效憑證.
+
 ---
 
 #### POST `/v1/auth/refresh` - 刷新 Token
 
-**權限**: 公開 (帶有效 Refresh Token)  
-**Request Body**:
+**權限**: 公開 (帶有效的 `refresh_token` cookie)  
+**Request Body**: 無. Refresh Token 從 `refresh_token` cookie 讀取.
 
-```json
-{
-  "refreshToken": "eyJhbGciOiJIUzUxMiJ9..."
-}
-```
-
-| 欄位 | 必填 | 說明 |
-| :--- | :---: | :--- |
-| `refreshToken` | ✅ | 上次登入或刷新時取得的 Refresh Token |
+| 情況 | 回應 |
+| :--- | :--- |
+| 沒有 cookie | `401` |
+| cookie 無效或已過期 | `400`,並回 `Set-Cookie` 清除 cookie |
+| 帳號已停用或鎖定 | `423`,並回 `Set-Cookie` 清除 cookie |
 
 **Response** `200 OK`:
 
@@ -596,27 +593,20 @@ orders (N) ─────────── (1) coupons        [預留]
   "message": "Token 已刷新",
   "data": {
     "accessToken": "eyJhbGciOiJIUzUxMiJ9...",
-    "refreshToken": "eyJhbGciOiJIUzUxMiJ9...",
     "tokenType": "Bearer",
     "expiresIn": 86400
   }
 }
 ```
 
-> Token Rotation: 每次刷新後舊 Refresh Token 立即失效,回傳全新的一組.
+> Token Rotation: 每次刷新後舊 Refresh Token 立即失效,新的以 `Set-Cookie` 寫回 `refresh_token`.
 
 ---
 
 #### POST `/v1/auth/logout` - 登出
 
-**權限**: 已登入 (需帶 Access Token)  
-**Request Body**:
-
-```json
-{
-  "refreshToken": "eyJhbGciOiJIUzUxMiJ9..."
-}
-```
+**權限**: 公開 (有帶 Access Token 時會一併撤銷)  
+**Request Body**: 無. Refresh Token 從 `refresh_token` cookie 讀取.
 
 **Response** `200 OK`:
 
@@ -628,7 +618,7 @@ orders (N) ─────────── (1) coupons        [預留]
 }
 ```
 
-> 同時執行兩件事: (1) 將 Access Token 加入記憶體黑名單使其立即失效; (2) 從資料庫刪除 Refresh Token.
+> 執行三件事: (1) 將 Access Token (若有) 加入黑名單使其立即失效; (2) 從 Redis 刪除 Refresh Token (若有); (3) 回 `Set-Cookie` 清除 `refresh_token` cookie.
 
 ---
 
