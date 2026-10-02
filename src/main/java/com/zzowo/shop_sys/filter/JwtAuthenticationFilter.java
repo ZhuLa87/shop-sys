@@ -46,11 +46,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         chain.doFilter(request, response);
     }
 
-    // 從 JWT claims 直接取得身分與角色,不查資料庫;同時檢查黑名單 (已登出的 token)
+    // 從 JWT claims 直接取得身分與角色,不查資料庫;同時檢查 token 是否已失效 (已登出, 或帳號異動後被撤銷)
     private void authenticate(Claims claims, HttpServletRequest request) {
         String email = claims.getSubject();
         String role = claims.get(JwtUtil.CLAIM_ROLE, String.class);
-        if (email == null || role == null || tokenBlacklistService.isBlacklistedJti(claims.getId())) {
+        if (email == null || role == null || tokenBlacklistService.isRevoked(claims)) {
             return;
         }
 

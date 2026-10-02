@@ -3,6 +3,7 @@ package com.zzowo.shop_sys.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -24,6 +25,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import com.zzowo.shop_sys.dto.request.user.UserLoginRequest;
 import com.zzowo.shop_sys.entity.User;
 import com.zzowo.shop_sys.enums.Role;
+import com.zzowo.shop_sys.event.UserSessionsRevokedEvent;
 import com.zzowo.shop_sys.exception.BusinessException;
 import com.zzowo.shop_sys.exception.ResourceNotFoundException;
 import com.zzowo.shop_sys.repository.UserRepository;
@@ -156,6 +158,24 @@ class AuthServiceTest {
 
         verify(tokenBlacklistService).blacklist("access-token");
         verify(refreshTokenService, never()).deleteIfExists(any());
+    }
+
+    // ── onUserSessionsRevoked ────────────────────────────────────────────────
+
+    @Test
+    void onUserSessionsRevoked_revokesAccessAndRefreshTokens() {
+        authService.onUserSessionsRevoked(new UserSessionsRevokedEvent(1L));
+
+        verify(tokenBlacklistService).revokeAllForUser(1L);
+        verify(refreshTokenService).revokeForUser(1L);
+    }
+
+    @Test
+    void onUserSessionsRevoked_redisFailure_doesNotPropagate() {
+        // 資料庫變更已經 commit, 撤銷失敗只記錄, 不讓請求回報失敗
+        doThrow(new RuntimeException("connection refused")).when(tokenBlacklistService).revokeAllForUser(1L);
+
+        authService.onUserSessionsRevoked(new UserSessionsRevokedEvent(1L));
     }
 
     // ── assertAccountActive ──────────────────────────────────────────────────

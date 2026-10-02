@@ -11,17 +11,22 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.event.TransactionPhase;
+import org.springframework.transaction.event.TransactionalEventListener;
 
 import com.zzowo.shop_sys.dto.request.user.UserLoginRequest;
 import com.zzowo.shop_sys.entity.User;
+import com.zzowo.shop_sys.event.UserSessionsRevokedEvent;
 import com.zzowo.shop_sys.exception.BusinessException;
 import com.zzowo.shop_sys.exception.ResourceNotFoundException;
 import com.zzowo.shop_sys.repository.UserRepository;
 import com.zzowo.shop_sys.util.JwtUtil;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 // Token 的發放, 刷新與撤銷
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AuthService {
@@ -77,6 +82,20 @@ public class AuthService {
         }
         if (refreshToken != null) {
             refreshTokenService.deleteIfExists(refreshToken);
+        }
+    }
+
+    // 帳號異動後讓該使用者已發出的 access token 與 refresh token 全部失效.
+    // 必須在 commit 之後: 若先撤銷, 撤銷到 commit 之間的 refresh 會讀到舊狀態 (例如仍是啟用),
+    // 發出一個晚於撤銷時間的新 token 而漏網. commit 後才撤銷, 中間換發的 token 一定早於撤銷時間
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void onUserSessionsRevoked(UserSessionsRevokedEvent event) {
+        try {
+            tokenBlacklistService.revokeAllForUser(event.userId());
+            refreshTokenService.revokeForUser(event.userId());
+        } catch (RuntimeException e) {
+            // 資料庫變更已經 commit, 不能再回報失敗; 停用帳號仍有 refresh 時的 assertAccountActive 擋著
+            log.error("撤銷使用者 {} 的 token 失敗: {}", event.userId(), e.getMessage(), e);
         }
     }
 
