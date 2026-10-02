@@ -174,7 +174,7 @@ com.zzowo.shop_sys/
 │   ├── OrderService.java
 │   ├── PaymentService.java          # 綠界付款表單產生 + 付款結果 (ReturnURL/OrderResultURL) 冪等處理
 │   ├── RefreshTokenService.java     # Refresh Token 建立 / 驗證 / 刪除
-│   ├── TokenBlacklistService.java   # Access Token 登出黑名單 (記憶體)
+│   ├── TokenBlacklistService.java   # Access Token 登出黑名單 + 帳號異動後的整批撤銷 (Redis)
 │   └── CustomUserDetailsService.java
 ├── util/
 │   ├── JwtUtil.java
@@ -1001,6 +1001,8 @@ GET /api/v1/products?keyword=耳機&sort=price,asc&size=10
 
 **Response** `200 OK`: 回傳更新後的 `UserResponse`
 
+> 變更密碼或 Email 後,該使用者所有已發出的 Access Token 與 Refresh Token (包含發出這個請求的裝置) 立即失效,前端需引導重新登入 (導向 `/login?reason=credentials-changed`).
+
 ---
 
 #### GET `/v1/users` - 取得所有會員列表
@@ -1035,6 +1037,8 @@ GET /api/v1/products?keyword=耳機&sort=price,asc&size=10
 
 **Response** `200 OK`: 回傳更新後的 `UserResponse`
 
+> 停用帳號 (`enabled` true -> false), 變更角色, 重設密碼或變更 Email 時,被修改者所有已發出的 Access Token 與 Refresh Token 在資料庫 commit 後立即失效 (下一個請求回 `401`,需重新登入). 送回與原值相同的欄位不會觸發.
+
 ---
 
 ## 6. 安全機制
@@ -1059,10 +1063,18 @@ JwtAuthenticationFilter 攔截
     ↓
 解析 email → 驗證簽名 + 過期時間
     ↓
+TokenBlacklistService.isRevoked (Redis 一次 multiGet):
+  jti 在黑名單 (已登出) 或 iat <= user_revoked_at:{userId} (帳號異動後撤銷) → 視為未登入
+    ↓
 設定 Spring SecurityContext
     ↓
 Controller 執行業務邏輯
 ```
+
+**帳號異動後撤銷 token**: 停用, 改角色, 改密碼或改 Email 時, `UserService` 發出 `UserSessionsRevokedEvent`, `AuthService` 在 transaction commit 之後 (`@TransactionalEventListener(AFTER_COMMIT)`) 執行:
+- 寫入 `user_revoked_at:{userId}` = 撤銷時間 (TTL = Access Token 效期), 之前發出的 Access Token 一律失效. `iat` 只到秒, 撤銷那一秒內發出的也視為失效.
+- 刪除該使用者的 Refresh Token, 不能再換發.
+- 必須在 commit 之後: 若先撤銷, 撤銷到 commit 之間的 refresh 會讀到舊資料, 發出晚於撤銷時間的新 token 而漏網.
 
 ### 6.2 密碼安全
 
