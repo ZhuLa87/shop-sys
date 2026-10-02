@@ -12,12 +12,7 @@ import com.zzowo.shop_sys.repository.UserRepository;
 import com.zzowo.shop_sys.service.OrderService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.testcontainers.containers.MariaDBContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -32,25 +27,11 @@ import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-// 用真正的 MariaDB 驗證結帳不會超賣.
-// H2 的鎖行為和 InnoDB 不同, 併發扣庫存的保證只能在真的資料庫上證明.
-// schema 由 Flyway migration 建立 (同時驗證 migration 與 entity 一致), 沒有 Docker 時整個類別略過.
-@Testcontainers(disabledWithoutDocker = true)
-@SpringBootTest(properties = {
-        "spring.datasource.driver-class-name=org.mariadb.jdbc.Driver",
-        "spring.flyway.enabled=true",
-        "spring.jpa.hibernate.ddl-auto=validate",
-        // 連線池要夠大, 否則請求會在 Hikari 排隊, 實際上沒有同時打進 DB
-        "spring.datasource.hikari.maximum-pool-size=50"
-})
-class CheckoutConcurrencyTest {
+// 用真正的 MariaDB 驗證結帳不會超賣 (container 設定見 AbstractMariaDbIntegrationTest)
+class CheckoutConcurrencyTest extends AbstractMariaDbIntegrationTest {
 
+    // 不能超過 AbstractMariaDbIntegrationTest 設定的連線池大小
     private static final int THREADS = 40;
-
-    // 與 compose.yaml 使用相同版本
-    @Container
-    @ServiceConnection
-    static MariaDBContainer<?> mariadb = new MariaDBContainer<>("mariadb:11.4");
 
     @Autowired OrderService orderService;
     @Autowired ProductRepository productRepository;
