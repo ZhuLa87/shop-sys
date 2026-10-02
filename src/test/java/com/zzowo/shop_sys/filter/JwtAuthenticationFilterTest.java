@@ -2,6 +2,7 @@ package com.zzowo.shop_sys.filter;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -23,7 +24,7 @@ import com.zzowo.shop_sys.enums.Role;
 import com.zzowo.shop_sys.service.TokenBlacklistService;
 import com.zzowo.shop_sys.util.JwtUtil;
 
-// 使用真的 JwtUtil 簽發與驗證 token, 只 mock 黑名單 (Redis)
+// 使用真的 JwtUtil 簽發與驗證 token, 只 mock 黑名單與撤銷檢查 (Redis)
 class JwtAuthenticationFilterTest {
 
     private static final String SECRET = "testSecretKeyForShopSYSThatIsLongEnoughForHS512Algorithm";
@@ -61,9 +62,11 @@ class JwtAuthenticationFilterTest {
     }
 
     @Test
-    void blacklistedToken_isNotAuthenticated() throws Exception {
+    void revokedToken_isNotAuthenticated() throws Exception {
+        // 已登出 (jti 黑名單) 或帳號異動後被撤銷
         String token = jwtUtil.generateToken(user(Role.CUSTOMER));
-        when(tokenBlacklistService.isBlacklistedJti(jwtUtil.getJtiFromToken(token))).thenReturn(true);
+        when(tokenBlacklistService.isRevoked(argThat(c -> jwtUtil.getJtiFromToken(token).equals(c.getId()))))
+                .thenReturn(true);
 
         doFilter("Bearer " + token);
 
@@ -81,7 +84,7 @@ class JwtAuthenticationFilterTest {
         doFilter("Bearer " + tampered);
 
         assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
-        verify(tokenBlacklistService, never()).isBlacklistedJti(any());
+        verify(tokenBlacklistService, never()).isRevoked(any());
     }
 
     @Test

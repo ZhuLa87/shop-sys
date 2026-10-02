@@ -115,4 +115,24 @@ class RefreshTokenServiceTest {
         verify(redisTemplate, times(1)).delete(captor.capture());
         assertThat(captor.getValue()).isEqualTo("refresh_token:unknown");
     }
+
+    // ── revokeForUser ────────────────────────────────────────────────────────
+
+    @Test
+    void revokeForUser_existingToken_deletesBothKeys() {
+        when(valueOps.getAndDelete("user_refresh:7")).thenReturn("rt-7");
+
+        refreshTokenService.revokeForUser(7L);
+
+        verify(redisTemplate).delete("refresh_token:rt-7");
+    }
+
+    @Test
+    void revokeForUser_noToken_deletesNothingElse_noException() {
+        when(valueOps.getAndDelete("user_refresh:7")).thenReturn(null);
+
+        refreshTokenService.revokeForUser(7L);
+
+        verify(redisTemplate, never()).delete(anyString());
+    }
 }

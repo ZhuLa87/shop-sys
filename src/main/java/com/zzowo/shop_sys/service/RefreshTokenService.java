@@ -75,4 +75,14 @@ public class RefreshTokenService {
         }
         redisTemplate.delete(RT_PREFIX + token);
     }
+
+    /**
+     * 刪除使用者的 Refresh Token (帳號異動後撤銷用). 每位使用者只有一個, 由反查索引找到.
+     */
+    public void revokeForUser(Long userId) {
+        String token = redisTemplate.opsForValue().getAndDelete(UR_PREFIX + userId);
+        if (token != null) {
+            redisTemplate.delete(RT_PREFIX + token);
+        }
+    }
 }
