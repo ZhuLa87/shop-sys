@@ -30,6 +30,7 @@ public class ProductMapper {
         }
 
         response.setDeletedAt(product.getDeletedAt());
+        response.setVersion(product.getVersion());
 
         return response;
     }
@@ -55,6 +56,7 @@ public class ProductMapper {
     }
 
     // 將 Request 的資料更新到 Product Entity
+    // version 由 Hibernate 管理, 不從 request 複製 (修改時的比對在 ProductService.updateProduct)
     public void updateEntityFromRequest(Product product, ProductRequest request) {
         product.setName(request.getName());
         product.setDescription(request.getDescription());
