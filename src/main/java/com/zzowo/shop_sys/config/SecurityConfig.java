@@ -46,7 +46,9 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                // 純 Bearer token API: 瀏覽器不會自動夾帶 Authorization header, 沒有 CSRF 的攻擊面
+                // 一般 API 走 Bearer token, 瀏覽器不會自動夾帶 Authorization header, 沒有 CSRF 的攻擊面.
+                // 唯一以 cookie 驗證的是 /auth/refresh 與 /auth/logout (refresh_token cookie),
+                // 兩者都只收 POST, 而 cookie 設為 SameSite=Lax, 跨站 POST 不會夾帶 (見 RefreshTokenCookie)
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
                         // 1. 公開端點

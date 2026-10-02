@@ -2,16 +2,16 @@ package com.zzowo.shop_sys.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.zzowo.shop_sys.config.SecurityConfig;
-import com.zzowo.shop_sys.dto.request.auth.TokenRefreshRequest;
 import com.zzowo.shop_sys.dto.request.user.UserLoginRequest;
-import com.zzowo.shop_sys.dto.response.auth.LoginResponse;
-import com.zzowo.shop_sys.dto.response.auth.TokenRefreshResponse;
 import com.zzowo.shop_sys.exception.BusinessException;
 import com.zzowo.shop_sys.repository.UserRepository;
 import com.zzowo.shop_sys.service.AuthService;
+import com.zzowo.shop_sys.service.IssuedTokens;
 import com.zzowo.shop_sys.service.TokenBlacklistService;
 import com.zzowo.shop_sys.service.UserService;
 import com.zzowo.shop_sys.util.JwtUtil;
+import com.zzowo.shop_sys.util.RefreshTokenCookie;
+import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -22,13 +22,15 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 
+import static org.hamcrest.Matchers.allOf;
+import static org.hamcrest.Matchers.containsString;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(AuthController.class)
-@Import(SecurityConfig.class)
+@Import({SecurityConfig.class, RefreshTokenCookie.class})
 class AuthControllerTest {
 
     @Autowired
@@ -56,19 +58,23 @@ class AuthControllerTest {
     // ── POST /v1/auth/login ──────────────────────────────────────────────────
 
     @Test
-    void login_validCredentials_returns200WithBothTokens() throws Exception {
-        LoginResponse loginResponse = new LoginResponse(
-                "access-token", "refresh-token", "Bearer", 1800L);
-        when(authService.login(any())).thenReturn(loginResponse);
+    void login_validCredentials_returnsAccessTokenInBodyAndRefreshTokenInHttpOnlyCookie() throws Exception {
+        when(authService.login(any())).thenReturn(new IssuedTokens("access-token", "refresh-token", 1800L));
 
         mockMvc.perform(post("/v1/auth/login")
 .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(loginRequest())))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.accessToken").value("access-token"))
-                .andExpect(jsonPath("$.data.refreshToken").value("refresh-token"))
+                .andExpect(jsonPath("$.data.refreshToken").doesNotExist())
                 .andExpect(jsonPath("$.data.tokenType").value("Bearer"))
-                .andExpect(jsonPath("$.data.expiresIn").value(1800));
+                .andExpect(jsonPath("$.data.expiresIn").value(1800))
+                .andExpect(header().string(HttpHeaders.SET_COOKIE, allOf(
+                        containsString("refresh_token=refresh-token"),
+                        containsString("Path=/"),
+                        containsString("Secure"),
+                        containsString("HttpOnly"),
+                        containsString("SameSite=Lax"))));
     }
 
     @Test
@@ -97,64 +103,64 @@ class AuthControllerTest {
     // ── POST /v1/auth/refresh ────────────────────────────────────────────────
 
     @Test
-    void refresh_validRefreshToken_returns200WithNewTokens() throws Exception {
+    void refresh_validCookie_returns200AndRotatesCookie() throws Exception {
         when(authService.refresh("valid-rt")).thenReturn(
-                new TokenRefreshResponse("new-access-token", "new-refresh-token", "Bearer", 1800L));
+                new IssuedTokens("new-access-token", "new-refresh-token", 1800L));
 
         mockMvc.perform(post("/v1/auth/refresh")
-.contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(refreshRequest("valid-rt"))))
+                        .cookie(new Cookie(RefreshTokenCookie.NAME, "valid-rt")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.accessToken").value("new-access-token"))
-                .andExpect(jsonPath("$.data.refreshToken").value("new-refresh-token"))
-                .andExpect(jsonPath("$.data.tokenType").value("Bearer"));
+                .andExpect(jsonPath("$.data.refreshToken").doesNotExist())
+                .andExpect(jsonPath("$.data.tokenType").value("Bearer"))
+                .andExpect(header().string(HttpHeaders.SET_COOKIE, allOf(
+                        containsString("refresh_token=new-refresh-token"),
+                        containsString("HttpOnly"))));
     }
 
     @Test
-    void refresh_invalidRefreshToken_returns4xx() throws Exception {
+    void refresh_invalidCookie_returns4xxAndClearsCookie() throws Exception {
         when(authService.refresh("expired-rt"))
                 .thenThrow(new BusinessException("無效或已過期的 Refresh Token,請重新登入"));
 
         mockMvc.perform(post("/v1/auth/refresh")
-.contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(refreshRequest("expired-rt"))))
+                        .cookie(new Cookie(RefreshTokenCookie.NAME, "expired-rt")))
                 .andExpect(status().is4xxClientError())
-                .andExpect(jsonPath("$.message").value("無效或已過期的 Refresh Token,請重新登入"));
+                .andExpect(jsonPath("$.message").value("無效或已過期的 Refresh Token,請重新登入"))
+                .andExpect(header().string(HttpHeaders.SET_COOKIE, allOf(
+                        containsString("refresh_token=;"),
+                        containsString("Max-Age=0"))));
     }
 
     @Test
-    void refresh_blankRefreshToken_returns422() throws Exception {
-        TokenRefreshRequest body = new TokenRefreshRequest();
-        // refreshToken 留空,觸發 @NotBlank 驗證
+    void refresh_withoutCookie_returns401() throws Exception {
+        mockMvc.perform(post("/v1/auth/refresh"))
+                .andExpect(status().isUnauthorized());
 
-        mockMvc.perform(post("/v1/auth/refresh")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(body)))
-                .andExpect(status().isUnprocessableEntity());
+        verify(authService, never()).refresh(any());
     }
 
     // ── POST /v1/auth/logout ─────────────────────────────────────────────────
 
     @Test
-    void logout_withRefreshToken_blacklistsAccessTokenAndDeletesRefreshToken() throws Exception {
+    void logout_withCookie_blacklistsAccessTokenDeletesRefreshTokenAndClearsCookie() throws Exception {
         mockMvc.perform(post("/v1/auth/logout")
-.header(HttpHeaders.AUTHORIZATION, "Bearer some-access-token")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(refreshRequest("some-rt"))))
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer some-access-token")
+                        .cookie(new Cookie(RefreshTokenCookie.NAME, "some-rt")))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.message").value("已成功登出"));
+                .andExpect(jsonPath("$.message").value("已成功登出"))
+                .andExpect(header().string(HttpHeaders.SET_COOKIE, containsString("Max-Age=0")));
 
         verify(authService).logout("some-access-token", "some-rt");
     }
 
     @Test
-    void logout_withoutAuthorizationHeader_stillDeletesRefreshToken() throws Exception {
-        mockMvc.perform(post("/v1/auth/logout")
-.contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(refreshRequest("some-rt"))))
-                .andExpect(status().isOk());
+    void logout_withoutAuthorizationHeaderOrCookie_stillClearsCookie() throws Exception {
+        mockMvc.perform(post("/v1/auth/logout"))
+                .andExpect(status().isOk())
+                .andExpect(header().string(HttpHeaders.SET_COOKIE, containsString("Max-Age=0")));
 
-        verify(authService).logout(null, "some-rt");
+        verify(authService).logout(null, null);
     }
 
     // ── helpers ──────────────────────────────────────────────────────────────
@@ -163,12 +169,6 @@ class AuthControllerTest {
         UserLoginRequest req = new UserLoginRequest();
         req.setEmail("user@test.com");
         req.setPassword("password123");
-        return req;
-    }
-
-    private TokenRefreshRequest refreshRequest(String token) {
-        TokenRefreshRequest req = new TokenRefreshRequest();
-        req.setRefreshToken(token);
         return req;
     }
 }
