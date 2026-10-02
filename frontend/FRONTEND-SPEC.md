@@ -149,7 +149,6 @@ onMounted(() => {
 | 狀態 / 計算 | 型別 | 說明 |
 | :--- | :--- | :--- |
 | `token` | `Cookie<string \| null>` | Access Token,存於 Cookie |
-| `refreshToken` | `Cookie<string \| null>` | Refresh Token,存於 Cookie |
 | `userProfile` | `Cookie<UserProfile \| null>` | 使用者資料快取 |
 | `isAuthenticated` | `computed<boolean>` | `!!token.value` |
 | `user` | `computed<UserProfile \| null>` | `userProfile.value` |
@@ -256,10 +255,11 @@ interface ApiResponse<T> {
 ### Token 自動刷新
 
 `useApi` 內建 401 自動重試機制:
-1. 請求失敗 (status 401) → 嘗試用 `refresh_token` 換新 token
+1. 請求失敗 (status 401) → 呼叫 `POST /auth/refresh` (瀏覽器自動帶 HttpOnly 的 `refresh_token` cookie) 換新 token
 2. 換新成功 → 自動重試原始請求一次
-3. 換新失敗 → 清除所有 Cookie,跳轉 `/login`
-4. 防止並發刷新:singleton `refreshingPromise` 確保同時多個 401 只觸發一次換新
+3. 換新失敗 → 清除 `auth_token` / `user_profile`,跳轉 `/login` (`refresh_token` 由後端回應清除)
+4. 防止並發刷新:瀏覽器端用 module 層級的 singleton promise;SSR 端存在 `event.context`,每個請求各自一份,避免不同使用者共用.換發結果由所有等待中的呼叫端共用,每個呼叫端都會把新 token 寫進自己的 `auth_token` ref (各 `useCookie` ref 不會即時同步)
+5. SSR 期間換新:手動帶上原始請求的 `cookie` header,並把後端回的 `Set-Cookie` 轉給瀏覽器
 
 ---
 
@@ -268,6 +268,8 @@ interface ApiResponse<T> {
 ### Token 儲存策略
 
 所有憑證以 **Cookie** 儲存,不使用 `localStorage`.原因:SSR 環境下 Cookie 可由 server-side 讀取,localStorage 無法.
+
+`refresh_token` 由後端以 `HttpOnly` cookie 核發,前端程式碼完全碰不到 (也不會出現在 response body),XSS 無法偷走 7 天的長效憑證.前端只用 `useCookie` 管理 `auth_token` 與 `user_profile`.
 
 ```ts
 // Cookie 設定 (sameSite + secure)
@@ -280,14 +282,14 @@ const token = useCookie<string | null>('auth_token', {
 | Cookie 名稱 | 內容 | 用途 |
 | :--- | :--- | :--- |
 | `auth_token` | JWT Access Token | API 請求授權 Header |
-| `refresh_token` | Refresh Token | 換發新 Access Token |
+| `refresh_token` | Refresh Token (後端核發,HttpOnly) | 換發新 Access Token |
 | `user_profile` | JSON 序列化的使用者資料 | 避免每次重新載入都呼叫 `/users/me` |
 
 ### 登入流程
 
 ```
 POST /auth/login
-  → 寫入 auth_token + refresh_token cookie
+  → 寫入 auth_token cookie (refresh_token 由後端 Set-Cookie 寫入)
   → GET /users/me → 寫入 user_profile cookie
   → GET /carts → 初始化購物車 store
   → navigateTo('/')
@@ -296,9 +298,9 @@ POST /auth/login
 ### 登出流程
 
 ```
-POST /auth/logout (帶 refreshToken body)
-  → 後端黑名單 Access Token,刪除 Refresh Token
-  → 清除 auth_token, refresh_token, user_profile cookie
+POST /auth/logout (無 body,瀏覽器自動帶 refresh_token cookie)
+  → 後端黑名單 Access Token,刪除 Refresh Token,Set-Cookie 清除 refresh_token
+  → 清除 auth_token, user_profile cookie
   → cartStore.clearCartState()
   → window.location.href = '/login'
 ```
