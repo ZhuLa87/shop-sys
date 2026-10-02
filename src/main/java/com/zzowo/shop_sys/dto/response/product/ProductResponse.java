@@ -37,4 +37,7 @@ public class ProductResponse {
 
     @Schema(description = "軟刪除時間,null 表示未刪除")
     private LocalDateTime deletedAt;
+
+    @Schema(description = "樂觀鎖版本號, 修改商品時原樣帶回 (結帳扣庫存也會遞增)", example = "3")
+    private Long version;
 }

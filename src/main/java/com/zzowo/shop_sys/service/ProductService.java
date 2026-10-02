@@ -2,6 +2,7 @@ package com.zzowo.shop_sys.service;
 
 import lombok.RequiredArgsConstructor;
 import com.zzowo.shop_sys.dto.request.product.ProductRequest;
+import com.zzowo.shop_sys.dto.request.product.ProductUpdateRequest;
 import com.zzowo.shop_sys.dto.response.PageResponse;
 import com.zzowo.shop_sys.dto.response.product.InventoryLogResponse;
 import com.zzowo.shop_sys.dto.response.product.ProductResponse;
@@ -20,6 +21,7 @@ import com.zzowo.shop_sys.repository.UserRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -67,17 +69,24 @@ public class ProductService {
 
     // 修改商品
     @Transactional
-    public ProductResponse updateProduct(String email, Long id, ProductRequest request) {
+    public ProductResponse updateProduct(String email, Long id, ProductUpdateRequest request) {
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("找不到商品 ID: " + id));
 
-        // 表單會整包覆寫庫存,先記下舊值才算得出差額
-        // 已知限制: 表單打開後才發生的結帳扣減會被舊值蓋掉 (見 ProductRepository.deductStock 的說明)
+        // 表單會整包覆寫庫存, 所以要確認表單是基於最新資料: 打開表單後若有結帳扣庫存 (deductStock 會 version + 1),
+        // 舊表單的庫存值會把扣掉的量加回去. 必須手動比對: 對 managed entity 呼叫 setVersion 不會生效,
+        // Hibernate 的 UPDATE ... WHERE version = ? 用的是載入時的值 (那段只防 findById 到 save 之間的競爭)
+        if (!request.getVersion().equals(product.getVersion())) {
+            throw new ObjectOptimisticLockingFailureException(Product.class, id);
+        }
+
+        // 先記下舊值才算得出差額
         int oldStock = product.getStockQuantity() == null ? 0 : product.getStockQuantity();
 
         productMapper.updateEntityFromRequest(product, request);
 
-        Product savedProduct = productRepository.save(product);
+        // 立即 flush 讓 version + 1 反映在回應上; 只用 save 的話要等 commit 才遞增, 回應會帶舊 version
+        Product savedProduct = productRepository.saveAndFlush(product);
 
         // 只改名稱/描述時不產生雜訊紀錄
         int delta = savedProduct.getStockQuantity() - oldStock;

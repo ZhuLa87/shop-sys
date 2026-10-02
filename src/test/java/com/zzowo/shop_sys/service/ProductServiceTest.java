@@ -1,6 +1,6 @@
 package com.zzowo.shop_sys.service;
 
-import com.zzowo.shop_sys.dto.request.product.ProductRequest;
+import com.zzowo.shop_sys.dto.request.product.ProductUpdateRequest;
 import com.zzowo.shop_sys.dto.response.product.ProductResponse;
 import com.zzowo.shop_sys.entity.InventoryLog;
 import com.zzowo.shop_sys.entity.Product;
@@ -26,6 +26,7 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -42,6 +43,7 @@ class ProductServiceTest {
 
     private static final String EMAIL = "admin@test.com";
     private static final String OPERATOR_NAME = "王小明";
+    private static final long CURRENT_VERSION = 7L;
 
     @Mock ProductRepository productRepository;
     @Mock ProductMapper productMapper;
@@ -90,7 +92,7 @@ class ProductServiceTest {
     void updateProduct_stockIncreased_writesPositiveAdjustmentLog() {
         stubExistingProduct(10);
         stubMapperSetsStock(25);
-        stubSaveReturnsArgument();
+        stubSaveAndFlushReturnsArgument();
         stubOperator(3L);
 
         productService.updateProduct(EMAIL, 1L, buildRequest(25));
@@ -107,7 +109,7 @@ class ProductServiceTest {
     void updateProduct_stockDecreased_writesNegativeAdjustmentLog() {
         stubExistingProduct(10);
         stubMapperSetsStock(4);
-        stubSaveReturnsArgument();
+        stubSaveAndFlushReturnsArgument();
         stubOperator(3L);
 
         productService.updateProduct(EMAIL, 1L, buildRequest(4));
@@ -120,7 +122,7 @@ class ProductServiceTest {
         // 只改名稱/描述時不該產生雜訊紀錄
         stubExistingProduct(10);
         stubMapperSetsStock(10);
-        stubSaveReturnsArgument();
+        stubSaveAndFlushReturnsArgument();
 
         productService.updateProduct(EMAIL, 1L, buildRequest(10));
 
@@ -131,7 +133,7 @@ class ProductServiceTest {
     void updateProduct_unknownOperator_stillWritesLogWithNullOperator() {
         stubExistingProduct(10);
         stubMapperSetsStock(12);
-        stubSaveReturnsArgument();
+        stubSaveAndFlushReturnsArgument();
         when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.empty());
 
         productService.updateProduct(EMAIL, 1L, buildRequest(12));
@@ -148,7 +150,7 @@ class ProductServiceTest {
         // 使用者沒填姓名時退而記 email,稽核日誌至少認得出是誰
         stubExistingProduct(10);
         stubMapperSetsStock(12);
-        stubSaveReturnsArgument();
+        stubSaveAndFlushReturnsArgument();
         User user = buildOperator(3L);
         user.setName("  ");
         when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(user));
@@ -156,6 +158,21 @@ class ProductServiceTest {
         productService.updateProduct(EMAIL, 1L, buildRequest(12));
 
         assertThat(captureSavedLog().getOperatorName()).isEqualTo(EMAIL);
+    }
+
+    @Test
+    void updateProduct_staleVersion_throwsOptimisticLock_andDoesNotOverwriteStock() {
+        // 表單打開後有人結帳 (deductStock 讓 version + 1), 舊表單不能把扣掉的庫存蓋回去
+        stubExistingProduct(9);
+        ProductUpdateRequest request = buildRequest(10);
+        request.setVersion(CURRENT_VERSION - 1);
+
+        assertThatThrownBy(() -> productService.updateProduct(EMAIL, 1L, request))
+                .isInstanceOf(ObjectOptimisticLockingFailureException.class);
+
+        verify(productMapper, never()).updateEntityFromRequest(any(), any());
+        verify(productRepository, never()).saveAndFlush(any());
+        verify(inventoryLogRepository, never()).save(any());
     }
 
     // ── deleteProduct ────────────────────────────────────────────────────────
@@ -325,6 +342,10 @@ class ProductServiceTest {
         when(productRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
     }
 
+    private void stubSaveAndFlushReturnsArgument() {
+        when(productRepository.saveAndFlush(any())).thenAnswer(inv -> inv.getArgument(0));
+    }
+
     private void stubExistingProduct(int currentStock) {
         Product existing = buildProduct();
         existing.setStockQuantity(currentStock);
@@ -350,12 +371,14 @@ class ProductServiceTest {
         return captor.getValue();
     }
 
-    private ProductRequest buildRequest(int stockQuantity) {
-        ProductRequest request = new ProductRequest();
+    // 回傳修改用的 request (ProductRequest 的子類別), 新增測試也能直接使用
+    private ProductUpdateRequest buildRequest(int stockQuantity) {
+        ProductUpdateRequest request = new ProductUpdateRequest();
         request.setName("測試商品");
         request.setPrice(BigDecimal.valueOf(100));
         request.setStockQuantity(stockQuantity);
         request.setStatus(ProductStatus.ON_SHELF);
+        request.setVersion(CURRENT_VERSION);
         return request;
     }
 
@@ -366,6 +389,7 @@ class ProductServiceTest {
         p.setPrice(BigDecimal.valueOf(100));
         p.setStockQuantity(10);
         p.setStatus(ProductStatus.ON_SHELF);
+        p.setVersion(CURRENT_VERSION);
         return p;
     }
 }

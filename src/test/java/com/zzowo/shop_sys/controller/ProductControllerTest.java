@@ -2,6 +2,7 @@ package com.zzowo.shop_sys.controller;
 
 import com.zzowo.shop_sys.config.SecurityConfig;
 import com.zzowo.shop_sys.dto.response.product.ProductResponse;
+import com.zzowo.shop_sys.entity.Product;
 import com.zzowo.shop_sys.exception.ResourceNotFoundException;
 import com.zzowo.shop_sys.repository.UserRepository;
 import com.zzowo.shop_sys.service.ProductService;
@@ -11,6 +12,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.http.MediaType;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.security.test.context.support.WithAnonymousUser;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -19,6 +22,11 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.math.BigDecimal;
 import java.util.List;
 
+import static org.hamcrest.Matchers.containsString;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -70,6 +78,61 @@ class ProductControllerTest {
                 .andExpect(status().isOk());
 
         verify(productService).getProductById(1L, true);
+    }
+
+    @Test
+    @WithMockUser(roles = "PRODUCT_MANAGER")
+    void getProduct_returnsVersionForEditForm() throws Exception {
+        ProductResponse response = new ProductResponse();
+        response.setId(1L);
+        response.setVersion(7L);
+        when(productService.getProductById(1L, true)).thenReturn(response);
+
+        mockMvc.perform(get("/v1/products/1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.version").value(7));
+    }
+
+    // ── PUT /v1/products/{id} ────────────────────────────────────────────────
+
+    private static final String UPDATE_BODY = """
+            {"name":"測試商品","price":100,"stockQuantity":10,"status":"ON_SHELF","version":6}
+            """;
+
+    @Test
+    @WithMockUser(roles = "PRODUCT_MANAGER")
+    void updateProduct_passesVersionToService() throws Exception {
+        when(productService.updateProduct(any(), eq(1L), any())).thenReturn(new ProductResponse());
+
+        mockMvc.perform(put("/v1/products/1").contentType(MediaType.APPLICATION_JSON).content(UPDATE_BODY))
+                .andExpect(status().isOk());
+
+        verify(productService).updateProduct(any(), eq(1L), argThat(req -> Long.valueOf(6L).equals(req.getVersion())));
+    }
+
+    @Test
+    @WithMockUser(roles = "PRODUCT_MANAGER")
+    void updateProduct_missingVersion_returns422() throws Exception {
+        String body = """
+                {"name":"測試商品","price":100,"stockQuantity":10,"status":"ON_SHELF"}
+                """;
+
+        mockMvc.perform(put("/v1/products/1").contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.message").value(containsString("version")));
+
+        verify(productService, never()).updateProduct(any(), any(), any());
+    }
+
+    @Test
+    @WithMockUser(roles = "PRODUCT_MANAGER")
+    void updateProduct_staleVersion_returns409() throws Exception {
+        when(productService.updateProduct(any(), eq(1L), any()))
+                .thenThrow(new ObjectOptimisticLockingFailureException(Product.class, 1L));
+
+        mockMvc.perform(put("/v1/products/1").contentType(MediaType.APPLICATION_JSON).content(UPDATE_BODY))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.success").value(false));
     }
 
     // ── GET /v1/products/deleted ─────────────────────────────────────────────

@@ -223,6 +223,7 @@
 
           <el-form-item label="庫存量" prop="stockQuantity">
             <el-input-number v-model="form.stockQuantity" :min="0" class="w-full" controls-position="right" />
+            <p v-if="stockConflictNotice" class="mt-1 w-full text-xs leading-snug text-amber-600">{{ stockConflictNotice }}</p>
           </el-form-item>
         </div>
 
@@ -427,6 +428,8 @@ const isEdit = ref(false)
 const saving = ref(false)
 const formRef = ref<FormInstance>()
 const editingProductId = ref<number | null>(null)
+// 儲存遇到 409 時, 提示庫存已被更新為最新值
+const stockConflictNotice = ref('')
 
 // 上傳用的資源 ID:新增時用時間戳作暫時 ID,編輯時用真實商品 ID
 const uploadResourceId = ref(0)
@@ -441,6 +444,8 @@ const form = reactive({
   coverImageUrl: '',
   description: '',
   imageUrls: [] as string[],
+  // 取得商品時的版本號, 修改時原樣送回; 期間有人結帳扣庫存時後端回 409, 避免舊庫存值蓋回去
+  version: null as number | null,
 })
 
 const rules = reactive<FormRules>({
@@ -492,6 +497,8 @@ const openAddDialog = () => {
   form.coverImageUrl = ''
   form.description = ''
   form.imageUrls = []
+  form.version = null
+  stockConflictNotice.value = ''
 }
 
 const openEditDialog = async (row: any) => {
@@ -499,6 +506,7 @@ const openEditDialog = async (row: any) => {
   editingProductId.value = row.id
   uploadResourceId.value = row.id
   dialogVisible.value = true
+  stockConflictNotice.value = ''
   try {
     const res = await api.request(`/products/${row.id}`)
     if (res.success && res.data) {
@@ -510,6 +518,7 @@ const openEditDialog = async (row: any) => {
       form.coverImageUrl = data.coverImageUrl || ''
       form.description = data.description || ''
       form.imageUrls = data.imageUrls ? [...data.imageUrls] : []
+      form.version = data.version
     }
   } catch (error) {
     console.error('載入商品詳情失敗:', error)
@@ -584,6 +593,7 @@ const handleSave = async () => {
       coverImageUrl: form.coverImageUrl.trim() || null,
       description: form.description.trim() || null,
       imageUrls: form.imageUrls.filter(url => url.trim() !== ''),
+      version: form.version,
     }
     try {
       let res
@@ -603,11 +613,39 @@ const handleSave = async () => {
         loadProducts()
       }
     } catch (error: any) {
+      if (error?.status === 409 && isEdit.value && editingProductId.value) {
+        await reloadStockAfterConflict(editingProductId.value)
+        return
+      }
       notify({ title: '儲存失敗', message: error.message || '資料格式錯誤,請檢查欄位.', type: 'error', duration: 4000 })
     } finally {
       saving.value = false
     }
   })
+}
+
+// 表單打開後商品被改過 (通常是有人結帳扣了庫存).
+// 只換成最新的庫存與 version, 管理員對其他欄位的修改 (名稱, 價格, 圖片) 保留在表單上
+const reloadStockAfterConflict = async (id: number) => {
+  try {
+    const res = await api.request(`/products/${id}`)
+    if (!res.success || !res.data) throw new Error(res.message)
+    const previousStock = form.stockQuantity
+    form.stockQuantity = res.data.stockQuantity
+    form.version = res.data.version
+    stockConflictNotice.value =
+      `編輯期間庫存已變動, 已更新為目前的 ${res.data.stockQuantity} (原本表單上是 ${previousStock}). 如需調整請重新輸入.`
+    notify({
+      title: '商品已被變更',
+      message: '可能有新訂單扣了庫存. 庫存已更新為最新值, 其他欄位的修改仍保留, 請確認後再儲存.',
+      type: 'warning',
+      duration: 6000,
+    })
+  } catch (error: any) {
+    // 拿不到最新資料就不能再送出 (version 仍是舊的, 只會一直 409), 關閉表單請管理員重新開啟
+    notify({ title: '無法載入最新商品資料', message: error.message || '請重新整理頁面後再試.', type: 'error', duration: 5000 })
+    dialogVisible.value = false
+  }
 }
 
 const loadDeletedProducts = async () => {
