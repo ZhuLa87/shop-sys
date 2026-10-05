@@ -170,7 +170,6 @@ const api = useApi()
 
 const failedImages = reactive(new Set<number>())
 
-// 分頁與篩選狀態
 const products = ref<any[]>([])
 const loading = ref(true)
 const currentPage = ref(1) // 1-indexed for Element Plus UI
@@ -180,7 +179,6 @@ const totalPages = ref(0)
 const searchQuery = ref('')
 const currentSort = ref('createdAt,desc')
 
-// 搜尋防抖器 (Debounce)
 let debounceTimeout: any
 
 const sortOptions = [
@@ -190,7 +188,6 @@ const sortOptions = [
   { label: '商品名稱 A-Z', value: 'name,asc' },
 ]
 
-// 獲取商品列表資料
 const loadProducts = async () => {
   loading.value = true
   try {
@@ -215,7 +212,6 @@ const loadProducts = async () => {
   }
 }
 
-// 觸發搜尋
 const handleSearch = () => {
   clearTimeout(debounceTimeout)
   debounceTimeout = setTimeout(() => {
@@ -224,20 +220,17 @@ const handleSearch = () => {
   }, 350)
 }
 
-// 切換排序
 const changeSort = (sortValue: string) => {
   currentSort.value = sortValue
   currentPage.value = 1
   loadProducts()
 }
 
-// 切換頁碼
 const handlePageChange = (page: number) => {
   currentPage.value = page
   loadProducts()
 }
 
-// 快速加入購物車
 const quickAddToCart = async (product: any) => {
   if (!authStore.isAuthenticated) {
     notify({
@@ -268,7 +261,6 @@ const quickAddToCart = async (product: any) => {
   }
 }
 
-// 輔助格式化方法
 const formatPrice = (price: number) => {
   return new Intl.NumberFormat('zh-TW', { maximumFractionDigits: 0 }).format(price)
 }
@@ -279,7 +271,6 @@ onMounted(() => {
 </script>
 
 <style scoped>
-/* 自訂 UI 分頁樣式使其符合簡約設計 */
 :deep(.el-pagination) {
   --el-pagination-hover-color: var(--color-indigo-600);
   --el-pagination-button-bg-color: transparent;

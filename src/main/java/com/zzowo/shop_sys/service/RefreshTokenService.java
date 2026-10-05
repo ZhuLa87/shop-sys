@@ -30,7 +30,6 @@ public class RefreshTokenService {
      * @return 新的 Refresh Token 字串
      */
     public String create(Long userId) {
-        // 先刪除該使用者的舊 Token (如有) 
         String oldToken = redisTemplate.opsForValue().get(UR_PREFIX + userId);
         if (oldToken != null) {
             redisTemplate.delete(RT_PREFIX + oldToken);

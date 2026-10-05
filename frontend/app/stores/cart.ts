@@ -22,7 +22,6 @@ export const useCartStore = defineStore('cart', () => {
     return items.value.reduce((sum, item) => sum + item.subtotal, 0)
   })
 
-  // 取得購物車資料
   const fetchCart = async () => {
     const authStore = useAuthStore()
     if (!authStore.isAuthenticated) {
@@ -40,11 +39,9 @@ export const useCartStore = defineStore('cart', () => {
     }
   }
 
-  // 加入商品至購物車
   const addToCart = async (productId: number, quantity: number) => {
     const authStore = useAuthStore()
     if (!authStore.isAuthenticated) {
-      // 提示請先登入
       throw new Error('UNAUTHORIZED')
     }
 
@@ -64,7 +61,6 @@ export const useCartStore = defineStore('cart', () => {
     }
   }
 
-  // 移除購物車項目
   const removeFromCart = async (cartItemId: number) => {
     try {
       const res = await api.request(`/carts/${cartItemId}`, {
@@ -100,7 +96,6 @@ export const useCartStore = defineStore('cart', () => {
     }
   }
 
-  // 清除本地狀態
   const clearCartState = () => {
     items.value = []
   }

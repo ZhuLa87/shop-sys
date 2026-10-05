@@ -88,7 +88,6 @@ const form = reactive({
   password: ''
 })
 
-// 表單驗證規則
 const rules = reactive<FormRules>({
   email: [
     { required: true, message: '電子信箱為必填欄位', trigger: 'blur' },
@@ -116,7 +115,6 @@ const handleLogin = async () => {
             duration: 3000,
           })
           
-          // 登入成功後跳轉至首頁或上一頁
           navigateTo('/')
         }
       } catch (error: any) {

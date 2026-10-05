@@ -44,7 +44,6 @@ spring:
             port: ${REDIS_PORT:6379}
             password: ${REDIS_PASSWORD}
 
-# 管理端點配置
 # 實際路徑 = context-path + base-path,例如 health 為 /api/health
 management:
     endpoints:
@@ -75,13 +74,11 @@ springdoc:
     swagger-ui:
         enabled: false
 
-# JWT 配置
 jwt:
     secret: ${JWT_SECRET}
     expiration: ${JWT_EXPIRATION:1800000}        # Access Token:30 分鐘 (毫秒)
     refresh-expiration: ${JWT_REFRESH_EXPIRATION:604800000} # Refresh Token:7 天 (毫秒)
 
-# 日誌配置
 logging:
     level:
         com.zzowo.shop_sys: ${LOG_LEVEL_APP:INFO}
@@ -89,8 +86,6 @@ logging:
         org.springframework.security: WARN
         org.springframework.web.bind.MethodArgumentNotValidException: WARN
 
-# MinIO 物件儲存設定
-# 注意: port 9000 是 MinIO S3 API,port 9001 是 Console 管理介面
 minio:
     # 後端容器對內連線用的位址
     endpoint: ${MINIO_ENDPOINT:http://localhost:9000}

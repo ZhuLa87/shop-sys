@@ -34,21 +34,18 @@ import java.util.stream.Collectors;
 // 由基底類別對應到正確的 4xx, 這裡只負責把回應包成 ApiResponse, 不會再掉進下方兜底的 500
 public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
-    // 資源找不到 (404)
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<ApiResponse<Void>> handleResourceNotFoundException(ResourceNotFoundException e) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
                 .body(ApiResponse.error(e.getMessage()));
     }
 
-    // 業務邏輯錯誤 (status 由例外自行決定, 預設 400)
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<ApiResponse<Void>> handleBusinessException(BusinessException e) {
         return ResponseEntity.status(e.getStatus())
                 .body(ApiResponse.error(e.getMessage()));
     }
 
-    // 樂觀鎖衝突 (高併發下庫存/訂單版本衝突) → 409
     @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
     public ResponseEntity<ApiResponse<Void>> handleOptimisticLockingException(ObjectOptimisticLockingFailureException e) {
         log.warn("Optimistic locking conflict: {}", e.getMessage());
@@ -57,7 +54,6 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     }
 
 
-    // Bean Validation 錯誤 (@Validated on @PathVariable / @RequestParam) → 422
     @ExceptionHandler(ConstraintViolationException.class)
     public ResponseEntity<ApiResponse<Void>> handleConstraintViolationException(ConstraintViolationException e) {
         String message = e.getConstraintViolations().stream()
@@ -104,7 +100,6 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                 .body(ApiResponse.error("系統發生錯誤,請稍後再試"));
     }
 
-    // 兜底 - 所有意料之外的 Exception (NullPointerException, 資料庫連線失敗等)
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> handleException(Exception e) {
         log.error("Unhandled Exception", e);
@@ -114,7 +109,6 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     // ── 以下覆寫 ResponseEntityExceptionHandler, 保留原本的狀態碼與訊息 ──
 
-    // Bean Validation 錯誤 (@Valid on request body) → 422, 回傳全部欄位錯誤
     @Override
     protected ResponseEntity<Object> handleMethodArgumentNotValid(
             MethodArgumentNotValidException ex, HttpHeaders headers, HttpStatusCode status, WebRequest request) {
@@ -124,28 +118,24 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return handleExceptionInternal(ex, ApiResponse.error(message), headers, HttpStatus.UNPROCESSABLE_ENTITY, request);
     }
 
-    // 請求 body 格式錯誤 (JSON 語法錯誤, 型別或 enum 值不符) → 400
     @Override
     protected ResponseEntity<Object> handleHttpMessageNotReadable(
             HttpMessageNotReadableException ex, HttpHeaders headers, HttpStatusCode status, WebRequest request) {
         return handleExceptionInternal(ex, ApiResponse.error("請求格式錯誤,請確認 Content-Type 與 body 格式"), headers, status, request);
     }
 
-    // 缺少必填 Query Parameter → 400
     @Override
     protected ResponseEntity<Object> handleMissingServletRequestParameter(
             MissingServletRequestParameterException ex, HttpHeaders headers, HttpStatusCode status, WebRequest request) {
         return handleExceptionInternal(ex, ApiResponse.error("缺少必填參數: " + ex.getParameterName()), headers, status, request);
     }
 
-    // HTTP method 不支援 → 405
     @Override
     protected ResponseEntity<Object> handleHttpRequestMethodNotSupported(
             HttpRequestMethodNotSupportedException ex, HttpHeaders headers, HttpStatusCode status, WebRequest request) {
         return handleExceptionInternal(ex, ApiResponse.error("不支援的 HTTP 方法: " + ex.getMethod()), headers, status, request);
     }
 
-    // Path variable / query parameter 型別不符 (例如 /orders/abc, status=FOO) → 400
     @Override
     protected ResponseEntity<Object> handleTypeMismatch(
             TypeMismatchException ex, HttpHeaders headers, HttpStatusCode status, WebRequest request) {

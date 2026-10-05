@@ -21,14 +21,13 @@ public class OrderMapper {
         res.setStatus(order.getStatus());
         res.setTotalAmount(order.getTotalAmount());
         res.setRecipientName(order.getRecipientName());
-        res.setRecipientPhone(order.getRecipientPhone()); // 補上遺失的電話欄位
+        res.setRecipientPhone(order.getRecipientPhone());
         res.setRecipientAddress(order.getRecipientAddress());
 
         if (order.getCreatedAt() != null) {
             res.setCreatedAt(order.getCreatedAt().atZone(ZoneId.systemDefault()).toInstant().toEpochMilli());
         }
 
-        // 轉換明細
         if (order.getItems() != null) {
             res.setItems(order.getItems().stream()
                     .map(this::toOrderItemResponse)

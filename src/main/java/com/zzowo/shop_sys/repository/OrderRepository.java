@@ -17,7 +17,6 @@ import java.util.Optional;
 
 @Repository
 public interface OrderRepository extends JpaRepository<Order, Long> {
-    // 找出某個用戶的所有訂單,並依照建立時間新到舊排序
     List<Order> findByUserIdOrderByCreatedAtDesc(Long userId);
 
     // 取得訂單並加上寫入鎖 (SELECT ... FOR UPDATE)

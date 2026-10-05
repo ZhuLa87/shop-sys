@@ -38,7 +38,6 @@ public class UserService {
 
     private final ApplicationEventPublisher eventPublisher;
 
-    // 取得目前登入者的個人資料
     public UserResponse getUserProfile(String email) {
         User user = userRepository.getByEmailOrThrow(email);
         return userMapper.toUserResponse(user);
@@ -50,10 +49,8 @@ public class UserService {
             throw new BusinessException("帳號已被註冊");
         }
 
-        // 使用 Mapper 轉換基本資料
         User user = userMapper.toEntity(request);
 
-        // 處理業務邏輯 (加密,預設值)
         user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
         user.setRole(Role.CUSTOMER);
         user.setLastPasswordChangeAt(LocalDateTime.now());
@@ -63,13 +60,11 @@ public class UserService {
         return userMapper.toRegisterResponse(savedUser);
     }
 
-    // 一般使用者更新自己的資料
     @Transactional
     public void updateMyInfo(String currentEmail, UserSelfUpdateRequest request) {
         User user = userRepository.getByEmailOrThrow(currentEmail);
         boolean revokeSessions = false;
 
-        // 如果要改 Email,需檢查新 Email 是否已被其他人使用
         if (StringUtils.hasText(request.getEmail()) && !request.getEmail().equals(user.getEmail())) {
             if (userRepository.existsByEmail(request.getEmail())) {
                 throw new BusinessException("該 Email 已被註冊");
@@ -78,13 +73,11 @@ public class UserService {
             revokeSessions = true;
         }
 
-        // 如果有傳密碼,就重新加密設定
         if (StringUtils.hasText(request.getPassword())) {
             changePassword(user, request.getPassword());
             revokeSessions = true;
         }
 
-        // 更新其他基本資料 (如果有傳值才更新)
         if (StringUtils.hasText(request.getName())) user.setName(request.getName());
         if (StringUtils.hasText(request.getPhone())) user.setPhone(request.getPhone());
         if (StringUtils.hasText(request.getAvatarUrl())) {
@@ -103,7 +96,6 @@ public class UserService {
         }
     }
 
-    // 超級管理員更新任何人的資料
     @Transactional
     public void updateUserByAdmin(String operatorEmail, Long userId, AdminUpdateUserRequest request) {
         User user = userRepository.findById(userId)
@@ -116,7 +108,6 @@ public class UserService {
         // token 裡帶著 email 與角色, filter 不查資料庫; 以下任一項變更後舊 token 都不能再用
         boolean revokeSessions = false;
 
-        // 管理員修改 Email 也要檢查重複
         if (StringUtils.hasText(request.getEmail()) && !request.getEmail().equals(user.getEmail())) {
             if (userRepository.existsByEmail(request.getEmail())) {
                 throw new BusinessException("該 Email 已被註冊");
@@ -125,17 +116,14 @@ public class UserService {
             revokeSessions = true;
         }
 
-        // 管理員重設密碼
         if (StringUtils.hasText(request.getPassword())) {
             changePassword(user, request.getPassword());
             revokeSessions = true;
         }
 
-        // 更新基本資料
         if (StringUtils.hasText(request.getName())) user.setName(request.getName());
         if (StringUtils.hasText(request.getPhone()))
             user.setPhone(request.getPhone());
-        // 更新權限與狀態 (管理員特權)
         if (request.getRole() != null && request.getRole() != user.getRole()) {
             user.setRole(request.getRole());
             revokeSessions = true;
@@ -159,12 +147,10 @@ public class UserService {
         user.setLastPasswordChangeAt(LocalDateTime.now());
     }
 
-    // 擋下會把管理員鎖在系統外的操作
     private void assertNotLockingOutAdmins(String operatorEmail, User target, AdminUpdateUserRequest request) {
         User operator = userRepository.getByEmailOrThrow(operatorEmail);
         boolean isSelf = operator.getId().equals(target.getId());
 
-        // 停用帳號
         if (Boolean.FALSE.equals(request.getEnabled()) && target.isEnabled()) {
             if (isSelf) {
                 throw new BusinessException("不可停用自己的帳號");
@@ -172,7 +158,6 @@ public class UserService {
             assertNotLastActiveSuperAdmin(target, "停用");
         }
 
-        // 變更角色
         if (request.getRole() != null) {
             Role newRole = request.getRole();
             if (newRole == target.getRole()) {
@@ -197,14 +182,12 @@ public class UserService {
         }
     }
 
-    // 超級管理員取得特定使用者資訊
     public UserResponse getUserById(Long id) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("找不到使用者 ID: " + id));
         return userMapper.toUserResponse(user);
     }
 
-    // 超級管理員取得所有使用者資訊
     public List<UserResponse> getAllUsers() {
         return userRepository.findAll().stream()
                 .map(userMapper::toUserResponse)

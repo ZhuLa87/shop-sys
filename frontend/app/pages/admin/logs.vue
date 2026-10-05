@@ -87,7 +87,6 @@ const api = useApi()
 const logs = ref<any[]>([])
 const loading = ref(false)
 
-// 權限檢查與資料載入
 onMounted(() => {
   if (!authStore.isProductManager) {
     notify({
@@ -101,7 +100,6 @@ onMounted(() => {
   }
 })
 
-// 載入日誌
 const fetchInventoryLogs = async () => {
   loading.value = true
   try {
@@ -123,7 +121,6 @@ const getOperatorName = (row: { operatorName?: string | null; operatorId?: numbe
   return '系統自動'
 }
 
-// 變動原因翻譯
 const getReasonLabel = (reason: string) => {
   const map: Record<string, string> = {
     'ORDER': '訂單扣減',
@@ -135,7 +132,6 @@ const getReasonLabel = (reason: string) => {
   return map[reason] || reason
 }
 
-// 變動原因標籤顏色
 const getReasonClass = (reason: string) => {
   const map: Record<string, string> = {
     'ORDER': 'bg-amber-50 text-amber-700 border-amber-200',
@@ -147,7 +143,6 @@ const getReasonClass = (reason: string) => {
   return map[reason] || 'bg-slate-50 text-slate-700 border-slate-200'
 }
 
-// 格式化日期
 const formatDate = (timestamp: number) => {
   if (!timestamp) return '-'
   return new Date(timestamp).toLocaleString('zh-TW', {

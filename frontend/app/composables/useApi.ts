@@ -89,7 +89,6 @@ export const useApi = () => {
     return refreshed
   }
 
-  // 清除所有憑證並跳轉登入頁
   const clearAndRedirect = () => {
     // refresh_token cookie 是 HttpOnly, 由後端在 refresh 失敗時清除
     token.value = null
@@ -101,7 +100,6 @@ export const useApi = () => {
     }
   }
 
-  // 從 $fetch 的錯誤物件中提取後端回傳的訊息
   const extractErrorMessage = (error: any): string => {
     return (
       error?.data?.message ||

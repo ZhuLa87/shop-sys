@@ -15,12 +15,10 @@ import java.time.LocalDateTime;
 @Table(name = "inventory_logs")
 public class InventoryLog {
 
-    // 庫存異動紀錄主鍵 ID (UNSIGNED,自動遞增) 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // 所屬商品 (多對一關聯)
     // @NotFound(IGNORE): 商品軟刪除後 @SQLRestriction 使 JPA 找不到該列,
     // 加上此注解使 Hibernate 回傳 null 而非拋出 ObjectNotFoundException
     @ManyToOne(fetch = FetchType.LAZY)
@@ -33,12 +31,10 @@ public class InventoryLog {
     private Integer changeAmount;
 
 
-    // 異動原因
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private InventoryChangeReason reason;
 
-    // 操作人員 ID (執行此異動的人,可選,可能是後台管理員或系統) 
     @Column(name = "operator_id")
     private Long operatorId;
 
@@ -51,13 +47,11 @@ public class InventoryLog {
     @Column(name = "operator_role", length = 32)
     private Role operatorRole;
 
-    // 異動建立時間 (不可更改) 
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
     @PrePersist
     protected void onCreate() {
-        // 紀錄建立時自動填入時間
         createdAt = LocalDateTime.now();
     }
 

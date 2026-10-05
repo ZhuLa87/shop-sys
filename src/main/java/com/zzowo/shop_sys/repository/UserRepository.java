@@ -18,7 +18,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
         return findByEmail(email).orElseThrow(() -> new ResourceNotFoundException("使用者不存在"));
     }
 
-    // 檢查 Email 是否已存在 (註冊時用)
     boolean existsByEmail(String email);
 
     // 計算除了指定使用者以外,還有幾個啟用中的該角色帳號

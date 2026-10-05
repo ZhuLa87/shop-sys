@@ -84,7 +84,6 @@ class OrderServiceTest {
         // 庫存以單句條件更新扣減 (mock 下記憶體中的 stockQuantity 不會變動)
         verify(productRepository).deductStock(10L, 3);
 
-        // 庫存異動紀錄
         ArgumentCaptor<InventoryLog> logCaptor = ArgumentCaptor.forClass(InventoryLog.class);
         verify(inventoryLogRepository).save(logCaptor.capture());
         InventoryLog log = logCaptor.getValue();
@@ -95,7 +94,6 @@ class OrderServiceTest {
         assertThat(log.getOperatorRole()).isEqualTo(Role.CUSTOMER);
         assertThat(log.getProduct()).isSameAs(product);
 
-        // 結帳後清空購物車
         verify(cartRepository).deleteByUserId(1L);
     }
 

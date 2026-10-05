@@ -166,7 +166,6 @@ onMounted(async () => {
   loading.value = false
 })
 
-// 選擇頭像檔案後開啟裁切器
 const handleAvatarFileSelect = (event: Event) => {
   const input = event.target as HTMLInputElement
   const file = input.files?.[0]
@@ -181,13 +180,11 @@ const handleAvatarFileSelect = (event: Event) => {
   reader.readAsDataURL(file)
 }
 
-// 裁切完成後上傳
 const handleAvatarCropConfirm = async (blob: Blob) => {
   if (!authStore.user?.id) return
   uploadingAvatar.value = true
   try {
     const avatarUrl = await upload.uploadAvatar(blob, authStore.user.id)
-    // 更新後端資料並刷新 store
     await authStore.updateProfile({ avatarUrl })
     notify({ title: '頭像已更新', message: '新頭像已成功上傳並儲存.', type: 'success', duration: 3000 })
   } catch (error: any) {

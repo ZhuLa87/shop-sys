@@ -25,7 +25,6 @@ import com.zzowo.shop_sys.util.JwtUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
-// Token 的發放, 刷新與撤銷
 @Slf4j
 @Service
 @RequiredArgsConstructor

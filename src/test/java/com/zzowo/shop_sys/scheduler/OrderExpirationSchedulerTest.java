@@ -36,7 +36,6 @@ class OrderExpirationSchedulerTest {
 
     @BeforeEach
     void setTimeout() {
-        // @Value 不會在單元測試注入,手動設定
         ReflectionTestUtils.setField(scheduler, "timeoutMinutes", TIMEOUT_MINUTES);
     }
 
