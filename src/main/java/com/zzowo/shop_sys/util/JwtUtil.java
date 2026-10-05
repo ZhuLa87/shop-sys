@@ -27,7 +27,6 @@ public class JwtUtil {
     public static final String CLAIM_ROLE = "role";
     public static final String CLAIM_USER_ID = "userId";
 
-    // 從 application.yaml 讀取設定
     @Value("${jwt.secret}")
     private String secret;
 
@@ -90,17 +89,11 @@ public class JwtUtil {
         }
     }
 
-    /**
-     * 從token中獲取特定聲明
-     */
     public <T> T getClaimFromToken(String token, Function<Claims, T> claimsResolver) {
         final Claims claims = getAllClaimsFromToken(token);
         return claimsResolver.apply(claims);
     }
 
-    /**
-     * 從token中獲取所有聲明
-     */
     private Claims getAllClaimsFromToken(String token) {
         return Jwts.parser()
                 .verifyWith(getSignKey())

@@ -185,7 +185,6 @@ class ProductRepositoryTest {
         em.persistAndFlush(p);
         em.clear();
 
-        // 用 findDeletedById 取出,清除 deletedAt,儲存
         Product deleted = productRepository.findDeletedById(p.getId()).orElseThrow();
         deleted.setDeletedAt(null);
         productRepository.saveAndFlush(deleted);

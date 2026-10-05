@@ -1,6 +1,5 @@
 @import "tailwindcss";
 
-/* 現代簡約風全域樣式微調 */
 body {
   background-color: var(--color-slate-50);
   color: var(--color-slate-900);

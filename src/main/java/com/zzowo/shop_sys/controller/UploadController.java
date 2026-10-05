@@ -35,7 +35,6 @@ public class UploadController {
             @Valid @RequestBody PresignRequest request,
             Authentication authentication) {
 
-        // 商品圖片類型需要 PRODUCT_MANAGER 或 SUPER_ADMIN 角色
         if (PRODUCT_TYPES.contains(request.getType())) {
             boolean hasRole = authentication.getAuthorities().stream()
                     .anyMatch(a -> PRODUCT_UPLOAD_AUTHORITIES.contains(a.getAuthority()));

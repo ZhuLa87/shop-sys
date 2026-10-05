@@ -40,7 +40,6 @@ export const useAuthStore = defineStore('auth', () => {
   const isProductManager = computed(() => role.value === 'PRODUCT_MANAGER' || role.value === 'SUPER_ADMIN')
   const isSuperAdmin = computed(() => role.value === 'SUPER_ADMIN')
 
-  // 登入
   const login = async (email: string, password: string) => {
     const res = await api.request<LoginResponse>('/auth/login', {
       method: 'POST',
@@ -57,7 +56,6 @@ export const useAuthStore = defineStore('auth', () => {
     return res
   }
 
-  // 註冊
   const register = async (body: any) => {
     return await api.request('/auth/register', {
       method: 'POST',
@@ -65,7 +63,6 @@ export const useAuthStore = defineStore('auth', () => {
     })
   }
 
-  // 取得最新個人資料
   const fetchProfile = async () => {
     if (!token.value) return
     try {

@@ -100,7 +100,6 @@ const fetchOrders = async () => {
   }
 }
 
-// 狀態標籤轉換
 const getStatusLabel = (status: string) => {
   const map: Record<string, string> = {
     'PENDING': '待付款',
@@ -112,7 +111,6 @@ const getStatusLabel = (status: string) => {
   return map[status] || status
 }
 
-// 狀態樣式轉換
 const getStatusClass = (status: string) => {
   const map: Record<string, string> = {
     'PENDING': 'bg-amber-50 text-amber-700 border-amber-200',
@@ -124,7 +122,6 @@ const getStatusClass = (status: string) => {
   return map[status] || 'bg-slate-50 text-slate-700 border-slate-200'
 }
 
-// 組合商品文字摘要
 const getOrderSummaryItems = (order: any) => {
   if (!order.items || order.items.length === 0) return '無商品資料'
   const firstItem = order.items[0]
@@ -134,12 +131,10 @@ const getOrderSummaryItems = (order: any) => {
   return `${firstItem.productName} × ${firstItem.quantity} 等 ${order.items.length} 項商品`
 }
 
-// 格式化價格
 const formatPrice = (price: number) => {
   return new Intl.NumberFormat('zh-TW', { maximumFractionDigits: 0 }).format(price)
 }
 
-// 格式化日期
 const formatDate = (timestamp: number) => {
   if (!timestamp) return '-'
   return new Date(timestamp).toLocaleString('zh-TW', {

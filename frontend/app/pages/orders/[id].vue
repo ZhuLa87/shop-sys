@@ -269,7 +269,6 @@ const isStepReached = (stepKey: string) => {
   return stepIdx <= currentIdx
 }
 
-// 載入訂單詳情
 const loadOrder = async () => {
   loading.value = true
   try {
@@ -291,7 +290,6 @@ const loadOrder = async () => {
   }
 }
 
-// 商品數量加總
 const totalQuantity = computed(() => {
   if (!order.value?.items) return 0
   return order.value.items.reduce((sum: number, item: any) => sum + item.quantity, 0)

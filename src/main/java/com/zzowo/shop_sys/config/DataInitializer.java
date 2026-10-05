@@ -91,7 +91,6 @@ public class DataInitializer implements CommandLineRunner {
                 new BigDecimal("3290.00"), 0, ProductStatus.OUT_OF_STOCK,
                 "https://picsum.photos/seed/gaming-mouse/400/400");
 
-        // 測試顧客的購物車
         createCartItem(customer, earphone, 2);
         createCartItem(customer, hub, 1);
 

@@ -126,7 +126,6 @@ const formRef = ref<FormInstance>()
 const editingUserId = ref<number | null>(null)
 const statusLoading = ref<Record<number, boolean>>({})
 
-// 編輯會員資料表單
 const form = reactive({
   email: '',
   name: '',
@@ -157,7 +156,6 @@ const rules = reactive<FormRules>({
   ]
 })
 
-// 防非超級管理員越權
 onMounted(() => {
   if (!authStore.isSuperAdmin) {
     notify({
@@ -171,7 +169,6 @@ onMounted(() => {
   }
 })
 
-// 載入所有會員
 const fetchUsers = async () => {
   loading.value = true
   try {
@@ -186,7 +183,6 @@ const fetchUsers = async () => {
   }
 }
 
-// 快速切換啟停用狀態
 const toggleUserStatus = async (row: any, val: string | number | boolean) => {
   const isEnabled = !!val
   statusLoading.value[row.id] = true
@@ -219,14 +215,12 @@ const toggleUserStatus = async (row: any, val: string | number | boolean) => {
       type: 'error',
       duration: 3000
     })
-    // 復原
     row.enabled = !isEnabled
   } finally {
     statusLoading.value[row.id] = false
   }
 }
 
-// 開啟編輯視窗
 const openEditDialog = (row: any) => {
   editingUserId.value = row.id
   dialogVisible.value = true
@@ -239,7 +233,6 @@ const openEditDialog = (row: any) => {
   form.password = ''
 }
 
-// 儲存修改
 const handleSave = async () => {
   if (!formRef.value) return
 

@@ -48,7 +48,6 @@ class AuthControllerTest {
     @MockitoBean
     TokenBlacklistService tokenBlacklistService;
 
-    // JwtAuthenticationFilter 依賴 JwtUtil,需要 MockitoBean 防止 NPE
     @MockitoBean
     JwtUtil jwtUtil;
 

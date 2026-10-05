@@ -13,18 +13,16 @@ import java.time.LocalDateTime;
 @Table(name = "coupons")
 public class Coupon {
 
-    // 優惠券主鍵 ID (UNSIGNED,自動遞增) 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // 優惠券代碼 (不可重複,用於兌換識別) 
     @Column(nullable = false, unique = true)
     private String code;
 
     // 優惠類型:"PERCENT" (百分比折扣) 或 "FIXED" (固定金額折扣) 
     @Column(name = "discount_type", nullable = false)
-    private String discountType; // "PERCENT", "FIXED"
+    private String discountType;
 
     // 折扣數值:若為百分比則為 0-100;若為固定折扣則為金額
     @Column(name = "discount_value", nullable = false, precision = 10, scale = 2)
@@ -42,17 +40,14 @@ public class Coupon {
     @Column(name = "valid_to")
     private LocalDateTime validTo;
 
-    // 使用總次數限制 (UNSIGNED,預設 1 次) 
     @Column(name = "usage_limit")
     private Integer usageLimit;
 
-    // 建立時間 (建立後不可修改) 
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
     @PrePersist
     protected void onCreate() {
-        // 建立資料時自動設定建立時間
         createdAt = LocalDateTime.now();
     }
 }

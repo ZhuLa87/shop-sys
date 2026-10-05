@@ -94,7 +94,6 @@ const form = reactive({
   phone: ''
 })
 
-// 表單驗證規則
 const rules = reactive<FormRules>({
   name: [
     { required: true, message: '姓名為必填欄位', trigger: 'blur' },

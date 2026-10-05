@@ -8,6 +8,5 @@ import java.util.Optional;
 
 @Repository
 public interface CouponRepository extends JpaRepository<Coupon, Long> {
-    // 根據折扣碼找優惠券
     Optional<Coupon> findByCode(String code);
 }

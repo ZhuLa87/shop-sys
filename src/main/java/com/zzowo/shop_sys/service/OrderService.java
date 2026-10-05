@@ -38,13 +38,10 @@ public class OrderService {
     private final OrderMapper orderMapper;
     private final InventoryLogRepository inventoryLogRepository;
 
-    // 建立訂單 (結帳)
     @Transactional
     public OrderResponse createOrder(String email, OrderCreateRequest request) {
-        // 確認使用者身分
         User user = userRepository.getByEmailOrThrow(email);
 
-        // 取得購物車
         List<Cart> cartItems = cartRepository.findByUserId(user.getId());
         if (cartItems.isEmpty()) {
             throw new BusinessException("購物車為空,無法結帳");
@@ -56,10 +53,9 @@ public class OrderService {
                 .sorted(Comparator.comparing(c -> c.getProduct() == null ? Long.MIN_VALUE : c.getProduct().getId()))
                 .toList();
 
-        // 準備建立訂單
         Order order = new Order();
         order.setUser(user);
-        order.setStatus(OrderStatus.PENDING); // 使用 Enum 代替 String
+        order.setStatus(OrderStatus.PENDING);
         order.setRecipientName(request.getRecipientName());
         order.setRecipientPhone(request.getRecipientPhone());
         order.setRecipientAddress(request.getRecipientAddress());
@@ -67,7 +63,6 @@ public class OrderService {
         List<OrderItem> orderItems = new ArrayList<>();
         BigDecimal totalAmount = BigDecimal.ZERO;
 
-        // 處理每個購物車商品
         for (Cart cart : cartItems) {
             Product product = cart.getProduct();
 
@@ -99,7 +94,6 @@ public class OrderService {
                 throw new BusinessException("商品 [" + product.getName() + "] 庫存不足,結帳失敗");
             }
 
-            // 建立庫存異動紀錄
             writeInventoryLog(product, -quantityToDeduct, InventoryChangeReason.ORDER, user);
 
             // 建立訂單明細 (name/coverImageUrl 為快照,確保商品日後改名或刪除仍可正確顯示)
@@ -113,7 +107,6 @@ public class OrderService {
 
             orderItems.add(item);
 
-            // 累加總金額
             BigDecimal subtotal = product.getPrice().multiply(BigDecimal.valueOf(cart.getQuantity()));
             totalAmount = totalAmount.add(subtotal);
         }
@@ -121,10 +114,8 @@ public class OrderService {
         order.setItems(orderItems);
         order.setTotalAmount(totalAmount);
 
-        // 儲存訂單
         Order savedOrder = orderRepository.save(order);
 
-        // 清空購物車
         cartRepository.deleteByUserId(user.getId());
 
         return orderMapper.toOrderResponse(savedOrder);
@@ -169,7 +160,6 @@ public class OrderService {
         return true;
     }
 
-    // 查看我的訂單
     @Transactional(readOnly = true)
     public List<OrderResponse> getMyOrders(String email) {
         User user = userRepository.getByEmailOrThrow(email);
@@ -178,13 +168,10 @@ public class OrderService {
         return orders.stream().map(orderMapper::toOrderResponse).collect(Collectors.toList());
     }
 
-    // 查看單一訂單詳情
     @Transactional(readOnly = true)
     public OrderResponse getOrderById(String email, Long orderId) {
-        // 確認使用者身分
         User user = userRepository.getByEmailOrThrow(email);
 
-        // 取得訂單
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new ResourceNotFoundException("訂單不存在"));
 
@@ -196,7 +183,6 @@ public class OrderService {
         return orderMapper.toOrderResponse(order);
     }
 
-    // 寫入庫存異動紀錄 (operator 為 null 代表系統自動作業)
     private void writeInventoryLog(Product product, int changeAmount, InventoryChangeReason reason, User operator) {
         InventoryLog inventoryLog = new InventoryLog();
         inventoryLog.setProduct(product);

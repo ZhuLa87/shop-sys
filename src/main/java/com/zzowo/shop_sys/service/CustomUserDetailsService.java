@@ -16,7 +16,6 @@ public class CustomUserDetailsService implements UserDetailsService {
 
     @Override
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
-        // User entity 本身已實作 UserDetails,直接回傳即可,不需再手動組裝
         return userRepository.findByEmail(email)
                 .orElseThrow(() -> new UsernameNotFoundException("找不到使用者: " + email));
     }

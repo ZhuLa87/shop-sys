@@ -13,7 +13,6 @@ import { useCartStore } from '~/stores/cart'
 const authStore = useAuthStore()
 const cartStore = useCartStore()
 
-// 在客戶端初始化時載入個人資料與購物車數據
 onMounted(async () => {
   if (authStore.isAuthenticated) {
     await authStore.fetchProfile()

@@ -364,7 +364,6 @@ const authStore = useAuthStore()
 const api = useApi()
 const upload = useUpload()
 
-// 裁切器狀態
 const cropperCoverVisible = ref(false)
 const cropperSubVisible = ref(false)
 const pendingCropSrc = ref('')
@@ -378,7 +377,6 @@ onMounted(() => {
   }
 })
 
-// 搜尋/篩選狀態
 const searchKeyword = ref('')
 const statusFilter = ref('')
 let debounceTimer: ReturnType<typeof setTimeout> | null = null
@@ -411,7 +409,6 @@ const clearFilters = () => {
   loadProducts()
 }
 
-// 分頁狀態
 const products = ref<any[]>([])
 const loading = ref(false)
 const currentPage = ref(1)

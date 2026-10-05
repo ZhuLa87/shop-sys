@@ -17,13 +17,10 @@ import java.util.Optional;
 
 @Repository
 public interface ProductRepository extends JpaRepository<Product, Long> {
-    // 分頁查詢上架商品
     Page<Product> findByStatus(ProductStatus status, Pageable pageable);
 
-    // 分頁查詢上架商品 + 名稱關鍵字搜尋
     Page<Product> findByStatusAndNameContaining(ProductStatus status, String keyword, Pageable pageable);
 
-    // 管理員: 分頁查詢全部商品 (含關鍵字,不限狀態)
     Page<Product> findByNameContaining(String keyword, Pageable pageable);
 
     // 前台列表: 分頁查詢多種狀態的商品,可購買 (上架且有庫存) 的排前面,缺貨 (庫存為 0 或狀態為 OUT_OF_STOCK) 的排最後
@@ -33,8 +30,6 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     @Query("SELECT p FROM Product p WHERE p.status IN :statuses AND p.name LIKE %:keyword% ORDER BY CASE WHEN p.status = com.zzowo.shop_sys.enums.ProductStatus.ON_SHELF AND p.stockQuantity > 0 THEN 0 ELSE 1 END ASC")
     Page<Product> findByStatusInAndNameContainingSoldOutLast(@Param("statuses") Collection<ProductStatus> statuses, @Param("keyword") String keyword, Pageable pageable);
 
-    // JOIN FETCH: 告訴 JPA 查詢 Product 時,順便把 images 關聯表抓出來填好
-    // LEFT JOIN: 就算商品沒有圖片,商品本身也要查出來 (避免因沒圖片導致商品消失)
     @Query("SELECT p FROM Product p LEFT JOIN FETCH p.images WHERE p.id = :id")
     Optional<Product> findByIdWithImages(@Param("id") Long id);
 

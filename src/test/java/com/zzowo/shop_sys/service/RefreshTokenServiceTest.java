@@ -110,7 +110,6 @@ class RefreshTokenServiceTest {
 
         refreshTokenService.deleteIfExists("unknown"); // 不應拋例外
 
-        // capture the single delete call and assert only the token key was deleted
         ArgumentCaptor<String> captor = ArgumentCaptor.forClass(String.class);
         verify(redisTemplate, times(1)).delete(captor.capture());
         assertThat(captor.getValue()).isEqualTo("refresh_token:unknown");

@@ -1,4 +1,3 @@
-// https://nuxt.com/docs/api/configuration/nuxt-config
 import tailwindcss from '@tailwindcss/vite'
 import { readFileSync } from 'node:fs'
 import { homedir } from 'node:os'

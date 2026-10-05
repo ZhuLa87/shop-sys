@@ -196,7 +196,6 @@ const allImages = computed<string[]>(() => {
   return imgs
 })
 
-// 載入商品詳情
 const loadProduct = async () => {
   loading.value = true
   try {
@@ -223,7 +222,6 @@ const loadProduct = async () => {
   }
 }
 
-// 加入購物車
 const handleAddToCart = async () => {
   if (!authStore.isAuthenticated) {
     notify({
@@ -257,7 +255,6 @@ const handleAddToCart = async () => {
   }
 }
 
-// 商品狀態轉換
 const getStatusLabel = (status: string) => {
   const map: Record<string, string> = {
     'ON_SHELF': '上架中',

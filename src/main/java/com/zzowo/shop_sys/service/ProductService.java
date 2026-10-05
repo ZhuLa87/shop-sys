@@ -49,13 +49,11 @@ public class ProductService {
 
     private final UserRepository userRepository;
 
-    // 新增商品
     @Transactional
     public ProductResponse createProduct(String email, ProductRequest request) {
         Product product = new Product();
         productMapper.updateEntityFromRequest(product, request);
 
-        // 儲存
         Product savedProduct = productRepository.save(product);
 
         // 初始庫存視為一次進貨,讓 inventory_logs 的變動加總等於目前庫存
@@ -67,7 +65,6 @@ public class ProductService {
         return productMapper.toDetailResponse(savedProduct);
     }
 
-    // 修改商品
     @Transactional
     public ProductResponse updateProduct(String email, Long id, ProductUpdateRequest request) {
         Product product = productRepository.findById(id)
@@ -80,7 +77,6 @@ public class ProductService {
             throw new ObjectOptimisticLockingFailureException(Product.class, id);
         }
 
-        // 先記下舊值才算得出差額
         int oldStock = product.getStockQuantity() == null ? 0 : product.getStockQuantity();
 
         productMapper.updateEntityFromRequest(product, request);
@@ -97,7 +93,6 @@ public class ProductService {
         return productMapper.toDetailResponse(savedProduct);
     }
 
-    // 軟刪除商品 (設定 deletedAt,資料保留於 DB)
     @Transactional
     public void deleteProduct(Long id) {
         Product product = productRepository.findById(id)
@@ -106,7 +101,6 @@ public class ProductService {
         productRepository.save(product);
     }
 
-    // 取得前台商品列表 (上架中 + 缺貨中,分頁 + 關鍵字搜尋)
     public PageResponse<ProductResponse> getStorefrontProducts(Pageable pageable, String keyword) {
         pageable = sanitizePageable(pageable);
 
@@ -121,7 +115,6 @@ public class ProductService {
         return new PageResponse<>(productPage.map(productMapper::toSummaryResponse));
     }
 
-    // 取得單一商品詳情
     // 前台只能看到上架中/缺貨中的商品, 已下架的回 404 (與不存在無法區分, 避免列舉未發布商品);
     // 後台編輯商品時共用此端點, 由 includeHidden 放行
     public ProductResponse getProductById(Long id, boolean includeHidden) {
@@ -132,7 +125,6 @@ public class ProductService {
         return productMapper.toDetailResponse(product);
     }
 
-    // 查詢特定商品的庫存紀錄
     public List<InventoryLogResponse> getProductInventoryLogs(Long productId) {
         // 商品不存在時回 404, 而不是回傳空的紀錄清單
         if (!productRepository.existsById(productId)) {
@@ -141,13 +133,11 @@ public class ProductService {
 
         List<InventoryLog> logs = inventoryLogRepository.findByProductIdOrderByCreatedAtDesc(productId);
 
-        // 轉換成 DTO
         return logs.stream()
                 .map(inventoryLogMapper::toResponse)
                 .collect(Collectors.toList());
     }
 
-    // 管理員查詢所有商品 (分頁 + 關鍵字 + 狀態篩選)
     public PageResponse<ProductResponse> getAdminProducts(Pageable pageable, String keyword, ProductStatus status) {
         pageable = sanitizePageable(pageable);
 
@@ -167,14 +157,12 @@ public class ProductService {
         return new PageResponse<>(productPage.map(productMapper::toSummaryResponse));
     }
 
-    // 取得已軟刪除的商品清單 (管理員回收桶用)
     public List<ProductResponse> getDeletedProducts() {
         return productRepository.findAllDeleted().stream()
                 .map(productMapper::toSummaryResponse)
                 .collect(Collectors.toList());
     }
 
-    // 還原已軟刪除的商品
     @Transactional
     public ProductResponse restoreProduct(Long id) {
         Product product = productRepository.findDeletedById(id)
@@ -183,7 +171,6 @@ public class ProductService {
         return productMapper.toSummaryResponse(productRepository.save(product));
     }
 
-    // 取得所有商品的庫存紀錄 (管理員總覽用)
     public List<InventoryLogResponse> getAllInventoryLogs() {
         return inventoryLogRepository.findAllByOrderByCreatedAtDesc().stream()
                 .map(inventoryLogMapper::toResponse)
@@ -212,7 +199,6 @@ public class ProductService {
         return userRepository.findByEmail(email).orElse(null);
     }
 
-    // 寫入庫存異動紀錄 (欄位與 OrderService 結帳扣庫存時一致)
     private void writeInventoryLog(Product product, int changeAmount, InventoryChangeReason reason, User operator) {
         InventoryLog log = new InventoryLog();
         log.setProduct(product);

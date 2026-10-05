@@ -32,7 +32,6 @@ public class CartService {
 
     private final CartMapper cartMapper;
 
-    // 取得某使用者的購物車清單
     @Transactional
     public List<CartItemResponse> getUserCart(String email) {
         User user = userRepository.getByEmailOrThrow(email);
@@ -54,7 +53,6 @@ public class CartService {
                 .collect(Collectors.toList());
     }
 
-    // 加入購物車
     @Transactional
     public void addToCart(String email, AddToCartRequest request) {
         User user = userRepository.getByEmailOrThrow(email);
@@ -66,7 +64,6 @@ public class CartService {
             throw new BusinessException("商品 [" + product.getName() + "] 目前" + product.getStatus().getDescription() + ",無法加入購物車");
         }
 
-        // 檢查購物車是否已經有該商品,若有則增加數量,若無則新增
         Cart cart = cartRepository.findByUserIdAndProductId(user.getId(), product.getId())
                 .orElse(new Cart());
 
@@ -82,25 +79,21 @@ public class CartService {
             throw new BusinessException("每項商品最多只能加入 " + AddToCartRequest.MAX_QUANTITY + " 件,目前購物車內已有 " + existingQuantity + " 件");
         }
 
-        // 檢查庫存 (已有的 + 這次要加的)
         if (product.getStockQuantity() < totalTargetQuantity) {
             throw new BusinessException("庫存不足,目前購物車內已有 " + existingQuantity + " 件,無法再加入 " + request.getQuantity() + " 件");
         }
 
         if (cart.getId() == null) {
-            // 新增
             cart.setUser(user);
             cart.setProduct(product);
             cart.setQuantity(request.getQuantity());
         } else {
-            // 既有商品,累加數量
             cart.setQuantity(totalTargetQuantity);
         }
 
         cartRepository.save(cart);
     }
 
-    // 移除購物車項目
     @Transactional
     public void removeFromCart(String email, Long cartId) {
         User user = userRepository.getByEmailOrThrow(email);

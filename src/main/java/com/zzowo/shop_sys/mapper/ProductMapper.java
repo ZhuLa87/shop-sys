@@ -35,17 +35,14 @@ public class ProductMapper {
         return response;
     }
 
-    // 給詳情頁用 (完整轉換)
     public ProductResponse toDetailResponse(Product product) {
         if (product == null)
             return null;
 
-        // 先呼叫上面轉好基本資料
         ProductResponse response = toSummaryResponse(product);
-        response.setDescription(product.getDescription()); // 列表頁可能也不需要描述,詳情頁才加
+        response.setDescription(product.getDescription());
 
-        // 詳情頁才處理圖片集
-        if (product.getImages() != null) { // 若是用 JOIN FETCH,這裡已經被初始化了,不會報錯
+        if (product.getImages() != null) {
             List<String> urls = product.getImages().stream()
                     .map(ProductImage::getImageUrl)
                     .collect(Collectors.toList());
@@ -55,7 +52,6 @@ public class ProductMapper {
         return response;
     }
 
-    // 將 Request 的資料更新到 Product Entity
     // version 由 Hibernate 管理, 不從 request 複製 (修改時的比對在 ProductService.updateProduct)
     public void updateEntityFromRequest(Product product, ProductRequest request) {
         product.setName(request.getName());
@@ -65,7 +61,6 @@ public class ProductMapper {
         product.setStatus(request.getStatus());
         product.setCoverImageUrl(request.getCoverImageUrl());
 
-        // 處理圖片關聯
         if (request.getImageUrls() != null) {
             if (product.getImages() != null) {
                 product.getImages().clear();
@@ -74,7 +69,7 @@ public class ProductMapper {
                     .map(url -> {
                         ProductImage img = new ProductImage();
                         img.setImageUrl(url);
-                        img.setProduct(product); // 設定雙向關聯
+                        img.setProduct(product);
                         return img;
                     })
                     .collect(Collectors.toList());
